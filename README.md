@@ -9,6 +9,7 @@
   <a href="https://github.com/profectus/macSCP/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/platform-macOS%2012%2B-lightgrey.svg?style=flat-square" alt="macOS 12+"></a>
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/built%20with-Rust%20%26%20GPUI-orange.svg?style=flat-square" alt="Rust & GPUI"></a>
+  <a href="https://buymeacoffee.com/filipc"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-filipc-FFDD00.svg?style=flat-square&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee"></a>
 </p>
 
 <p align="center">
@@ -127,6 +128,18 @@ cargo test
 ```
 
 The compiled and signed `.app` bundle will be ready at `target/release/MacSCP.app`, and a distributable archive will be at `target/release/MacSCP.zip`.
+
+---
+
+## ☕ Support the Project
+
+If you love MacSCP and want to support its ongoing development and maintenance, you can buy me a coffee! Any support is greatly appreciated.
+
+<p align="center">
+  <a href="https://buymeacoffee.com/filipc" target="_blank">
+    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
+  </a>
+</p>
 
 ---
 

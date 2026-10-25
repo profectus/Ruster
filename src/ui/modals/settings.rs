@@ -667,22 +667,49 @@ impl MacScpView {
                                     )
                                     .child(
                                         div()
-                                            .id("btn-settings-check-updates")
-                                            .cursor_pointer()
-                                            .px_3()
-                                            .py_1p5()
-                                            .rounded(px(5.0))
-                                            .bg(theme.button_bg())
-                                            .border_1()
-                                            .border_color(theme.border())
-                                            .text_xs()
-                                            .font_weight(gpui::FontWeight::MEDIUM)
-                                            .text_color(theme.text_primary())
-                                            .hover(|s| s.bg(theme.button_hover_bg()))
-                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                this.check_for_updates(true, cx);
-                                            }))
-                                            .child(t.menu_check_for_updates()),
+                                            .flex()
+                                            .items_center()
+                                            .gap_2()
+                                            .child(
+                                                div()
+                                                    .id("btn-settings-coffee")
+                                                    .cursor_pointer()
+                                                    .px_2p5()
+                                                    .py_1p5()
+                                                    .rounded(px(5.0))
+                                                    .bg(theme.button_bg())
+                                                    .border_1()
+                                                    .border_color(theme.border())
+                                                    .text_xs()
+                                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                                    .text_color(theme.text_primary())
+                                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                                    .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, _| {
+                                                        let _ = std::process::Command::new("open")
+                                                            .arg("https://buymeacoffee.com/filipc")
+                                                            .spawn();
+                                                    }))
+                                                    .child("☕ Buy Me a Coffee"),
+                                            )
+                                            .child(
+                                                div()
+                                                    .id("btn-settings-check-updates")
+                                                    .cursor_pointer()
+                                                    .px_3()
+                                                    .py_1p5()
+                                                    .rounded(px(5.0))
+                                                    .bg(theme.button_bg())
+                                                    .border_1()
+                                                    .border_color(theme.border())
+                                                    .text_xs()
+                                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                                    .text_color(theme.text_primary())
+                                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                        this.check_for_updates(true, cx);
+                                                    }))
+                                                    .child(t.menu_check_for_updates()),
+                                            ),
                                     ),
                             ),
                     )
