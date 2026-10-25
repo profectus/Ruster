@@ -11,6 +11,22 @@
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/built%20with-Rust%20%26%20GPUI-orange.svg?style=flat-square" alt="Rust & GPUI"></a>
 </p>
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/screenshot-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="assets/screenshot-light.png">
+    <img alt="MacSCP Dual-Pane Interface" src="assets/screenshot-dark.png" width="88%">
+  </picture>
+</p>
+
+---
+
+## 📸 Screenshots
+
+| 🌙 Dark Theme | ☀️ Light Theme |
+| :---: | :---: |
+| <img src="assets/screenshot-dark.png" width="100%" alt="MacSCP Dark Mode"> | <img src="assets/screenshot-light.png" width="100%" alt="MacSCP Light Mode"> |
+
 ---
 
 ## ✨ Features
