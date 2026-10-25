@@ -53,10 +53,11 @@
 You can install MacSCP directly via Homebrew:
 
 ```bash
-# Add the MacSCP tap
+# Add the MacSCP tap and trust it
 brew tap profectus/macscp https://github.com/profectus/macSCP.git
+brew trust profectus/macscp
 
-# Install MacSCP Cask
+# Install MacSCP
 brew install --cask macscp
 ```
 
