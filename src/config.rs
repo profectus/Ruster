@@ -1,0 +1,387 @@
+use crate::model::{
+    default_editable_extensions, initial_local_dir, initial_right_dir, Protocol, SavedSiteProfile,
+};
+use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
+
+#[derive(Clone, Debug)]
+pub struct AppState {
+    pub show_local_pane: bool,
+    pub local_dir: PathBuf,
+    pub right_dir: PathBuf,
+    pub max_concurrent_transfers: usize,
+    pub editable_extensions: String,
+    pub window_width: f32,
+    pub window_height: f32,
+    pub theme: crate::theme::ThemeMode,
+    pub locale: crate::i18n::Locale,
+}
+
+pub fn config_dir() -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
+    PathBuf::from(home).join(".config").join("macscp")
+}
+
+pub fn sites_file_path() -> PathBuf {
+    config_dir().join("sites.conf")
+}
+
+pub fn state_file_path() -> PathBuf {
+    config_dir().join("state.conf")
+}
+
+pub fn cleanup_remote_edit_temp() {
+    let dir = std::env::temp_dir().join("macscp_remote_edit");
+    if dir.exists() {
+        let _ = fs::remove_dir_all(&dir);
+    }
+}
+
+pub fn load_app_state() -> AppState {
+    let default_local = initial_local_dir();
+    let default_right = initial_right_dir();
+    let mut show_local_pane = true;
+    let mut local_dir = default_local.clone();
+    let mut right_dir = default_right.clone();
+    let mut max_concurrent_transfers = 2usize;
+    let mut editable_extensions = default_editable_extensions();
+    let mut window_width = 1280.0f32;
+    let mut window_height = 800.0f32;
+    let mut theme = crate::theme::ThemeMode::Light;
+    let mut locale = crate::i18n::Locale::En;
+
+    if let Ok(content) = fs::read_to_string(state_file_path()) {
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            if let Some((k, v)) = line.split_once('=') {
+                match k.trim() {
+                    "show_local_pane" => {
+                        if let Ok(b) = v.trim().parse::<bool>() {
+                            show_local_pane = b;
+                        }
+                    }
+                    "local_dir" => {
+                        let p = PathBuf::from(v.trim());
+                        if p.exists() && p.is_dir() {
+                            local_dir = p;
+                        }
+                    }
+                    "right_dir" => {
+                        let p = PathBuf::from(v.trim());
+                        if p.exists() && p.is_dir() {
+                            right_dir = p;
+                        }
+                    }
+                    "max_concurrent_transfers" => {
+                        if let Ok(n) = v.trim().parse::<usize>() {
+                            max_concurrent_transfers = n.clamp(1, 10);
+                        }
+                    }
+                    "editable_extensions" => {
+                        let val = v.trim();
+                        if !val.is_empty() {
+                            editable_extensions = val.to_string();
+                        }
+                    }
+                    "window_width" => {
+                        if let Ok(w) = v.trim().parse::<f32>() {
+                            if w >= 600.0 {
+                                window_width = w;
+                            }
+                        }
+                    }
+                    "window_height" => {
+                        if let Ok(h) = v.trim().parse::<f32>() {
+                            if h >= 400.0 {
+                                window_height = h;
+                            }
+                        }
+                    }
+                    "theme" => {
+                        theme = crate::theme::ThemeMode::from_str(v.trim());
+                    }
+                    "locale" => {
+                        locale = crate::i18n::Locale::from_code(v.trim());
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    AppState {
+        show_local_pane,
+        local_dir,
+        right_dir,
+        max_concurrent_transfers,
+        editable_extensions,
+        window_width,
+        window_height,
+        theme,
+        locale,
+    }
+}
+
+pub fn save_app_state(
+    show_local_pane: bool,
+    local_dir: &std::path::Path,
+    right_dir: &std::path::Path,
+    max_concurrent_transfers: usize,
+    editable_extensions: &str,
+    window_width: f32,
+    window_height: f32,
+    theme: crate::theme::ThemeMode,
+    locale: crate::i18n::Locale,
+) -> std::io::Result<()> {
+    let dir = config_dir();
+    fs::create_dir_all(&dir)?;
+    let content = format!(
+        "show_local_pane={}\nlocal_dir={}\nright_dir={}\nmax_concurrent_transfers={}\neditable_extensions={}\nwindow_width={}\nwindow_height={}\ntheme={}\nlocale={}\n",
+        show_local_pane,
+        local_dir.to_string_lossy(),
+        right_dir.to_string_lossy(),
+        max_concurrent_transfers,
+        editable_extensions,
+        window_width.max(600.0),
+        window_height.max(400.0),
+        theme.as_str(),
+        locale.as_code(),
+    );
+    fs::write(state_file_path(), content)
+}
+
+/// Loads saved sites from `~/.config/macscp/sites.conf`.
+pub fn load_saved_sites() -> Option<Vec<SavedSiteProfile>> {
+    let path = sites_file_path();
+    let content = fs::read_to_string(path).ok()?;
+    let mut sites = Vec::new();
+
+    for line in content.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let parts: Vec<&str> = line.split('\t').collect();
+        if parts.len() >= 8 {
+            let name = parts[0].to_string();
+            let folder = parts[1].to_string();
+            let protocol = match parts[2] {
+                "SFTP" => Protocol::Sftp,
+                "SCP" => Protocol::Scp,
+                "FTPS Explicit" => Protocol::FtpsExplicit,
+                "FTPS Implicit" => Protocol::FtpsImplicit,
+                "FTP" => Protocol::Ftp,
+                _ => Protocol::Sftp,
+            };
+            let host = parts[3].to_string();
+            let port = parts[4].parse::<u16>().unwrap_or(protocol.default_port());
+            let username = parts[5].to_string();
+            let auth_type = parts[6].to_string();
+            let env_color = u32::from_str_radix(parts[7].trim_start_matches("0x"), 16)
+                .unwrap_or(0x2563eb);
+            let max_connections = parts.get(8).and_then(|p| p.parse::<usize>().ok()).unwrap_or(2).clamp(1, 10);
+
+            let password = read_password_from_keychain(&host, &username);
+            sites.push(SavedSiteProfile {
+                name,
+                folder,
+                protocol,
+                host,
+                port,
+                username,
+                password,
+                auth_type,
+                env_color,
+                max_connections,
+            });
+        }
+    }
+
+    if sites.is_empty() {
+        None
+    } else {
+        sites.sort_by(|a, b| {
+            a.display_name().to_lowercase().cmp(&b.display_name().to_lowercase())
+                .then_with(|| a.host.to_lowercase().cmp(&b.host.to_lowercase()))
+                .then_with(|| a.username.to_lowercase().cmp(&b.username.to_lowercase()))
+                .then_with(|| a.port.cmp(&b.port))
+        });
+        Some(sites)
+    }
+}
+
+/// Saves sites to `~/.config/macscp/sites.conf`.
+pub fn save_sites_to_disk(sites: &[SavedSiteProfile]) -> std::io::Result<()> {
+    let dir = config_dir();
+    fs::create_dir_all(&dir)?;
+    let mut out = String::from("# MacSCP Saved Connections\n");
+    for s in sites {
+        out.push_str(&format!(
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t0x{:06x}\t{}\n",
+            s.name.replace('\t', " "),
+            s.folder.replace('\t', " "),
+            s.protocol.label(),
+            s.host.replace('\t', ""),
+            s.port,
+            s.username.replace('\t', ""),
+            s.auth_type.replace('\t', " "),
+            s.env_color,
+            s.max_connections.clamp(1, 10),
+        ));
+    }
+    fs::write(sites_file_path(), out)
+}
+
+/// Parses `~/.ssh/config` and returns discovered SSH/SFTP hosts.
+pub fn import_from_ssh_config() -> Vec<SavedSiteProfile> {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
+    let ssh_config_path = PathBuf::from(&home).join(".ssh").join("config");
+    let content = match fs::read_to_string(ssh_config_path) {
+        Ok(c) => c,
+        Err(_) => return Vec::new(),
+    };
+
+    let default_user = std::env::var("USER").unwrap_or_else(|_| "root".to_string());
+    let mut imported = Vec::new();
+
+    let mut current_alias: Option<String> = None;
+    let mut hostname: Option<String> = None;
+    let mut user: Option<String> = None;
+    let mut port: Option<u16> = None;
+    let mut identity_file: Option<String> = None;
+
+    let flush_host = |alias: Option<String>,
+                      hostname: Option<String>,
+                      user: Option<String>,
+                      port: Option<u16>,
+                      identity_file: Option<String>,
+                      out: &mut Vec<SavedSiteProfile>| {
+        if let Some(alias) = alias {
+            if alias.contains('*') || alias.contains('?') {
+                return;
+            }
+            let host = hostname.unwrap_or_else(|| alias.clone());
+            let username = user.unwrap_or_else(|| default_user.clone());
+            let port = port.unwrap_or(22);
+            let auth_type = if let Some(id) = identity_file {
+                format!("SSH Key ({})", id)
+            } else {
+                "SSH Agent / Key".to_string()
+            };
+            out.push(SavedSiteProfile {
+                name: alias,
+                folder: "~/.ssh/config".to_string(),
+                protocol: Protocol::Sftp,
+                host,
+                port,
+                username,
+                password: None,
+                auth_type,
+                env_color: 0x059669,
+                max_connections: 2,
+            });
+        }
+    };
+
+    for raw_line in content.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        let mut tokens = line.split_whitespace();
+        let Some(key) = tokens.next() else {
+            continue;
+        };
+        let val = tokens.collect::<Vec<_>>().join(" ");
+        if val.is_empty() {
+            continue;
+        }
+
+        match key.to_lowercase().as_str() {
+            "host" => {
+                flush_host(
+                    current_alias.take(),
+                    hostname.take(),
+                    user.take(),
+                    port.take(),
+                    identity_file.take(),
+                    &mut imported,
+                );
+                current_alias = Some(val.split_whitespace().next().unwrap_or(&val).to_string());
+            }
+            "hostname" => {
+                hostname = Some(val);
+            }
+            "user" => {
+                user = Some(val);
+            }
+            "port" => {
+                port = val.parse::<u16>().ok();
+            }
+            "identityfile" => {
+                identity_file = Some(val);
+            }
+            _ => {}
+        }
+    }
+
+    flush_host(
+        current_alias.take(),
+        hostname.take(),
+        user.take(),
+        port.take(),
+        identity_file.take(),
+        &mut imported,
+    );
+
+    imported
+}
+
+/// Saves a password into the native macOS Keychain (`security add-generic-password`).
+pub fn save_password_to_keychain(host: &str, username: &str, password: &str) -> bool {
+    if password.is_empty() {
+        return false;
+    }
+    let service = format!("MacSCP ({})", host);
+    Command::new("/usr/bin/security")
+        .args([
+            "add-generic-password",
+            "-U",
+            "-s",
+            &service,
+            "-a",
+            username,
+            "-w",
+            password,
+        ])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Reads a password from the native macOS Keychain (`security find-generic-password`).
+pub fn read_password_from_keychain(host: &str, username: &str) -> Option<String> {
+    let service = format!("MacSCP ({})", host);
+    let output = Command::new("/usr/bin/security")
+        .args([
+            "find-generic-password",
+            "-s",
+            &service,
+            "-a",
+            username,
+            "-w",
+        ])
+        .output()
+        .ok()?;
+    if output.status.success() {
+        let pwd = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !pwd.is_empty() {
+            return Some(pwd);
+        }
+    }
+    None
+}
