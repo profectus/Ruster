@@ -14,7 +14,7 @@ cp assets/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
 chmod +x "$APP_DIR/Contents/MacOS/ruster"
 
 VERSION=$(grep -m1 '^version =' Cargo.toml | cut -d '"' -f2)
-VERSION=${VERSION:-0.3.0}
+VERSION=${VERSION:-0.3.1}
 
 cat << EOF > "$APP_DIR/Contents/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
