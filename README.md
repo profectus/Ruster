@@ -1,4 +1,8 @@
-# 🚀 MacSCP
+<p align="center">
+  <img src="assets/icon.png" alt="MacSCP App Icon" width="128" height="128">
+</p>
+
+<h1 align="center">MacSCP</h1>
 
 <p align="center">
   <strong>Native, lightning-fast dual-pane SFTP & SCP client for macOS built with Rust & GPUI.</strong>
@@ -9,7 +13,7 @@
   <a href="https://github.com/profectus/macSCP/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License: MIT"></a>
   <a href="https://apple.com/macos"><img src="https://img.shields.io/badge/platform-macOS%2012%2B-lightgrey.svg?style=flat-square" alt="macOS 12+"></a>
   <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/built%20with-Rust%20%26%20GPUI-orange.svg?style=flat-square" alt="Rust & GPUI"></a>
-  <a href="https://buymeacoffee.com/filipc"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-filipc-FFDD00.svg?style=flat-square&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee"></a>
+  <a href="https://buymeacoffee.com/filipstencl"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-filipstencl-FFDD00.svg?style=flat-square&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee"></a>
 </p>
 
 <p align="center">
@@ -22,31 +26,31 @@
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
-| 🌙 Dark Theme | ☀️ Light Theme |
+| Dark Theme | Light Theme |
 | :---: | :---: |
 | <img src="assets/screenshot-dark.png" width="100%" alt="MacSCP Dark Mode"> | <img src="assets/screenshot-light.png" width="100%" alt="MacSCP Light Mode"> |
 
 ---
 
-## ✨ Features
+## Features
 
-- ⚡ **GPU-Accelerated Performance** — Built on Zed's modern GPUI framework with 120fps fluid scrolling, instant startup, and zero bloat.
-- 🗂️ **Classic Dual-Pane Commander** — Effortlessly browse and manage local and remote files side by side. Toggle between dual-pane and single-pane modes (`Cmd+D`) or swap panes (`Cmd+U`).
-- 🌗 **Light & Dark Themes** — Pixel-perfect Light and Dark themes with native macOS dark titlebar synchronization.
-- 🌐 **10 Built-in World Languages** — Full localization available directly from Settings (`Cmd+,`):
+- **GPU-Accelerated Performance** — Built on Zed's modern GPUI framework with 120fps fluid scrolling, instant startup, and zero bloat.
+- **Classic Dual-Pane Commander** — Effortlessly browse and manage local and remote files side by side. Toggle between dual-pane and single-pane modes (`Cmd+D`) or swap panes (`Cmd+U`).
+- **Light & Dark Themes** — Pixel-perfect Light and Dark themes with native macOS dark titlebar synchronization.
+- **10 Built-in World Languages** — Full localization available directly from Settings (`Cmd+,`):
   - 🇬🇧 English, 🇨🇿 Čeština, 🇩🇪 Deutsch, 🇪🇸 Español, 🇫🇷 Français, 🇮🇹 Italiano, 🇵🇱 Polski, 🇵🇹 Português, 🇨🇳 简体中文, 🇯🇵 日本語.
-- 🔐 **Site Manager & Bookmarks** — Save connections with custom environment color badges (Production, Staging, Dev), private key authentication, and custom SSH ports.
-- 🚀 **Background Transfer Queue** — Multi-item queue with real-time transfer speeds, progress bars, auto-retry, and batch controls.
-- 📝 **Remote File Editing & Auto-Upload** — Edit remote files directly in your favorite local editor with automatic upload on save.
-- 🔒 **Visual chmod Calculator** — Inspect and set permissions via octal input and interactive bit checkboxes with recursion support.
-- 🔄 **Directory Synchronization** — Compare local and remote folders and synchronize missing or newer files with dry-run previews.
-- 🔍 **Instant Quick Filter** — Filter thousands of files in milliseconds using `Cmd+F`.
+- **Site Manager & Bookmarks** — Save connections with custom environment color badges (Production, Staging, Dev), private key authentication, and custom SSH ports.
+- **Background Transfer Queue** — Multi-item queue with real-time transfer speeds, progress bars, auto-retry, and batch controls.
+- **Remote File Editing & Auto-Upload** — Edit remote files directly in your favorite local editor with automatic upload on save.
+- **Visual chmod Calculator** — Inspect and set permissions via octal input and interactive bit checkboxes with recursion support.
+- **Directory Synchronization** — Compare local and remote folders and synchronize missing or newer files with dry-run previews.
+- **Instant Quick Filter** — Filter thousands of files in milliseconds using `Cmd+F`.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Option 1: Via Homebrew (Recommended)
 
@@ -69,7 +73,7 @@ brew install --cask macscp
 
 ---
 
-## 🔄 Updates
+## Updates
 
 ### Updating via Homebrew
 Whenever a new version is released, simply run:
@@ -86,7 +90,7 @@ MacSCP includes a built-in update checker:
 
 ---
 
-## ⌨️ Keyboard Shortcuts
+## Keyboard Shortcuts
 
 | Shortcut | Action |
 | :--- | :--- |
@@ -107,7 +111,7 @@ MacSCP includes a built-in update checker:
 
 ---
 
-## 🛠️ Building from Source
+## Building from Source
 
 ### Prerequisites
 - macOS 12.0 (Monterey) or later
@@ -132,18 +136,18 @@ The compiled and signed `.app` bundle will be ready at `target/release/MacSCP.ap
 
 ---
 
-## ☕ Support the Project
+## Support the Project
 
 If you love MacSCP and want to support its ongoing development and maintenance, you can buy me a coffee! Any support is greatly appreciated.
 
 <p align="center">
-  <a href="https://buymeacoffee.com/filipc" target="_blank">
+  <a href="https://buymeacoffee.com/filipstencl" target="_blank">
     <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50">
   </a>
 </p>
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the [MIT License](LICENSE).

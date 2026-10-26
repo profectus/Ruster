@@ -689,7 +689,7 @@ impl MacScpView {
                                                     .hover(|s| s.bg(theme.button_hover_bg()))
                                                     .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, _| {
                                                         let _ = std::process::Command::new("open")
-                                                            .arg("https://buymeacoffee.com/filipc")
+                                                            .arg("https://buymeacoffee.com/filipstencl")
                                                             .spawn();
                                                     }))
                                                     .child("☕ Buy Me a Coffee"),
