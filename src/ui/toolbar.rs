@@ -265,13 +265,29 @@ impl MacScpView {
             .child(render_icon(icon_path, 14.0, icon_color))
     }
 
-    pub fn render_quick_filter_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    pub fn render_pane_filter_bar(&self, pane: ActivePane, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let theme = self.theme();
-        let display_text = if self.filter_query.is_empty() {
-            t.filter_placeholder().to_string()
-        } else {
-            self.filter_query.clone()
+        let is_active_pane = self.active_pane == pane;
+        let (query, visible_count, total_count, close_id) = match pane {
+            ActivePane::Local => (
+                self.local_filter_query.clone(),
+                self.filtered_local_indices().len(),
+                self.local_entries.len(),
+                "close-local-filter-bar",
+            ),
+            ActivePane::Remote => (
+                self.remote_filter_query.clone(),
+                self.filtered_remote_indices().len(),
+                if self.sessions.is_empty() {
+                    self.right_entries.len()
+                } else if let Some(s) = self.sessions.get(self.active_session_idx) {
+                    s.entries.len()
+                } else {
+                    0
+                },
+                "close-remote-filter-bar",
+            ),
         };
 
         div()
@@ -279,41 +295,78 @@ impl MacScpView {
             .items_center()
             .justify_between()
             .h(px(30.0))
-            .px_3()
+            .px_2p5()
             .bg(theme.filter_bar_bg())
             .border_b_1()
             .border_color(theme.border())
             .text_xs()
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(move |this, _, _, cx| {
+                    if this.active_pane != pane {
+                        this.active_pane = pane;
+                        cx.notify();
+                    }
+                }),
+            )
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap_2()
+                    .child(render_icon(
+                        "icons/filter.svg",
+                        13.0,
+                        if is_active_pane {
+                            theme.c_icon_active()
+                        } else {
+                            theme.c_icon_secondary()
+                        },
+                    ))
                     .child(
                         div()
-                            .font_weight(gpui::FontWeight::MEDIUM)
-                            .text_color(theme.text_accent())
-                            .child("Filter:"),
-                    )
-                    .child(
-                        div()
+                            .flex()
+                            .items_center()
                             .px_2()
                             .py_0p5()
                             .rounded(px(4.0))
                             .bg(theme.input_bg())
                             .border_1()
-                            .border_color(theme.border_focused())
-                            .text_color(if self.filter_query.is_empty() {
-                                theme.text_muted()
+                            .border_color(if is_active_pane {
+                                theme.border_focused()
                             } else {
-                                theme.text_primary()
+                                theme.border()
                             })
-                            .child(display_text),
+                            .child(
+                                if query.is_empty() {
+                                    div()
+                                        .text_color(theme.text_muted())
+                                        .child(t.filter_placeholder())
+                                } else {
+                                    div()
+                                        .text_color(theme.text_primary())
+                                        .child(query.clone())
+                                },
+                            )
+                            .when(is_active_pane, |el| {
+                                el.child(
+                                    div()
+                                        .w(px(1.5))
+                                        .h(px(12.0))
+                                        .bg(theme.text_accent())
+                                        .ml_0p5(),
+                                )
+                            }),
+                    )
+                    .child(
+                        div()
+                            .text_color(theme.text_muted())
+                            .child(format!("{}/{}", visible_count, total_count)),
                     ),
             )
             .child(
                 div()
-                    .id("close-filter-bar")
+                    .id(close_id)
                     .cursor_pointer()
                     .flex()
                     .items_center()
@@ -324,9 +377,19 @@ impl MacScpView {
                     .hover(|s| s.bg(theme.button_hover_bg()))
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(|this, _, _, cx| {
-                            this.show_filter = false;
-                            this.filter_query.clear();
+                        cx.listener(move |this, _, _, cx| {
+                            match pane {
+                                ActivePane::Local => {
+                                    this.show_local_filter = false;
+                                    this.local_filter_query.clear();
+                                    this.ensure_local_selection();
+                                }
+                                ActivePane::Remote => {
+                                    this.show_remote_filter = false;
+                                    this.remote_filter_query.clear();
+                                    this.ensure_remote_selection();
+                                }
+                            }
                             cx.notify();
                         }),
                     )

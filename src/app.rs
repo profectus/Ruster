@@ -115,8 +115,10 @@ pub struct MacScpView {
     pub(crate) show_remote_tree: bool,
     pub(crate) show_hidden: bool,
     pub(crate) show_queue: bool,
-    pub(crate) show_filter: bool,
-    pub(crate) filter_query: String,
+    pub(crate) show_local_filter: bool,
+    pub(crate) local_filter_query: String,
+    pub(crate) show_remote_filter: bool,
+    pub(crate) remote_filter_query: String,
     pub(crate) session_dropdown_open: bool,
     pub(crate) context_menu: Option<ContextMenuState>,
 
@@ -480,8 +482,10 @@ impl MacScpView {
             show_remote_tree: false,
             show_hidden,
             show_queue: false,
-            show_filter: false,
-            filter_query: String::new(),
+            show_local_filter: false,
+            local_filter_query: String::new(),
+            show_remote_filter: false,
+            remote_filter_query: String::new(),
             session_dropdown_open: false,
             context_menu: None,
 
@@ -604,7 +608,11 @@ impl MacScpView {
     }
 
     pub(crate) fn filtered_local_indices(&self) -> Vec<usize> {
-        let q = self.filter_query.trim().to_lowercase();
+        let q = if self.show_local_filter {
+            self.local_filter_query.trim().to_lowercase()
+        } else {
+            String::new()
+        };
         self.local_entries
             .iter()
             .enumerate()
@@ -616,7 +624,11 @@ impl MacScpView {
     }
 
     pub(crate) fn filtered_remote_indices(&self) -> Vec<usize> {
-        let q = self.filter_query.trim().to_lowercase();
+        let q = if self.show_remote_filter {
+            self.remote_filter_query.trim().to_lowercase()
+        } else {
+            String::new()
+        };
         if self.sessions.is_empty() {
             self.right_entries
                 .iter()
@@ -638,6 +650,51 @@ impl MacScpView {
                 .collect()
         } else {
             Vec::new()
+        }
+    }
+
+    pub(crate) fn ensure_local_selection(&mut self) {
+        let visible = self.filtered_local_indices();
+        if visible.is_empty() {
+            return;
+        }
+        if !visible.contains(&self.local_selected) {
+            let first_non_parent = visible.iter().copied().find(|&idx| {
+                self.local_entries.get(idx).map(|e| e.name != "..").unwrap_or(false)
+            });
+            self.local_selected = first_non_parent.unwrap_or(visible[0]);
+        }
+        for (i, e) in self.local_entries.iter_mut().enumerate() {
+            e.selected = (i == self.local_selected) && e.name != "..";
+        }
+    }
+
+    pub(crate) fn ensure_remote_selection(&mut self) {
+        let visible = self.filtered_remote_indices();
+        if visible.is_empty() {
+            return;
+        }
+        if !visible.contains(&self.right_selected) {
+            if self.sessions.is_empty() {
+                let first_non_parent = visible.iter().copied().find(|&idx| {
+                    self.right_entries.get(idx).map(|e| e.name != "..").unwrap_or(false)
+                });
+                self.right_selected = first_non_parent.unwrap_or(visible[0]);
+            } else if let Some(session) = self.sessions.get(self.active_session_idx) {
+                let first_non_parent = visible.iter().copied().find(|&idx| {
+                    session.entries.get(idx).map(|e| e.name != "..").unwrap_or(false)
+                });
+                self.right_selected = first_non_parent.unwrap_or(visible[0]);
+            }
+        }
+        if self.sessions.is_empty() {
+            for (i, e) in self.right_entries.iter_mut().enumerate() {
+                e.selected = (i == self.right_selected) && e.name != "..";
+            }
+        } else if let Some(session) = self.sessions.get_mut(self.active_session_idx) {
+            for (i, e) in session.entries.iter_mut().enumerate() {
+                e.selected = (i == self.right_selected) && e.name != "..";
+            }
         }
     }
 
@@ -942,49 +999,63 @@ impl MacScpView {
                 for e in &mut self.local_entries {
                     e.selected = false;
                 }
-                let len = self.filtered_local_indices().len();
-                if len == 0 {
+                let visible = self.filtered_local_indices();
+                if visible.is_empty() {
                     return;
                 }
-                let next = (self.local_selected as isize + delta).clamp(0, len as isize - 1) as usize;
-                self.local_selected = next;
-                if let Some(e) = self.local_entries.get_mut(next) {
+                let current_pos = visible.iter().position(|&idx| idx == self.local_selected);
+                let next_pos = match current_pos {
+                    Some(pos) => (pos as isize + delta).clamp(0, visible.len() as isize - 1) as usize,
+                    None => if delta > 0 { 0 } else { visible.len() - 1 },
+                };
+                let next_idx = visible[next_pos];
+                self.local_selected = next_idx;
+                if let Some(e) = self.local_entries.get_mut(next_idx) {
                     if e.name != ".." {
                         e.selected = true;
                     }
                 }
-                self.local_scroll.scroll_to_item(next, ScrollStrategy::Top);
+                self.local_scroll.scroll_to_item(next_pos, ScrollStrategy::Top);
             }
             ActivePane::Remote => {
-                let len = self.filtered_remote_indices().len();
-                if len == 0 {
+                let visible = self.filtered_remote_indices();
+                if visible.is_empty() {
                     return;
                 }
                 if self.sessions.is_empty() {
                     for e in &mut self.right_entries {
                         e.selected = false;
                     }
-                    let next = (self.right_selected as isize + delta).clamp(0, len as isize - 1) as usize;
-                    self.right_selected = next;
-                    if let Some(e) = self.right_entries.get_mut(next) {
+                    let current_pos = visible.iter().position(|&idx| idx == self.right_selected);
+                    let next_pos = match current_pos {
+                        Some(pos) => (pos as isize + delta).clamp(0, visible.len() as isize - 1) as usize,
+                        None => if delta > 0 { 0 } else { visible.len() - 1 },
+                    };
+                    let next_idx = visible[next_pos];
+                    self.right_selected = next_idx;
+                    if let Some(e) = self.right_entries.get_mut(next_idx) {
                         if e.name != ".." {
                             e.selected = true;
                         }
                     }
-                    self.remote_scroll.scroll_to_item(next, ScrollStrategy::Top);
+                    self.remote_scroll.scroll_to_item(next_pos, ScrollStrategy::Top);
                 } else if let Some(s) = self.sessions.get_mut(self.active_session_idx) {
                     for e in &mut s.entries {
                         e.selected = false;
                     }
-                    let next =
-                        (s.selected_index as isize + delta).clamp(0, len as isize - 1) as usize;
-                    s.selected_index = next;
-                    if let Some(e) = s.entries.get_mut(next) {
+                    let current_pos = visible.iter().position(|&idx| idx == s.selected_index);
+                    let next_pos = match current_pos {
+                        Some(pos) => (pos as isize + delta).clamp(0, visible.len() as isize - 1) as usize,
+                        None => if delta > 0 { 0 } else { visible.len() - 1 },
+                    };
+                    let next_idx = visible[next_pos];
+                    s.selected_index = next_idx;
+                    if let Some(e) = s.entries.get_mut(next_idx) {
                         if e.name != ".." {
                             e.selected = true;
                         }
                     }
-                    self.remote_scroll.scroll_to_item(next, ScrollStrategy::Top);
+                    self.remote_scroll.scroll_to_item(next_pos, ScrollStrategy::Top);
                 }
             }
         }
@@ -1179,8 +1250,8 @@ impl MacScpView {
     pub(crate) fn select_range_keyboard(&mut self, direction: isize) {
         match self.active_pane {
             ActivePane::Local => {
-                let len = self.local_entries.len();
-                if len == 0 {
+                let visible = self.filtered_local_indices();
+                if visible.is_empty() {
                     return;
                 }
                 if let Some(e) = self.local_entries.get_mut(self.local_selected) {
@@ -1188,52 +1259,63 @@ impl MacScpView {
                         e.selected = true;
                     }
                 }
-                let next = (self.local_selected as isize + direction).clamp(0, len as isize - 1) as usize;
-                self.local_selected = next;
-                if let Some(e) = self.local_entries.get_mut(next) {
+                let current_pos = visible.iter().position(|&idx| idx == self.local_selected);
+                let next_pos = match current_pos {
+                    Some(pos) => (pos as isize + direction).clamp(0, visible.len() as isize - 1) as usize,
+                    None => if direction > 0 { 0 } else { visible.len() - 1 },
+                };
+                let next_idx = visible[next_pos];
+                self.local_selected = next_idx;
+                if let Some(e) = self.local_entries.get_mut(next_idx) {
                     if e.name != ".." {
                         e.selected = true;
                     }
                 }
-                self.local_scroll.scroll_to_item(next, ScrollStrategy::Top);
+                self.local_scroll.scroll_to_item(next_pos, ScrollStrategy::Top);
             }
             ActivePane::Remote => {
+                let visible = self.filtered_remote_indices();
+                if visible.is_empty() {
+                    return;
+                }
                 if self.sessions.is_empty() {
-                    let len = self.right_entries.len();
-                    if len == 0 {
-                        return;
-                    }
                     if let Some(e) = self.right_entries.get_mut(self.right_selected) {
                         if e.name != ".." {
                             e.selected = true;
                         }
                     }
-                    let next = (self.right_selected as isize + direction).clamp(0, len as isize - 1) as usize;
-                    self.right_selected = next;
-                    if let Some(e) = self.right_entries.get_mut(next) {
+                    let current_pos = visible.iter().position(|&idx| idx == self.right_selected);
+                    let next_pos = match current_pos {
+                        Some(pos) => (pos as isize + direction).clamp(0, visible.len() as isize - 1) as usize,
+                        None => if direction > 0 { 0 } else { visible.len() - 1 },
+                    };
+                    let next_idx = visible[next_pos];
+                    self.right_selected = next_idx;
+                    if let Some(e) = self.right_entries.get_mut(next_idx) {
                         if e.name != ".." {
                             e.selected = true;
                         }
                     }
-                    self.remote_scroll.scroll_to_item(next, ScrollStrategy::Top);
+                    self.remote_scroll.scroll_to_item(next_pos, ScrollStrategy::Top);
                 } else if let Some(s) = self.sessions.get_mut(self.active_session_idx) {
-                    let len = s.entries.len();
-                    if len == 0 {
-                        return;
-                    }
                     if let Some(e) = s.entries.get_mut(s.selected_index) {
                         if e.name != ".." {
                             e.selected = true;
                         }
                     }
-                    let next = (s.selected_index as isize + direction).clamp(0, len as isize - 1) as usize;
-                    s.selected_index = next;
-                    if let Some(e) = s.entries.get_mut(next) {
+                    let current_pos = visible.iter().position(|&idx| idx == s.selected_index);
+                    let next_pos = match current_pos {
+                        Some(pos) => (pos as isize + direction).clamp(0, visible.len() as isize - 1) as usize,
+                        None => if direction > 0 { 0 } else { visible.len() - 1 },
+                    };
+                    let next_idx = visible[next_pos];
+                    s.selected_index = next_idx;
+                    if let Some(e) = s.entries.get_mut(next_idx) {
                         if e.name != ".." {
                             e.selected = true;
                         }
                     }
-                    self.remote_scroll.scroll_to_item(next, ScrollStrategy::Top);
+                    self.remote_scroll.scroll_to_item(next_pos, ScrollStrategy::Top);
                 }
             }
         }
@@ -3578,21 +3660,132 @@ impl MacScpView {
             return;
         }
 
-        // Quick filter typing when filter bar is open
-        if self.show_filter && !modifiers.platform && !modifiers.control {
+        // Quick filter typing when filter bar is open on active pane
+        let active_filter_open = match self.active_pane {
+            ActivePane::Local => self.show_local_filter,
+            ActivePane::Remote => self.show_remote_filter,
+        };
+
+        if active_filter_open {
             if key == "escape" {
-                self.show_filter = false;
-                self.filter_query.clear();
+                match self.active_pane {
+                    ActivePane::Local => {
+                        self.show_local_filter = false;
+                        self.local_filter_query.clear();
+                        self.ensure_local_selection();
+                    }
+                    ActivePane::Remote => {
+                        self.show_remote_filter = false;
+                        self.remote_filter_query.clear();
+                        self.ensure_remote_selection();
+                    }
+                }
                 cx.notify();
                 return;
-            } else if key == "backspace" && !self.filter_query.is_empty() {
-                self.filter_query.pop();
+            }
+
+            // Cmd+A / Ctrl+A or Cmd+Backspace: Clear filter
+            let is_clear = (modifiers.platform || modifiers.control)
+                && (key == "a" || key == "A" || key == "backspace");
+            if is_clear {
+                match self.active_pane {
+                    ActivePane::Local => {
+                        self.local_filter_query.clear();
+                        self.ensure_local_selection();
+                    }
+                    ActivePane::Remote => {
+                        self.remote_filter_query.clear();
+                        self.ensure_remote_selection();
+                    }
+                }
                 cx.notify();
                 return;
-            } else if key.chars().count() == 1 && key != " " {
-                self.filter_query.push_str(key);
-                cx.notify();
+            }
+
+            // Paste into filter (Cmd+V / Ctrl+V)
+            let is_paste = (modifiers.platform || modifiers.control) && (key == "v" || key == "V");
+            if is_paste {
+                if let Some(pasted) = self.get_clipboard_text(cx) {
+                    let clean = pasted.trim_matches(['\r', '\n']).to_string();
+                    match self.active_pane {
+                        ActivePane::Local => {
+                            self.local_filter_query.push_str(&clean);
+                            self.ensure_local_selection();
+                        }
+                        ActivePane::Remote => {
+                            self.remote_filter_query.push_str(&clean);
+                            self.ensure_remote_selection();
+                        }
+                    }
+                    cx.notify();
+                    return;
+                }
+            }
+
+            // Backspace deletes last character of filter query
+            if key == "backspace" {
+                match self.active_pane {
+                    ActivePane::Local => {
+                        if !self.local_filter_query.is_empty() {
+                            self.local_filter_query.pop();
+                            self.ensure_local_selection();
+                            cx.notify();
+                        }
+                    }
+                    ActivePane::Remote => {
+                        if !self.remote_filter_query.is_empty() {
+                            self.remote_filter_query.pop();
+                            self.ensure_remote_selection();
+                            cx.notify();
+                        }
+                    }
+                }
                 return;
+            }
+
+            // If not holding platform/ctrl modifiers, check for character input
+            if !modifiers.platform && !modifiers.control {
+                let typed_char: Option<String> = if let Some(ref kc) = event.keystroke.key_char {
+                    if !kc.is_empty() && !kc.chars().any(|c| c.is_control()) {
+                        Some(kc.clone())
+                    } else {
+                        None
+                    }
+                } else if key.chars().count() == 1 {
+                    let ch = key.chars().next().unwrap();
+                    if !ch.is_control() {
+                        Some(key.to_string())
+                    } else {
+                        None
+                    }
+                } else if key == "space" {
+                    Some(" ".to_string())
+                } else if key == "period" {
+                    Some(".".to_string())
+                } else if key == "minus" {
+                    Some("-".to_string())
+                } else if key == "underscore" {
+                    Some("_".to_string())
+                } else {
+                    None
+                };
+
+                if let Some(text) = typed_char {
+                    if key != "enter" && key != "tab" && key != "escape" && key != "up" && key != "down" && key != "left" && key != "right" {
+                        match self.active_pane {
+                            ActivePane::Local => {
+                                self.local_filter_query.push_str(&text);
+                                self.ensure_local_selection();
+                            }
+                            ActivePane::Remote => {
+                                self.remote_filter_query.push_str(&text);
+                                self.ensure_remote_selection();
+                            }
+                        }
+                        cx.notify();
+                        return;
+                    }
+                }
             }
         }
 
@@ -3647,8 +3840,16 @@ impl MacScpView {
             "escape" => {
                 self.context_menu = None;
                 self.session_dropdown_open = false;
-                self.show_filter = false;
-                self.filter_query.clear();
+                if self.show_local_filter {
+                    self.show_local_filter = false;
+                    self.local_filter_query.clear();
+                    self.ensure_local_selection();
+                }
+                if self.show_remote_filter {
+                    self.show_remote_filter = false;
+                    self.remote_filter_query.clear();
+                    self.ensure_remote_selection();
+                }
                 cx.notify();
             }
             "f2" => {
@@ -3790,9 +3991,21 @@ impl Render for MacScpView {
             }))
             .on_action(cx.listener(|this, _: &ToggleQuickFilter, _, cx| {
                 if this.active_modal != ActiveModal::None { return; }
-                this.show_filter = !this.show_filter;
-                if !this.show_filter {
-                    this.filter_query.clear();
+                match this.active_pane {
+                    ActivePane::Local => {
+                        this.show_local_filter = !this.show_local_filter;
+                        if !this.show_local_filter {
+                            this.local_filter_query.clear();
+                        }
+                        this.ensure_local_selection();
+                    }
+                    ActivePane::Remote => {
+                        this.show_remote_filter = !this.show_remote_filter;
+                        if !this.show_remote_filter {
+                            this.remote_filter_query.clear();
+                        }
+                        this.ensure_remote_selection();
+                    }
                 }
                 cx.notify();
             }))
@@ -3881,9 +4094,7 @@ impl Render for MacScpView {
             .text_color(theme.text_primary())
             // 1. Minimalist Top Bar
             .child(self.render_top_bar(cx))
-            // 2. Optional Quick Filter Bar (Cmd+F)
-            .when(self.show_filter, |el| el.child(self.render_quick_filter_bar(cx)))
-            // 3. Dual or Single Pane Workspace
+            // 2. Dual or Single Pane Workspace
             .child(
                 div()
                     .flex_1()

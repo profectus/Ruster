@@ -922,4 +922,59 @@ mod tests {
         assert!(!is_editable_file("video.mp4", &exts));
         assert!(!is_editable_file("app.exe", &exts));
     }
+
+    #[test]
+    fn test_file_filtering() {
+        let make_entry = |name: &str, is_dir: bool| FileEntry {
+            name: name.to_string(),
+            path: format!("/test/{}", name),
+            is_dir,
+            is_symlink: false,
+            size: 1024,
+            modified: "2026-01-01".to_string(),
+            modified_ts: 0,
+            permissions_str: "rw-r--r--".to_string(),
+            octal_mode: 0o644,
+            owner: "user".to_string(),
+            selected: false,
+            space_marked: false,
+            calculating_size: false,
+            calculated_dir_size: None,
+        };
+
+        let entries = vec![
+            make_entry("..", true),
+            make_entry("invoice.pdf", false),
+            make_entry("REPORT.PDF", false),
+            make_entry("document.docx", false),
+        ];
+
+        let filter_entries = |query: &str| -> Vec<String> {
+            let q = query.trim().to_lowercase();
+            entries
+                .iter()
+                .filter(|e| q.is_empty() || e.name == ".." || e.name.to_lowercase().contains(&q))
+                .map(|e| e.name.clone())
+                .collect()
+        };
+
+        // Empty filter returns everything
+        assert_eq!(filter_entries("").len(), 4);
+
+        // .pdf filter returns ".." and the two PDF files (case-insensitive)
+        let pdfs = filter_entries(".pdf");
+        assert_eq!(pdfs, vec!["..", "invoice.pdf", "REPORT.PDF"]);
+
+        // pdf filter (without dot) also matches
+        let pdfs_no_dot = filter_entries("pdf");
+        assert_eq!(pdfs_no_dot, vec!["..", "invoice.pdf", "REPORT.PDF"]);
+
+        // docx filter matches only document.docx
+        let docx = filter_entries("docx");
+        assert_eq!(docx, vec!["..", "document.docx"]);
+
+        // non-matching query only returns ".."
+        let none = filter_entries("xyz");
+        assert_eq!(none, vec![".."]);
+    }
 }

@@ -342,6 +342,9 @@ impl MacScpView {
                             ),
                     ),
             )
+            .when(self.show_local_filter, |el| {
+                el.child(self.render_pane_filter_bar(ActivePane::Local, cx))
+            })
             // Main body: Optional scrollable Local Tree + Scrollable File Table
             .child(
                 div()
@@ -755,6 +758,9 @@ impl MacScpView {
                             ),
                     ),
             )
+            .when(self.show_remote_filter, |el| {
+                el.child(self.render_pane_filter_bar(ActivePane::Remote, cx))
+            })
             // Main body: Optional scrollable Right Local Tree + Scrollable File Table
             .child(
                 div()
@@ -1152,6 +1158,9 @@ impl MacScpView {
                                 })),
                         ),
                 )
+            })
+            .when(self.show_remote_filter, |el| {
+                el.child(self.render_pane_filter_bar(ActivePane::Remote, cx))
             })
             // Main body: Optional Remote Tree + Scrollable Remote Table
             .child(
