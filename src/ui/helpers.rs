@@ -1,4 +1,4 @@
-use gpui::{div, prelude::*, px, rgb, IntoElement};
+use gpui::{div, prelude::*, px, rgb, Context, IntoElement, Render, Window};
 
 pub fn render_field_value_with_cursor(
     text: &str,
@@ -118,3 +118,28 @@ pub fn render_textarea_value_with_cursor(
         .text_color(text_color)
         .child(combined)
 }
+
+pub struct FileTooltip {
+    pub text: String,
+    pub is_dark: bool,
+}
+
+impl Render for FileTooltip {
+    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .px_2p5()
+            .py_1p5()
+            .max_w(px(500.0))
+            .rounded(px(5.0))
+            .bg(if self.is_dark { rgb(0x222227) } else { rgb(0xffffff) })
+            .border_1()
+            .border_color(if self.is_dark { rgb(0x3f3f46) } else { rgb(0xd4d4d8) })
+            .shadow_lg()
+            .text_xs()
+            .font_weight(gpui::FontWeight::MEDIUM)
+            .text_color(if self.is_dark { rgb(0xf4f4f5) } else { rgb(0x18181b) })
+            .whitespace_normal()
+            .child(self.text.clone())
+    }
+}
+

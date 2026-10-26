@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use crate::app::{ContextMenuState, DraggedFileItem, MacScpView, ResizeColumnState};
 use crate::icons::{get_file_icon, render_icon};
 use crate::model::{sort_entries, ActiveModal, ActivePane, FileEntry, SortColumn};
+use crate::ui::helpers::FileTooltip;
 
 #[derive(Clone)]
 pub struct ListScrollbar {
@@ -1722,6 +1723,8 @@ impl MacScpView {
         let entry_path = PathBuf::from(&entry.path);
         let is_dir = entry.is_dir;
         let is_dotdot = entry.name == "..";
+        let entry_name = entry.name.clone();
+        let is_dark = theme.is_dark();
         let (row_icon, default_color) =
             get_file_icon(&entry.name, entry.is_dir, entry.is_symlink);
         let icon_color = if is_blue {
@@ -1757,7 +1760,15 @@ impl MacScpView {
             .cursor_pointer()
             .w_full()
             .when(!is_dotdot, |el| {
-                el.on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
+                let text = entry_name.clone();
+                el.tooltip(move |_, cx| {
+                    cx.new(|_| FileTooltip {
+                        text: text.clone(),
+                        is_dark,
+                    })
+                    .into()
+                })
+                .on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
                     cx.new(|_| info.clone().position(pos))
                 })
             })
@@ -1939,6 +1950,8 @@ impl MacScpView {
         let entry_path = PathBuf::from(&entry.path);
         let is_dir = entry.is_dir;
         let is_dotdot = entry.name == "..";
+        let entry_name = entry.name.clone();
+        let is_dark = theme.is_dark();
         let (row_icon, default_color) =
             get_file_icon(&entry.name, entry.is_dir, entry.is_symlink);
         let icon_color = if is_blue {
@@ -1974,7 +1987,15 @@ impl MacScpView {
             .cursor_pointer()
             .w_full()
             .when(!is_dotdot, |el| {
-                el.on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
+                let text = entry_name.clone();
+                el.tooltip(move |_, cx| {
+                    cx.new(|_| FileTooltip {
+                        text: text.clone(),
+                        is_dark,
+                    })
+                    .into()
+                })
+                .on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
                     cx.new(|_| info.clone().position(pos))
                 })
             })
@@ -2160,6 +2181,8 @@ impl MacScpView {
         let is_unfocused_selected = !is_focused && (entry.selected || (is_selected && entry.name == ".."));
         let is_dir = entry.is_dir || entry.is_symlink;
         let is_dotdot = entry.name == "..";
+        let entry_name = entry.name.clone();
+        let is_dark = theme.is_dark();
         let target_path = entry.path.clone();
         let (row_icon, default_color) =
             get_file_icon(&entry.name, entry.is_dir, entry.is_symlink);
@@ -2196,7 +2219,15 @@ impl MacScpView {
             .cursor_pointer()
             .w_full()
             .when(!is_dotdot, |el| {
-                el.on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
+                let text = entry_name.clone();
+                el.tooltip(move |_, cx| {
+                    cx.new(|_| FileTooltip {
+                        text: text.clone(),
+                        is_dark,
+                    })
+                    .into()
+                })
+                .on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
                     cx.new(|_| info.clone().position(pos))
                 })
             })
