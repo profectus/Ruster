@@ -203,7 +203,7 @@ impl MacScpView {
                                                                 .font_family(".AppleSystemUIFontMonospaced")
                                                                 .text_xs()
                                                                 .text_color(theme.text_primary())
-                                                                .child("brew upgrade --cask macscp"),
+                                                                .child("brew update && brew upgrade --cask macscp"),
                                                         )
                                                         .child(
                                                             div()

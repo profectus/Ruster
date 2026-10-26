@@ -86,14 +86,14 @@ brew install --cask macscp
 Whenever a new version is released, simply run:
 
 ```bash
-brew upgrade --cask macscp
+brew update && brew upgrade --cask macscp
 ```
 
 ### In-App Update Notifications
 MacSCP includes a built-in update checker:
 - **Automatic Check**: On launch, MacSCP quietly checks GitHub Releases for new updates. If a newer version is available, an update window notifies you with release details.
 - **Manual Check**: You can manually verify updates at any time by choosing **MacSCP → Check for Updates...** from the menu bar or clicking **Check for Updates** in Settings (`Cmd+,`).
-- If you use Homebrew, the dialog provides a one-click button to copy `brew upgrade --cask macscp` to your clipboard.
+- If you use Homebrew, the dialog provides a one-click button to copy `brew update && brew upgrade --cask macscp` to your clipboard.
 
 ---
 

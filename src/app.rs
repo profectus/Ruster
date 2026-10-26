@@ -899,7 +899,7 @@ impl MacScpView {
         if let Ok(mut child) = cmd {
             if let Some(mut stdin) = child.stdin.take() {
                 use std::io::Write;
-                let _ = stdin.write_all(b"brew upgrade --cask macscp");
+                let _ = stdin.write_all(b"brew update && brew upgrade --cask macscp");
             }
             let _ = child.wait();
         }
