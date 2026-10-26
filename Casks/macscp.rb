@@ -1,6 +1,6 @@
 cask "macscp" do
-  version "0.2.0"
-  sha256 "7bd2f1292185ab9e38751ee33886eb04cfbfbe0fd8115e1be245bfed8bcbd8f1"
+  version "0.2.1"
+  sha256 "fad30e24214da8803f292786239ad1265f4b759f926b8290f6b1b1905dd211cc"
 
   url "https://github.com/profectus/macSCP/releases/download/v#{version}/MacSCP.zip"
   name "MacSCP"

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-10-26
+
+### Fixed
+- **Synchronize Modal Layout**: Fixed horizontal overflowing of synchronization options (checkboxes and compare button) by introducing flex-wrapping and concise, polished localization strings across all 10 supported languages.
+- **Site Manager Modal Layout**: Pinned the *Save* and *Connect* footer buttons with `flex_shrink_0()` to prevent them from being pushed outside the modal dialog when connection errors or long hostnames/messages are displayed.
+- **Error Banners Overflow Protection**: Added dedicated scrollable containers (`overflow_y_scroll()`) for connection and synchronization error messages to prevent layout displacement.
+
 ## [0.2.0] - 2026-10-26
 
 ### Added
