@@ -992,6 +992,92 @@ impl I18n {
         }
     }
 
+    pub fn label_environment(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Environment / Color:",
+            Locale::Cs => "Prostředí / Barva:",
+            Locale::De => "Umgebung / Farbe:",
+            Locale::Es => "Entorno / Color:",
+            Locale::Fr => "Environnement / Couleur:",
+            Locale::It => "Ambiente / Colore:",
+            Locale::Pl => "Środowisko / Kolor:",
+            Locale::Pt => "Ambiente / Cor:",
+            Locale::Zh => "环境 / 颜色:",
+            Locale::Ja => "環境 / カラー:",
+        }
+    }
+
+    pub fn environment_name(&self, color: u32) -> &'static str {
+        match color {
+            0xef4444 | 0xdc2626 => match self.locale {
+                Locale::En => "Production",
+                Locale::Cs => "Produkce",
+                Locale::De => "Produktion",
+                Locale::Es => "Producción",
+                Locale::Fr => "Production",
+                Locale::It => "Produzione",
+                Locale::Pl => "Produkcja",
+                Locale::Pt => "Produção",
+                Locale::Zh => "生产环境",
+                Locale::Ja => "本番 (Prod)",
+            },
+            0xf59e0b | 0xea580c => match self.locale {
+                Locale::En | Locale::Cs | Locale::De | Locale::Es | Locale::It | Locale::Pl | Locale::Pt => "Staging",
+                Locale::Fr => "Préproduction",
+                Locale::Zh => "预发布环境",
+                Locale::Ja => "ステージング",
+            },
+            0x2563eb | 0x3b82f6 => match self.locale {
+                Locale::En => "Development",
+                Locale::Cs => "Vývoj",
+                Locale::De => "Entwicklung",
+                Locale::Es => "Desarrollo",
+                Locale::Fr => "Développement",
+                Locale::It => "Sviluppo",
+                Locale::Pl => "Rozwój",
+                Locale::Pt => "Desenvolvimento",
+                Locale::Zh => "开发环境",
+                Locale::Ja => "開発 (Dev)",
+            },
+            0x10b981 | 0x059669 | 0x16a34a => match self.locale {
+                Locale::En => "Testing",
+                Locale::Cs => "Testování",
+                Locale::De => "Testen",
+                Locale::Es => "Pruebas",
+                Locale::Fr => "Test",
+                Locale::It => "Test",
+                Locale::Pl => "Testy",
+                Locale::Pt => "Testes",
+                Locale::Zh => "测试环境",
+                Locale::Ja => "テスト (Test)",
+            },
+            0x8b5cf6 | 0x7c3aed => match self.locale {
+                Locale::En => "Internal",
+                Locale::Cs => "Interní",
+                Locale::De => "Intern",
+                Locale::Es => "Interno",
+                Locale::Fr => "Interne",
+                Locale::It => "Interno",
+                Locale::Pl => "Wewnętrzny",
+                Locale::Pt => "Interno",
+                Locale::Zh => "内部环境",
+                Locale::Ja => "内部 (Internal)",
+            },
+            _ => match self.locale {
+                Locale::En => "Custom",
+                Locale::Cs => "Vlastní",
+                Locale::De => "Benutzerdefiniert",
+                Locale::Es => "Personalizado",
+                Locale::Fr => "Personnalisé",
+                Locale::It => "Personalizzato",
+                Locale::Pl => "Niestandardowy",
+                Locale::Pt => "Personalizado",
+                Locale::Zh => "自定义",
+                Locale::Ja => "カスタム",
+            },
+        }
+    }
+
     pub fn btn_connect(&self) -> &'static str {
         match self.locale {
             Locale::En => "Connect",

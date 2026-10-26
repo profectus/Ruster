@@ -1028,14 +1028,46 @@ impl MacScpView {
                             )
                             .child(
                                 div()
-                                    .text_xs()
-                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                    .text_color(if is_focused {
-                                        theme.text_accent()
-                                    } else {
-                                        theme.text_muted()
-                                    })
-                                    .child(host_label),
+                                    .flex()
+                                    .items_center()
+                                    .gap_1p5()
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .gap_1()
+                                            .px_1p5()
+                                            .py_0p5()
+                                            .rounded(px(3.5))
+                                            .bg(rgba(((session.env_color & 0xffffff) << 8) | 0x24))
+                                            .border_1()
+                                            .border_color(rgba(((session.env_color & 0xffffff) << 8) | 0x55))
+                                            .child(
+                                                div()
+                                                    .w(px(6.0))
+                                                    .h(px(6.0))
+                                                    .rounded(px(3.0))
+                                                    .bg(rgb(session.env_color)),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_xs()
+                                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                    .text_color(rgb(session.env_color))
+                                                    .child(t.environment_name(session.env_color)),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                            .text_color(if is_focused {
+                                                theme.text_accent()
+                                            } else {
+                                                theme.text_muted()
+                                            })
+                                            .child(host_label),
+                                    ),
                             )
                             .child(
                                 div()
@@ -1991,13 +2023,15 @@ impl MacScpView {
         let is_selected = idx == session.selected_index;
         let is_shift_selected = entry.selected;
         let is_space_marked = entry.space_marked;
-        let is_blue = is_focused && (entry.selected || (is_selected && entry.name == ".."));
+        let env_color = session.env_color;
+        let is_primary_selected = is_focused && (entry.selected || (is_selected && entry.name == ".."));
+        let is_unfocused_selected = !is_focused && (entry.selected || (is_selected && entry.name == ".."));
         let is_dir = entry.is_dir || entry.is_symlink;
         let is_dotdot = entry.name == "..";
         let target_path = entry.path.clone();
         let (row_icon, default_color) =
             get_file_icon(&entry.name, entry.is_dir, entry.is_symlink);
-        let icon_color = if is_blue {
+        let icon_color = if is_primary_selected {
             0xffffff
         } else {
             theme.adjust_file_icon_color(default_color, is_dir)
@@ -2038,10 +2072,12 @@ impl MacScpView {
             .items_center()
             .h(px(25.0))
             .px_3()
-            .bg(if is_blue {
-                theme.row_bg_selected()
+            .bg(if is_primary_selected {
+                rgb(env_color)
             } else if is_space_marked {
-                theme.row_bg_space_marked()
+                rgba(((env_color & 0xffffff) << 8) | 0x33)
+            } else if is_unfocused_selected {
+                rgba(((env_color & 0xffffff) << 8) | 0x24)
             } else {
                 theme.row_bg_normal()
             })
@@ -2153,11 +2189,11 @@ impl MacScpView {
                                 },
                             )
                             .text_color(
-                                if is_blue {
+                                if is_primary_selected {
                                     theme.row_text_selected()
                                 } else if entry.is_symlink {
                                     if theme.is_dark() { rgb(0x2dd4bf) } else { rgb(0x0d9488) }
-                                } else if is_dir || is_space_marked {
+                                } else if is_dir || is_space_marked || is_unfocused_selected {
                                     theme.row_text_dir()
                                 } else {
                                     theme.row_text_normal()
@@ -2176,7 +2212,7 @@ impl MacScpView {
                     .text_xs()
                     .overflow_hidden()
                     .whitespace_nowrap()
-                    .text_color(if is_blue {
+                    .text_color(if is_primary_selected {
                         rgb(0xffffff)
                     } else if is_space_marked && entry.is_dir && entry.calculated_dir_size.is_some() {
                         theme.row_text_dir()
@@ -2196,7 +2232,7 @@ impl MacScpView {
                     .text_xs()
                     .overflow_hidden()
                     .whitespace_nowrap()
-                    .text_color(if is_blue {
+                    .text_color(if is_primary_selected {
                         rgb(0xffffff)
                     } else {
                         theme.row_text_secondary()
@@ -2212,7 +2248,7 @@ impl MacScpView {
                     .text_xs()
                     .overflow_hidden()
                     .whitespace_nowrap()
-                    .text_color(if is_blue {
+                    .text_color(if is_primary_selected {
                         rgb(0xffffff)
                     } else {
                         theme.row_text_secondary()

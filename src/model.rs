@@ -485,6 +485,41 @@ impl SavedSiteProfile {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EnvironmentColor {
+    pub color: u32,
+    pub name_en: &'static str,
+    pub name_cs: &'static str,
+}
+
+pub const ENV_COLORS: [EnvironmentColor; 5] = [
+    EnvironmentColor {
+        color: 0xef4444, // Red
+        name_en: "Production",
+        name_cs: "Produkce",
+    },
+    EnvironmentColor {
+        color: 0xf59e0b, // Orange
+        name_en: "Staging",
+        name_cs: "Staging",
+    },
+    EnvironmentColor {
+        color: 0x2563eb, // Blue
+        name_en: "Development",
+        name_cs: "Vývoj",
+    },
+    EnvironmentColor {
+        color: 0x10b981, // Green
+        name_en: "Testing",
+        name_cs: "Testování",
+    },
+    EnvironmentColor {
+        color: 0x8b5cf6, // Purple
+        name_en: "Internal",
+        name_cs: "Interní",
+    },
+];
+
 #[derive(Clone, Debug)]
 pub struct WatchedRemoteFile {
     pub session_id: usize,
@@ -976,5 +1011,20 @@ mod tests {
         // non-matching query only returns ".."
         let none = filter_entries("xyz");
         assert_eq!(none, vec![".."]);
+    }
+
+    #[test]
+    fn test_environment_colors() {
+        assert_eq!(ENV_COLORS.len(), 5);
+        assert_eq!(ENV_COLORS[0].name_en, "Production");
+        assert_eq!(ENV_COLORS[0].color, 0xef4444);
+        assert_eq!(ENV_COLORS[1].name_en, "Staging");
+        assert_eq!(ENV_COLORS[1].color, 0xf59e0b);
+        assert_eq!(ENV_COLORS[2].name_en, "Development");
+        assert_eq!(ENV_COLORS[2].color, 0x2563eb);
+        assert_eq!(ENV_COLORS[3].name_en, "Testing");
+        assert_eq!(ENV_COLORS[3].color, 0x10b981);
+        assert_eq!(ENV_COLORS[4].name_en, "Internal");
+        assert_eq!(ENV_COLORS[4].color, 0x8b5cf6);
     }
 }

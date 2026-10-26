@@ -1,8 +1,8 @@
-use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
+use gpui::{div, prelude::*, px, rgb, rgba, Context, IntoElement, MouseButton};
 use crate::app::MacScpView;
 use crate::config::{import_from_ssh_config, save_password_to_keychain, save_sites_to_disk};
 use crate::icons::render_icon;
-use crate::model::{ActiveModal, Protocol, SavedSiteProfile, SiteEditField};
+use crate::model::{ActiveModal, Protocol, SavedSiteProfile, SiteEditField, ENV_COLORS};
 use crate::ui::helpers::render_field_value_with_cursor;
 
 impl MacScpView {
@@ -171,16 +171,34 @@ impl MacScpView {
                                                         )
                                                         .child(
                                                             div()
-                                                                .text_xs()
-                                                                .font_weight(
-                                                                    gpui::FontWeight::MEDIUM,
+                                                                .flex()
+                                                                .items_center()
+                                                                .gap_1p5()
+                                                                .overflow_hidden()
+                                                                .child(
+                                                                    div()
+                                                                        .w(px(7.0))
+                                                                        .h(px(7.0))
+                                                                        .rounded(px(3.5))
+                                                                        .flex_shrink_0()
+                                                                        .bg(rgb(site.env_color)),
                                                                 )
-                                                                .text_color(if is_sel {
-                                                                    theme.row_text_selected()
-                                                                } else {
-                                                                    theme.text_primary()
-                                                                })
-                                                                .child(site.display_name().to_string()),
+                                                                .child(
+                                                                    div()
+                                                                        .text_xs()
+                                                                        .overflow_hidden()
+                                                                        .text_ellipsis()
+                                                                        .whitespace_nowrap()
+                                                                        .font_weight(
+                                                                            gpui::FontWeight::MEDIUM,
+                                                                        )
+                                                                        .text_color(if is_sel {
+                                                                            theme.row_text_selected()
+                                                                        } else {
+                                                                            theme.text_primary()
+                                                                        })
+                                                                        .child(site.display_name().to_string()),
+                                                                ),
                                                         )
                                                         .child(
                                                             div()
@@ -715,6 +733,87 @@ impl MacScpView {
                                                                                 }
                                                                             }))
                                                                             .child("+"),
+                                                                    ),
+                                                            ),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .id("edit-site-env-color")
+                                                            .flex()
+                                                            .items_center()
+                                                            .justify_between()
+                                                            .px_2()
+                                                            .py_1p5()
+                                                            .rounded(px(4.0))
+                                                            .bg(theme.modal_card_bg())
+                                                            .child(
+                                                                div()
+                                                                    .flex()
+                                                                    .flex_col()
+                                                                    .gap_0p5()
+                                                                    .child(
+                                                                        div()
+                                                                            .text_color(theme.text_secondary())
+                                                                            .child(t.label_environment()),
+                                                                    )
+                                                                    .child(
+                                                                        div()
+                                                                            .text_xs()
+                                                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                                            .text_color(rgb(selected_site.env_color))
+                                                                            .child(t.environment_name(selected_site.env_color)),
+                                                                    ),
+                                                            )
+                                                            .child(
+                                                                div()
+                                                                    .flex()
+                                                                    .items_center()
+                                                                    .gap_1p5()
+                                                                    .children(
+                                                                        ENV_COLORS.iter().enumerate().map(|(ci, env_opt)| {
+                                                                            let color_val = env_opt.color;
+                                                                            let is_chosen = selected_site.env_color == color_val
+                                                                                || (color_val == 0x2563eb && selected_site.env_color == 0x3b82f6)
+                                                                                || (color_val == 0x10b981 && selected_site.env_color == 0x059669);
+
+                                                                            div()
+                                                                                .id(("env-color-swatch", ci))
+                                                                                .cursor_pointer()
+                                                                                .w(px(22.0))
+                                                                                .h(px(22.0))
+                                                                                .rounded(px(11.0))
+                                                                                .bg(rgb(color_val))
+                                                                                .flex()
+                                                                                .items_center()
+                                                                                .justify_center()
+                                                                                .border_2()
+                                                                                .border_color(if is_chosen {
+                                                                                    if theme.is_dark() { rgb(0xffffff) } else { rgb(0x18181b) }
+                                                                                } else {
+                                                                                    rgba(0x00000020)
+                                                                                })
+                                                                                .opacity(if is_chosen { 1.0 } else { 0.75 })
+                                                                                .hover(|s| s.opacity(1.0))
+                                                                                .on_mouse_down(
+                                                                                    MouseButton::Left,
+                                                                                    cx.listener(move |this, _, _, cx| {
+                                                                                        if let Some(s) = this.saved_sites.get_mut(this.selected_site_idx) {
+                                                                                            s.env_color = color_val;
+                                                                                            let _ = save_sites_to_disk(&this.saved_sites);
+                                                                                            cx.notify();
+                                                                                        }
+                                                                                    }),
+                                                                                )
+                                                                                .when(is_chosen, |el| {
+                                                                                    el.child(
+                                                                                        div()
+                                                                                            .w(px(7.0))
+                                                                                            .h(px(7.0))
+                                                                                            .rounded(px(3.5))
+                                                                                            .bg(rgb(0xffffff)),
+                                                                                    )
+                                                                                })
+                                                                        }),
                                                                     ),
                                                             ),
                                                     ),
