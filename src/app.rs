@@ -165,6 +165,7 @@ pub struct MacScpView {
     pub(crate) site_cursor_pos: usize,
     pub(crate) modal_cursor_pos: usize,
     pub(crate) site_error_message: Option<String>,
+    pub(crate) site_notice: Option<(String, SiteNoticeKind)>,
     pub(crate) remote_error_banner: Option<String>,
     pub(crate) active_transfer: Option<ActiveTransferState>,
 
@@ -218,6 +219,13 @@ enum TransferKind {
         dest: PathBuf,
         remove_source: bool,
     },
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum SiteNoticeKind {
+    Success,
+    Info,
+    Error,
 }
 
 #[derive(Clone, Debug)]
@@ -532,6 +540,7 @@ impl MacScpView {
             site_cursor_pos: 0,
             modal_cursor_pos: 0,
             site_error_message: None,
+            site_notice: None,
             remote_error_banner: None,
             active_transfer: None,
 
@@ -2950,6 +2959,7 @@ impl MacScpView {
         self.site_cursor_pos = self.current_site_field_val().chars().count();
         self.site_password_input.clear();
         self.site_error_message = None;
+        self.site_notice = None;
     }
 
     pub(crate) fn connect_selected_site(&mut self) {

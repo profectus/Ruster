@@ -1,6 +1,8 @@
 use gpui::{div, prelude::*, px, rgb, rgba, Context, IntoElement, MouseButton, MouseDownEvent};
-use crate::app::MacScpView;
-use crate::config::{import_from_ssh_config, save_password_to_keychain, save_sites_to_disk};
+use crate::app::{MacScpView, SiteNoticeKind};
+use crate::config::{
+    import_from_ssh_config, save_password_to_keychain, save_sites_to_disk, SshImportResult,
+};
 use crate::icons::render_icon;
 use crate::model::{ActiveModal, Protocol, SavedSiteProfile, SiteEditField, ENV_COLORS};
 use crate::ui::helpers::render_field_value_with_cursor;
@@ -96,6 +98,7 @@ impl MacScpView {
                                             let _ = save_sites_to_disk(&this.saved_sites);
                                             this.active_modal = ActiveModal::None;
                                             this.active_site_field = SiteEditField::None;
+                                            this.site_notice = None;
                                             cx.notify();
                                         }),
                                     )
@@ -166,6 +169,7 @@ impl MacScpView {
                                                                 this.site_cursor_pos =
                                                                     this.current_site_field_val().chars().count();
                                                                 this.site_error_message = None;
+                                                                this.site_notice = None;
                                                                 if event.click_count >= 2 {
                                                                     this.connect_selected_site();
                                                                 }
@@ -263,6 +267,7 @@ impl MacScpView {
                                                             this.site_cursor_pos = 0;
                                                             this.site_password_input.clear();
                                                             this.site_error_message = None;
+                                                            this.site_notice = None;
                                                             this.sort_saved_sites();
                                                             let _ = save_sites_to_disk(
                                                                 &this.saved_sites,
@@ -288,25 +293,56 @@ impl MacScpView {
                                                     .on_mouse_down(
                                                         MouseButton::Left,
                                                         cx.listener(|this, _, _, cx| {
-                                                            for s in import_from_ssh_config() {
-                                                                if !this.saved_sites.iter().any(
-                                                                    |existing| {
-                                                                        existing.host == s.host
-                                                                            && existing.username
-                                                                                == s.username
-                                                                    },
-                                                                ) {
-                                                                    this.saved_sites.push(s);
+                                                            let t = this.i18n();
+                                                            match import_from_ssh_config() {
+                                                                SshImportResult::FileNotFound => {
+                                                                    this.site_notice = Some((
+                                                                        t.notice_ssh_config_not_found().to_string(),
+                                                                        SiteNoticeKind::Error,
+                                                                    ));
+                                                                }
+                                                                SshImportResult::NoHostsFound => {
+                                                                    this.site_notice = Some((
+                                                                        t.notice_ssh_config_no_hosts().to_string(),
+                                                                        SiteNoticeKind::Error,
+                                                                    ));
+                                                                }
+                                                                SshImportResult::Success(imported) => {
+                                                                    let total = imported.len();
+                                                                    let mut added = 0;
+                                                                    for s in imported {
+                                                                        if !this.saved_sites.iter().any(
+                                                                            |existing| {
+                                                                                existing.host == s.host
+                                                                                    && existing.username
+                                                                                        == s.username
+                                                                            },
+                                                                        ) {
+                                                                            this.saved_sites.push(s);
+                                                                            added += 1;
+                                                                        }
+                                                                    }
+                                                                    if added > 0 {
+                                                                        this.sort_saved_sites();
+                                                                        let _ = save_sites_to_disk(
+                                                                            &this.saved_sites,
+                                                                        );
+                                                                        this.site_notice = Some((
+                                                                            t.notice_ssh_config_imported(added),
+                                                                            SiteNoticeKind::Success,
+                                                                        ));
+                                                                    } else {
+                                                                        this.site_notice = Some((
+                                                                            t.notice_ssh_config_all_exist(total),
+                                                                            SiteNoticeKind::Info,
+                                                                        ));
+                                                                    }
                                                                 }
                                                             }
-                                                            this.sort_saved_sites();
-                                                            let _ = save_sites_to_disk(
-                                                                &this.saved_sites,
-                                                            );
                                                             cx.notify();
                                                         }),
                                                     )
-                                                    .child("SSH Config"),
+                                                    .child(t.btn_import_ssh()),
                                             )
                                             .child(
                                                 div()
@@ -351,6 +387,42 @@ impl MacScpView {
                                     .flex()
                                     .flex_col()
                                     .overflow_hidden()
+                                    .when_some(self.site_notice.clone(), |el, (msg, kind)| {
+                                        let (bg, border, text_color, icon_str) = match kind {
+                                            SiteNoticeKind::Success => (
+                                                if theme.is_dark() { rgb(0x064e3b) } else { rgb(0xecfdf5) },
+                                                if theme.is_dark() { rgb(0x047857) } else { rgb(0xa7f3d0) },
+                                                if theme.is_dark() { rgb(0x6ee7b7) } else { rgb(0x047857) },
+                                                "✅ ",
+                                            ),
+                                            SiteNoticeKind::Info => (
+                                                if theme.is_dark() { rgb(0x1e293b) } else { rgb(0xf0fdf4) },
+                                                if theme.is_dark() { rgb(0x334155) } else { rgb(0xcfdfe8) },
+                                                if theme.is_dark() { rgb(0x93c5fd) } else { rgb(0x0369a1) },
+                                                "ℹ️ ",
+                                            ),
+                                            SiteNoticeKind::Error => (
+                                                if theme.is_dark() { rgb(0x451a1a) } else { rgb(0xfef2f2) },
+                                                if theme.is_dark() { rgb(0x7f1d1d) } else { rgb(0xfecaca) },
+                                                if theme.is_dark() { rgb(0xfca5a5) } else { rgb(0xdc2626) },
+                                                "⚠️ ",
+                                            ),
+                                        };
+                                        el.child(
+                                            div()
+                                                .flex_shrink_0()
+                                                .mb_3()
+                                                .px_3()
+                                                .py_2()
+                                                .rounded(px(5.0))
+                                                .bg(bg)
+                                                .border_1()
+                                                .border_color(border)
+                                                .text_xs()
+                                                .text_color(text_color)
+                                                .child(format!("{}{}", icon_str, msg)),
+                                        )
+                                    })
                                     .child(
                                         div()
                                             .id("site-form-scroll")

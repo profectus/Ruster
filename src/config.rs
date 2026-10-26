@@ -236,15 +236,15 @@ pub fn save_sites_to_disk(sites: &[SavedSiteProfile]) -> std::io::Result<()> {
     fs::write(sites_file_path(), out)
 }
 
-/// Parses `~/.ssh/config` and returns discovered SSH/SFTP hosts.
-pub fn import_from_ssh_config() -> Vec<SavedSiteProfile> {
-    let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
-    let ssh_config_path = PathBuf::from(&home).join(".ssh").join("config");
-    let content = match fs::read_to_string(ssh_config_path) {
-        Ok(c) => c,
-        Err(_) => return Vec::new(),
-    };
+#[derive(Clone, Debug, PartialEq)]
+pub enum SshImportResult {
+    Success(Vec<SavedSiteProfile>),
+    FileNotFound,
+    NoHostsFound,
+}
 
+/// Parses SSH config string content into a list of saved site profiles.
+pub fn parse_ssh_config_str(content: &str) -> Vec<SavedSiteProfile> {
     let default_user = std::env::var("USER").unwrap_or_else(|_| "root".to_string());
     let mut imported = Vec::new();
 
@@ -341,6 +341,26 @@ pub fn import_from_ssh_config() -> Vec<SavedSiteProfile> {
     imported
 }
 
+/// Parses `~/.ssh/config` and returns discovered SSH/SFTP hosts or an import status.
+pub fn import_from_ssh_config() -> SshImportResult {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
+    let ssh_config_path = PathBuf::from(&home).join(".ssh").join("config");
+    if !ssh_config_path.exists() {
+        return SshImportResult::FileNotFound;
+    }
+    let content = match fs::read_to_string(&ssh_config_path) {
+        Ok(c) => c,
+        Err(_) => return SshImportResult::FileNotFound,
+    };
+
+    let imported = parse_ssh_config_str(&content);
+    if imported.is_empty() {
+        SshImportResult::NoHostsFound
+    } else {
+        SshImportResult::Success(imported)
+    }
+}
+
 /// Saves a password into the native macOS Keychain (`security add-generic-password`).
 pub fn save_password_to_keychain(host: &str, username: &str, password: &str) -> bool {
     if password.is_empty() {
@@ -384,4 +404,51 @@ pub fn read_password_from_keychain(host: &str, username: &str) -> Option<String>
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_ssh_config_str() {
+        let sample = r#"
+# Global configuration (should be ignored)
+Host *
+    ServerAliveInterval 60
+
+Host staging-server
+    HostName 10.0.0.15
+    User deployer
+    Port 2222
+    IdentityFile ~/.ssh/id_ed25519
+
+Host prod-app
+    HostName app.production.net
+    User ubuntu
+"#;
+        let sites = parse_ssh_config_str(sample);
+        assert_eq!(sites.len(), 2);
+
+        assert_eq!(sites[0].name, "staging-server");
+        assert_eq!(sites[0].host, "10.0.0.15");
+        assert_eq!(sites[0].username, "deployer");
+        assert_eq!(sites[0].port, 2222);
+        assert_eq!(sites[0].auth_type, "SSH Key (~/.ssh/id_ed25519)");
+
+        assert_eq!(sites[1].name, "prod-app");
+        assert_eq!(sites[1].host, "app.production.net");
+        assert_eq!(sites[1].username, "ubuntu");
+        assert_eq!(sites[1].port, 22);
+        assert_eq!(sites[1].auth_type, "SSH Agent / Key");
+    }
+
+    #[test]
+    fn test_parse_ssh_config_empty_or_wildcards() {
+        let empty = "";
+        assert!(parse_ssh_config_str(empty).is_empty());
+
+        let wildcards = "Host *\n    User test\nHost ?\n    Port 22\n";
+        assert!(parse_ssh_config_str(wildcards).is_empty());
+    }
 }

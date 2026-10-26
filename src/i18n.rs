@@ -1178,6 +1178,143 @@ impl I18n {
         self.btn_run()
     }
 
+    pub fn btn_import_ssh(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Import SSH",
+            Locale::Cs => "Importovat SSH",
+            Locale::De => "SSH importieren",
+            Locale::Es => "Importar SSH",
+            Locale::Fr => "Importer SSH",
+            Locale::It => "Importa SSH",
+            Locale::Pl => "Importuj SSH",
+            Locale::Pt => "Importar SSH",
+            Locale::Zh => "导入 SSH",
+            Locale::Ja => "SSHインポート",
+        }
+    }
+
+    pub fn notice_ssh_config_not_found(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "File ~/.ssh/config was not found.",
+            Locale::Cs => "Soubor ~/.ssh/config nebyl nalezen.",
+            Locale::De => "Datei ~/.ssh/config wurde nicht gefunden.",
+            Locale::Es => "No se encontró el archivo ~/.ssh/config.",
+            Locale::Fr => "Fichier ~/.ssh/config introuvable.",
+            Locale::It => "File ~/.ssh/config non trovato.",
+            Locale::Pl => "Nie znaleziono pliku ~/.ssh/config.",
+            Locale::Pt => "Arquivo ~/.ssh/config não encontrado.",
+            Locale::Zh => "未找到 ~/.ssh/config 文件。",
+            Locale::Ja => "~/.ssh/config ファイルが見つかりません。",
+        }
+    }
+
+    pub fn notice_ssh_config_no_hosts(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "No host configurations found in ~/.ssh/config.",
+            Locale::Cs => "V ~/.ssh/config nebyly nalezeny žádné servery.",
+            Locale::De => "Keine Host-Konfigurationen in ~/.ssh/config gefunden.",
+            Locale::Es => "No se encontraron configuraciones de host en ~/.ssh/config.",
+            Locale::Fr => "Aucune configuration d'hôte trouvée dans ~/.ssh/config.",
+            Locale::It => "Nessuna configurazione host trovata in ~/.ssh/config.",
+            Locale::Pl => "Nie znaleziono konfiguracji hostów w ~/.ssh/config.",
+            Locale::Pt => "Nenhuma configuração de host encontrada em ~/.ssh/config.",
+            Locale::Zh => "在 ~/.ssh/config 中未找到有效的主机配置。",
+            Locale::Ja => "~/.ssh/config にホスト設定が見つかりませんでした。",
+        }
+    }
+
+    pub fn notice_ssh_config_imported(&self, count: usize) -> String {
+        match self.locale {
+            Locale::En => format!(
+                "Successfully imported {} server{} from ~/.ssh/config",
+                count,
+                if count == 1 { "" } else { "s" }
+            ),
+            Locale::Cs => {
+                if count == 1 {
+                    "Úspěšně importován 1 server z ~/.ssh/config".to_string()
+                } else if count < 5 {
+                    format!("Úspěšně importovány {} servery z ~/.ssh/config", count)
+                } else {
+                    format!("Úspěšně importováno {} serverů z ~/.ssh/config", count)
+                }
+            }
+            Locale::De => format!("{} Server erfolgreich aus ~/.ssh/config importiert", count),
+            Locale::Es => format!(
+                "{} servidor(es) importado(s) exitosamente desde ~/.ssh/config",
+                count
+            ),
+            Locale::Fr => format!(
+                "{} serveur(s) importé(s) avec succès depuis ~/.ssh/config",
+                count
+            ),
+            Locale::It => format!("{} server importati con successo da ~/.ssh/config", count),
+            Locale::Pl => {
+                if count == 1 {
+                    "Pomyślnie zaimportowano 1 serwer z ~/.ssh/config".to_string()
+                } else if count < 5 {
+                    format!("Pomyślnie zaimportowano {} serwery z ~/.ssh/config", count)
+                } else {
+                    format!("Pomyślnie zaimportowano {} serwerów z ~/.ssh/config", count)
+                }
+            }
+            Locale::Pt => format!(
+                "{} servidor(es) importado(s) com sucesso de ~/.ssh/config",
+                count
+            ),
+            Locale::Zh => format!("成功从 ~/.ssh/config 导入 {} 个服务器", count),
+            Locale::Ja => {
+                format!("~/.ssh/config から {} 件のサーバーを正常にインポートしました", count)
+            }
+        }
+    }
+
+    pub fn notice_ssh_config_all_exist(&self, count: usize) -> String {
+        match self.locale {
+            Locale::En => format!(
+                "All {} server{} from ~/.ssh/config already exist in your list",
+                count,
+                if count == 1 { "" } else { "s" }
+            ),
+            Locale::Cs => {
+                if count == 1 {
+                    "Server z ~/.ssh/config již máte v seznamu".to_string()
+                } else {
+                    format!("Všech {} serverů z ~/.ssh/config již máte v seznamu", count)
+                }
+            }
+            Locale::De => format!(
+                "Alle {} Server aus ~/.ssh/config sind bereits in Ihrer Liste",
+                count
+            ),
+            Locale::Es => format!(
+                "Todos los {} servidor(es) de ~/.ssh/config ya están en su lista",
+                count
+            ),
+            Locale::Fr => format!(
+                "Les {} serveur(s) de ~/.ssh/config sont déjà dans votre liste",
+                count
+            ),
+            Locale::It => format!(
+                "Tutti i {} server da ~/.ssh/config sono già nella tua lista",
+                count
+            ),
+            Locale::Pl => format!(
+                "Wszystkie {} serwery z ~/.ssh/config znajdują się już na Twojej liście",
+                count
+            ),
+            Locale::Pt => format!(
+                "Todos os {} servidor(es) de ~/.ssh/config já estão na sua lista",
+                count
+            ),
+            Locale::Zh => format!("~/.ssh/config 中的所有 {} 个服务器已存在于您的列表中", count),
+            Locale::Ja => format!(
+                "~/.ssh/config の全 {} 件のサーバーはすでにリストに存在します",
+                count
+            ),
+        }
+    }
+
     pub fn modal_chmod_title(&self) -> &'static str {
         match self.locale {
             Locale::En => "Permissions (CHMOD)",
@@ -1779,5 +1916,16 @@ mod tests {
 
         // Unknown code fallback
         assert_eq!(Locale::from_code("unknown"), Locale::En);
+
+        // Test SSH config notice translations
+        for &loc in Locale::ALL {
+            let t = Translations::new(loc);
+            assert!(!t.btn_import_ssh().is_empty());
+            assert!(!t.notice_ssh_config_not_found().is_empty());
+            assert!(!t.notice_ssh_config_no_hosts().is_empty());
+            assert!(!t.notice_ssh_config_imported(1).is_empty());
+            assert!(!t.notice_ssh_config_imported(3).is_empty());
+            assert!(!t.notice_ssh_config_all_exist(2).is_empty());
+        }
     }
 }

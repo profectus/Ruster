@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3] - 2026-10-26
+
+### Added
+- **SSH Config Import Feedback & Notifications**:
+  - Renamed Site Manager import button to clear action label (`Import SSH` / `Importovat SSH`) across all 10 supported languages.
+  - Interactive status banner in the Site Manager providing immediate, unambiguous feedback:
+    - Success notification with exact count of newly imported servers.
+    - Informational notice when all servers in `~/.ssh/config` are already present in the saved list.
+    - Helpful alert when `~/.ssh/config` does not exist or does not contain any valid host configurations.
+  - Full localization in English, Czech, German, Spanish, French, Italian, Polish, Portuguese, Chinese, and Japanese.
+  - Unit tests covering SSH config parsing, wildcard host exclusion, and multilingual import messages.
+
 ## [0.2.2] - 2026-10-26
 
 ### Added
