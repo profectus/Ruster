@@ -1,12 +1,12 @@
 use gpui::{
     div, prelude::*, px, rgb, Context, IntoElement, MouseButton,
 };
-use crate::app::MacScpView;
+use crate::app::RusterView;
 use crate::icons::render_icon;
 use crate::model::ActiveModal;
 use crate::update::UpdateStatus;
 
-impl MacScpView {
+impl RusterView {
     pub fn render_update_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme();
         let t = self.i18n();
@@ -119,7 +119,7 @@ impl MacScpView {
                                             div()
                                                 .text_xs()
                                                 .text_color(theme.text_muted())
-                                                .child(format!("MacSCP v{ver}")),
+                                                .child(format!("Ruster v{ver}")),
                                         )
                                 }
                                 Some(UpdateStatus::Available(info)) => {
@@ -198,7 +198,7 @@ impl MacScpView {
                                                                 .font_family(".AppleSystemUIFontMonospaced")
                                                                 .text_xs()
                                                                 .text_color(theme.text_primary())
-                                                                .child("brew update && brew upgrade --cask macscp"),
+                                                                .child("brew update && brew upgrade --cask ruster"),
                                                         )
                                                         .child(
                                                             div()

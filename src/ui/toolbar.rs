@@ -1,9 +1,9 @@
 use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
-use crate::app::MacScpView;
+use crate::app::RusterView;
 use crate::icons::render_icon;
 use crate::model::{ActiveModal, ActivePane};
 
-impl MacScpView {
+impl RusterView {
     pub fn render_top_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let theme = self.theme();

@@ -1,10 +1,10 @@
 use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
-use crate::app::MacScpView;
+use crate::app::RusterView;
 use crate::icons::{get_file_icon, render_icon};
 use crate::model::{format_bytes, ServerLogKind, TransferDirection, TransferQueueItem, TransferStatus};
 use crate::theme::Theme;
 
-impl MacScpView {
+impl RusterView {
     pub fn render_bottom_function_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let theme = self.theme();
@@ -250,7 +250,7 @@ fn render_progress_bar_cell(
         )
 }
 
-impl MacScpView {
+impl RusterView {
     fn render_queue_item_tree(
         &self,
         item: &TransferQueueItem,

@@ -5,7 +5,7 @@ use gpui::{
 };
 use std::ops::Range;
 use std::path::PathBuf;
-use crate::app::{ContextMenuState, DraggedFileItem, MacScpView, ResizeColumnState};
+use crate::app::{ContextMenuState, DraggedFileItem, RusterView, ResizeColumnState};
 use crate::icons::{get_file_icon, render_icon};
 use crate::model::{sort_entries, ActiveModal, ActivePane, FileEntry, SortColumn};
 use crate::ui::helpers::FileTooltip;
@@ -78,7 +78,7 @@ impl UniformListDecoration for ListScrollbar {
     }
 }
 
-impl MacScpView {
+impl RusterView {
     pub fn render_local_pane(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let theme = self.theme();

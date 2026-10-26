@@ -1,17 +1,17 @@
 #!/bin/bash
 set -e
 
-echo "==> Building MacSCP (Release)..."
+echo "==> Building Ruster (Release)..."
 cargo build --release
 
-echo "==> Packaging MacSCP.app bundle..."
-APP_DIR="target/release/MacSCP.app"
+echo "==> Packaging Ruster.app bundle..."
+APP_DIR="target/release/Ruster.app"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
-cp target/release/macscp "$APP_DIR/Contents/MacOS/macscp"
+cp target/release/ruster "$APP_DIR/Contents/MacOS/ruster"
 cp assets/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
-chmod +x "$APP_DIR/Contents/MacOS/macscp"
+chmod +x "$APP_DIR/Contents/MacOS/ruster"
 
 VERSION=$(grep -m1 '^version =' Cargo.toml | cut -d '"' -f2)
 VERSION=${VERSION:-0.3.0}
@@ -22,13 +22,13 @@ cat << EOF > "$APP_DIR/Contents/Info.plist"
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>macscp</string>
+    <string>ruster</string>
     <key>CFBundleIdentifier</key>
-    <string>com.macscp.app</string>
+    <string>com.ruster.app</string>
     <key>CFBundleName</key>
-    <string>MacSCP</string>
+    <string>Ruster</string>
     <key>CFBundleDisplayName</key>
-    <string>MacSCP</string>
+    <string>Ruster</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundlePackageType</key>
@@ -46,11 +46,11 @@ cat << EOF > "$APP_DIR/Contents/Info.plist"
 EOF
 
 if command -v codesign >/dev/null 2>&1; then
-    echo "==> Ad-hoc signing MacSCP.app..."
+    echo "==> Ad-hoc signing Ruster.app..."
     codesign --force --deep --sign - "$APP_DIR"
 fi
 
-echo "==> Creating MacSCP.zip archive..."
-(cd target/release && rm -f MacSCP.zip && zip -rq MacSCP.zip MacSCP.app)
+echo "==> Creating Ruster.zip archive..."
+(cd target/release && rm -f Ruster.zip && zip -rq Ruster.zip Ruster.app)
 
-echo "==> Done! Application is ready at: target/release/MacSCP.app and target/release/MacSCP.zip"
+echo "==> Done! Application is ready at: target/release/Ruster.app and target/release/Ruster.zip"

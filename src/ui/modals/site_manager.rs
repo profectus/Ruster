@@ -1,5 +1,5 @@
 use gpui::{div, prelude::*, px, rgb, rgba, Context, IntoElement, MouseButton, MouseDownEvent};
-use crate::app::{MacScpView, SiteNoticeKind};
+use crate::app::{RusterView, SiteNoticeKind};
 use crate::config::{
     import_from_ssh_config, save_password_to_keychain, save_sites_to_disk, SshImportResult,
 };
@@ -7,7 +7,7 @@ use crate::icons::render_icon;
 use crate::model::{ActiveModal, Protocol, SavedSiteProfile, SiteEditField, ENV_COLORS};
 use crate::ui::helpers::render_field_value_with_cursor;
 
-impl MacScpView {
+impl RusterView {
     pub fn render_site_manager_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let fallback_site = SavedSiteProfile {

@@ -1,7 +1,7 @@
 use gpui::{
     div, prelude::*, px, rgb, App, Context, IntoElement, Menu, MenuItem, MouseButton,
 };
-use crate::app::{ContextMenuState, MacScpView};
+use crate::app::{ContextMenuState, RusterView};
 use crate::icons::render_icon;
 use crate::i18n::{I18n, Locale};
 use crate::model::ActivePane;
@@ -13,7 +13,7 @@ use crate::{
     ToggleTheme, ToggleTransferQueue,
 };
 
-impl MacScpView {
+impl RusterView {
     pub fn render_session_dropdown_popover(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let theme = self.theme();
@@ -239,7 +239,7 @@ pub fn install_app_menus(cx: &mut App, locale: Locale) {
     let t = I18n::new(locale);
     cx.set_menus(vec![
         Menu {
-            name: "MacSCP".into(),
+            name: "Ruster".into(),
             items: vec![
                 MenuItem::action(t.menu_check_for_updates(), CheckForUpdates),
                 MenuItem::separator(),
@@ -247,7 +247,7 @@ pub fn install_app_menus(cx: &mut App, locale: Locale) {
                 MenuItem::separator(),
                 MenuItem::action(t.menu_switch_language(), SwitchLanguage),
                 MenuItem::separator(),
-                MenuItem::action("Quit MacSCP", Quit),
+                MenuItem::action("Quit Ruster", Quit),
             ],
         },
         Menu {

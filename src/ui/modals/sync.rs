@@ -1,9 +1,9 @@
 use gpui::{div, prelude::*, px, rgb, rgba, Context, IntoElement, MouseButton};
-use crate::app::MacScpView;
+use crate::app::RusterView;
 use crate::icons::render_icon;
 use crate::model::{format_bytes, ActiveModal, SyncAction, SyncCriterion, SyncDirection};
 
-impl MacScpView {
+impl RusterView {
     pub fn render_sync_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let theme = self.theme();

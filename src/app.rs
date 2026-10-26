@@ -104,7 +104,7 @@ pub struct ResizeColumnState {
     pub initial_permissions_w: f32,
 }
 
-pub struct MacScpView {
+pub struct RusterView {
     pub(crate) focus_handle: FocusHandle,
     pub(crate) locale: Locale,
     pub(crate) theme: crate::theme::ThemeMode,
@@ -440,7 +440,7 @@ fn scan_remote_folder_for_queue(
     }
 }
 
-impl MacScpView {
+impl RusterView {
     pub fn new(cx: &mut Context<Self>) -> Self {
         let saved_state = load_app_state();
         let local_dir = saved_state.local_dir;
@@ -827,7 +827,7 @@ impl MacScpView {
     }
 
     pub fn trigger_background_update_check(&self, cx: &mut Context<Self>) {
-        cx.spawn(|this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(|this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 let res = std::thread::spawn(|| crate::update::fetch_latest_release()).join();
@@ -851,7 +851,7 @@ impl MacScpView {
             cx.notify();
         }
 
-        cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 let res = std::thread::spawn(|| crate::update::fetch_latest_release()).join();
@@ -899,7 +899,7 @@ impl MacScpView {
         if let Ok(mut child) = cmd {
             if let Some(mut stdin) = child.stdin.take() {
                 use std::io::Write;
-                let _ = stdin.write_all(b"brew update && brew upgrade --cask macscp");
+                let _ = stdin.write_all(b"brew update && brew upgrade --cask ruster");
             }
             let _ = child.wait();
         }
@@ -929,7 +929,7 @@ impl MacScpView {
             }
         });
 
-        cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 loop {
@@ -1157,7 +1157,7 @@ impl MacScpView {
                                 let size = calculate_local_dir_size(&path);
                                 let _ = tx.send(size);
                             });
-                            cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+                            cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
                                 let mut cx = cx.clone();
                                 async move {
                                     loop {
@@ -1212,7 +1212,7 @@ impl MacScpView {
                                     let size = calculate_local_dir_size(&path);
                                     let _ = tx.send(size);
                                 });
-                                cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+                                cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
                                     let mut cx = cx.clone();
                                     async move {
                                         loop {
@@ -1278,7 +1278,7 @@ impl MacScpView {
                                     ).ok();
                                     let _ = tx.send(res);
                                 });
-                                cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+                                cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
                                     let mut cx = cx.clone();
                                     async move {
                                         loop {
@@ -2112,7 +2112,7 @@ impl MacScpView {
         });
 
         // Spawn GPUI task to pump messages into UI
-        cx.spawn(|this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(|this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 loop {
@@ -2740,7 +2740,7 @@ impl MacScpView {
             let _ = tx_thread.send(SyncCompareMsg::Finished(Ok(items)));
         });
 
-        cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 loop {
@@ -3205,7 +3205,7 @@ impl MacScpView {
             });
 
             let site_clone = site.clone();
-            cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+            cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
                 let mut cx = cx.clone();
                 async move {
                     loop {
@@ -3281,7 +3281,7 @@ impl MacScpView {
         }
 
         let temp_base = std::env::temp_dir()
-            .join("macscp_remote_edit")
+            .join("ruster_remote_edit")
             .join(format!("session_{}", session.id));
         let safe_rel = entry.path.trim_start_matches('/').to_string();
         let local_path = temp_base.join(&safe_rel);
@@ -3361,7 +3361,7 @@ impl MacScpView {
             }
         });
 
-        cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 loop {
@@ -3403,7 +3403,7 @@ impl MacScpView {
     }
 
     pub(crate) fn start_remote_edit_watcher(cx: &mut Context<Self>) {
-        cx.spawn(|this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(|this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 loop {
@@ -4114,7 +4114,7 @@ impl MacScpView {
 
 }
 
-impl Render for MacScpView {
+impl Render for RusterView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let cur_size = window.bounds().size;
         let cur_w: f32 = cur_size.width.into();
@@ -4137,7 +4137,7 @@ impl Render for MacScpView {
         let theme = self.theme();
 
         div()
-            .id("macscp-root")
+            .id("ruster-root")
             .track_focus(&self.focus_handle)
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, _, cx| {
                 this.handle_key_down(event, cx);
@@ -4438,7 +4438,7 @@ impl Render for MacScpView {
     }
 }
 
-impl Drop for MacScpView {
+impl Drop for RusterView {
     fn drop(&mut self) {
         self.persist_app_state();
     }

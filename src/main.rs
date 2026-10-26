@@ -13,8 +13,8 @@ use gpui::{
     actions, px, size, App, AppContext, Application, Bounds, KeyBinding, SharedString,
     TitlebarOptions, WindowBounds, WindowOptions,
 };
-use icons::MacScpAssets;
-use app::MacScpView;
+use icons::RusterAssets;
+use app::RusterView;
 use ui::menus::install_app_menus;
 
 pub const APP_ICON_PNG: &[u8] = include_bytes!("../assets/icon.png");
@@ -92,7 +92,7 @@ pub fn set_macos_dock_icon(png_bytes: &[u8]) {
 }
 
 actions!(
-    macscp,
+    ruster,
     [
         Quit,
         OpenSiteManager,
@@ -123,7 +123,7 @@ actions!(
 );
 
 fn main() {
-    Application::new().with_assets(MacScpAssets).run(|cx: &mut App| {
+    Application::new().with_assets(RusterAssets).run(|cx: &mut App| {
         #[cfg(target_os = "macos")]
         set_macos_dock_icon(APP_ICON_PNG);
 
@@ -174,13 +174,13 @@ fn main() {
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 titlebar: Some(TitlebarOptions {
-                    title: Some(SharedString::from("MacSCP")),
+                    title: Some(SharedString::from("Ruster")),
                     ..Default::default()
                 }),
                 is_resizable: true,
                 ..Default::default()
             },
-            |_, cx| cx.new(MacScpView::new),
+            |_, cx| cx.new(RusterView::new),
         )
         .unwrap();
         set_macos_window_appearance(is_dark);

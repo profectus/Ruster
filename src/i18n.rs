@@ -1851,31 +1851,31 @@ impl I18n {
 
     pub fn update_available_msg(&self) -> &'static str {
         match self.locale {
-            Locale::En => "A new version of MacSCP is available!",
-            Locale::Cs => "Je k dispozici nová verze MacSCP!",
-            Locale::De => "Eine neue Version von MacSCP ist verfügbar!",
-            Locale::Es => "¡Hay una nueva versión de MacSCP disponible!",
-            Locale::Fr => "Une nouvelle version de MacSCP est disponible !",
-            Locale::It => "È disponibile una nuova versione di MacSCP!",
-            Locale::Pl => "Dostępna jest nowa wersja MacSCP!",
-            Locale::Pt => "Uma nova versão do MacSCP está disponível!",
-            Locale::Zh => "MacSCP 有新版本可用！",
-            Locale::Ja => "MacSCP の新しいバージョンが利用可能です！",
+            Locale::En => "A new version of Ruster is available!",
+            Locale::Cs => "Je k dispozici nová verze Ruster!",
+            Locale::De => "Eine neue Version von Ruster ist verfügbar!",
+            Locale::Es => "¡Hay una nueva versión de Ruster disponible!",
+            Locale::Fr => "Une nouvelle version de Ruster est disponible !",
+            Locale::It => "È disponibile una nuova versione di Ruster!",
+            Locale::Pl => "Dostępna jest nowa wersja Ruster!",
+            Locale::Pt => "Uma nova versão do Ruster está disponível!",
+            Locale::Zh => "Ruster 有新版本可用！",
+            Locale::Ja => "Ruster の新しいバージョンが利用可能です！",
         }
     }
 
     pub fn update_uptodate_msg(&self) -> &'static str {
         match self.locale {
-            Locale::En => "MacSCP is up to date.",
-            Locale::Cs => "Máte nejnovější verzi MacSCP.",
-            Locale::De => "MacSCP ist auf dem neuesten Stand.",
-            Locale::Es => "MacSCP está actualizado.",
-            Locale::Fr => "MacSCP est à jour.",
-            Locale::It => "MacSCP è aggiornato.",
-            Locale::Pl => "MacSCP jest aktualny.",
-            Locale::Pt => "O MacSCP está atualizado.",
-            Locale::Zh => "MacSCP 已是最新版本。",
-            Locale::Ja => "MacSCP は最新の状態です。",
+            Locale::En => "Ruster is up to date.",
+            Locale::Cs => "Máte nejnovější verzi Ruster.",
+            Locale::De => "Ruster ist auf dem neuesten Stand.",
+            Locale::Es => "Ruster está actualizado.",
+            Locale::Fr => "Ruster est à jour.",
+            Locale::It => "Ruster è aggiornato.",
+            Locale::Pl => "Ruster jest aktualny.",
+            Locale::Pt => "O Ruster está atualizado.",
+            Locale::Zh => "Ruster 已是最新版本。",
+            Locale::Ja => "Ruster は最新の状態です。",
         }
     }
 
@@ -1926,16 +1926,16 @@ impl I18n {
 
     pub fn update_updating_title(&self) -> &'static str {
         match self.locale {
-            Locale::En => "Updating MacSCP...",
-            Locale::Cs => "Aktualizuji MacSCP...",
-            Locale::De => "MacSCP wird aktualisiert...",
-            Locale::Es => "Actualizando MacSCP...",
-            Locale::Fr => "Mise à jour de MacSCP...",
-            Locale::It => "Aggiornamento di MacSCP...",
-            Locale::Pl => "Aktualizowanie MacSCP...",
-            Locale::Pt => "Atualizando MacSCP...",
-            Locale::Zh => "正在更新 MacSCP...",
-            Locale::Ja => "MacSCP を更新中...",
+            Locale::En => "Updating Ruster...",
+            Locale::Cs => "Aktualizuji Ruster...",
+            Locale::De => "Ruster wird aktualisiert...",
+            Locale::Es => "Actualizando Ruster...",
+            Locale::Fr => "Mise à jour de Ruster...",
+            Locale::It => "Aggiornamento di Ruster...",
+            Locale::Pl => "Aktualizowanie Ruster...",
+            Locale::Pt => "Atualizando Ruster...",
+            Locale::Zh => "正在更新 Ruster...",
+            Locale::Ja => "Ruster を更新中...",
         }
     }
 
@@ -1956,16 +1956,16 @@ impl I18n {
 
     pub fn update_restart_btn(&self) -> &'static str {
         match self.locale {
-            Locale::En => "Restart MacSCP",
-            Locale::Cs => "Restartovat MacSCP",
-            Locale::De => "MacSCP neu starten",
-            Locale::Es => "Reiniciar MacSCP",
-            Locale::Fr => "Redémarrer MacSCP",
-            Locale::It => "Riavvia MacSCP",
-            Locale::Pl => "Uruchom ponownie MacSCP",
-            Locale::Pt => "Reiniciar MacSCP",
-            Locale::Zh => "重启 MacSCP",
-            Locale::Ja => "MacSCP を再起動",
+            Locale::En => "Restart Ruster",
+            Locale::Cs => "Restartovat Ruster",
+            Locale::De => "Ruster neu starten",
+            Locale::Es => "Reiniciar Ruster",
+            Locale::Fr => "Redémarrer Ruster",
+            Locale::It => "Riavvia Ruster",
+            Locale::Pl => "Uruchom ponownie Ruster",
+            Locale::Pt => "Reiniciar Ruster",
+            Locale::Zh => "重启 Ruster",
+            Locale::Ja => "Ruster を再起動",
         }
     }
 

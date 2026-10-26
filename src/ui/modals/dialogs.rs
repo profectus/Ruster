@@ -1,9 +1,9 @@
 use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
-use crate::app::MacScpView;
+use crate::app::RusterView;
 use crate::model::{ActiveModal, ActivePane};
 use crate::ui::helpers::render_field_value_with_cursor;
 
-impl MacScpView {
+impl RusterView {
     pub fn render_text_input_modal(
         &self,
         title: &'static str,

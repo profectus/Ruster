@@ -50,7 +50,7 @@ pub fn is_newer_version(latest: &str, current: &str) -> bool {
     false
 }
 
-/// Checks GitHub Releases API for the latest version of MacSCP.
+/// Checks GitHub Releases API for the latest version of Ruster.
 /// Uses system `curl` to avoid extra HTTP dependencies.
 pub fn fetch_latest_release() -> Result<Option<UpdateInfo>, String> {
     let current_version = env!("CARGO_PKG_VERSION").to_string();
@@ -63,8 +63,8 @@ pub fn fetch_latest_release() -> Result<Option<UpdateInfo>, String> {
             "-H",
             "Accept: application/vnd.github.v3+json",
             "-H",
-            "User-Agent: MacSCP-App",
-            "https://api.github.com/repos/profectus/macSCP/releases/latest",
+            "User-Agent: Ruster-App",
+            "https://api.github.com/repos/profectus/ruster/releases/latest",
         ])
         .output()
         .map_err(|e| format!("Failed to execute curl: {e}"))?;
@@ -81,7 +81,7 @@ pub fn fetch_latest_release() -> Result<Option<UpdateInfo>, String> {
     // Simple JSON field extraction without heavy json parser dependencies
     let tag = extract_json_string(&body, "tag_name").unwrap_or_default();
     let html_url = extract_json_string(&body, "html_url")
-        .unwrap_or_else(|| "https://github.com/profectus/macSCP/releases/latest".to_string());
+        .unwrap_or_else(|| "https://github.com/profectus/ruster/releases/latest".to_string());
     let release_notes = extract_json_string(&body, "body").unwrap_or_default();
 
     if tag.is_empty() {
@@ -161,7 +161,15 @@ pub fn locate_target_app() -> PathBuf {
             curr = parent;
         }
     }
-    PathBuf::from("/Applications/MacSCP.app")
+    let ruster_app = PathBuf::from("/Applications/Ruster.app");
+    if ruster_app.exists() {
+        return ruster_app;
+    }
+    let legacy_app = PathBuf::from("/Applications/MacSCP.app");
+    if legacy_app.exists() {
+        return legacy_app;
+    }
+    ruster_app
 }
 
 pub fn restart_app() {
@@ -180,27 +188,34 @@ pub fn restart_app() {
 pub fn perform_in_app_update(version: &str, mut on_progress: impl FnMut(String)) -> Result<(), String> {
     on_progress("Ověřuji instalaci...".to_string());
 
-    // 1. If Homebrew is managing macscp, try upgrading through brew first
+    // 1. If Homebrew is managing ruster (or legacy macscp), try upgrading through brew first
     if let Some(brew) = find_brew_binary() {
-        let is_cask = Command::new(&brew)
+        let is_ruster = Command::new(&brew)
+            .args(["list", "--cask", "ruster"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        let is_macscp = !is_ruster && Command::new(&brew)
             .args(["list", "--cask", "macscp"])
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false);
 
-        if is_cask {
+        if is_ruster || is_macscp {
+            let cask_name = if is_ruster { "ruster" } else { "macscp" };
             on_progress("Aktualizuji repozitář Homebrew...".to_string());
             let _ = Command::new(&brew).arg("update").output();
 
             on_progress("Instaluji novou verzi přes Homebrew...".to_string());
             let res = Command::new(&brew)
-                .args(["upgrade", "--cask", "--no-ask", "macscp"])
+                .args(["upgrade", "--cask", "--no-ask", cask_name])
                 .output();
 
             if let Ok(out) = res {
                 if out.status.success() {
+                    let target_app = locate_target_app();
                     let _ = Command::new("/usr/bin/xattr")
-                        .args(["-dr", "com.apple.quarantine", "/Applications/MacSCP.app"])
+                        .args(["-dr", "com.apple.quarantine", target_app.to_str().unwrap()])
                         .output();
                     return Ok(());
                 }
@@ -210,12 +225,12 @@ pub fn perform_in_app_update(version: &str, mut on_progress: impl FnMut(String))
 
     // 2. Direct download from GitHub releases
     on_progress(format!("Stahuji balíček v{} z GitHubu...", version));
-    let tmp_dir = PathBuf::from("/tmp/macscp_update");
+    let tmp_dir = PathBuf::from("/tmp/ruster_update");
     let _ = std::fs::remove_dir_all(&tmp_dir);
     std::fs::create_dir_all(&tmp_dir).map_err(|e| format!("Nelze vytvořit dočasnou složku: {e}"))?;
 
-    let zip_path = tmp_dir.join("MacSCP.zip");
-    let download_url = format!("https://github.com/profectus/macSCP/releases/download/v{version}/MacSCP.zip");
+    let zip_path = tmp_dir.join("Ruster.zip");
+    let download_url = format!("https://github.com/profectus/ruster/releases/download/v{version}/Ruster.zip");
 
     let curl_res = Command::new("/usr/bin/curl")
         .args([
@@ -250,9 +265,9 @@ pub fn perform_in_app_update(version: &str, mut on_progress: impl FnMut(String))
         return Err("Nepodařilo se rozbalit archiv aplikace".to_string());
     }
 
-    let new_app = extract_dir.join("MacSCP.app");
+    let new_app = extract_dir.join("Ruster.app");
     if !new_app.exists() {
-        return Err("V archivu nebyl nalezen soubor MacSCP.app".to_string());
+        return Err("V archivu nebyl nalezen soubor Ruster.app".to_string());
     }
 
     // Remove Gatekeeper quarantine
@@ -309,14 +324,14 @@ mod tests {
     fn test_json_extractor() {
         let sample = r#"{
             "tag_name": "v0.2.0",
-            "html_url": "https://github.com/profectus/macSCP/releases/tag/v0.2.0",
+            "html_url": "https://github.com/profectus/ruster/releases/tag/v0.2.0",
             "body": "Awesome new release\nBug fixes"
         }"#;
 
         assert_eq!(extract_json_string(sample, "tag_name"), Some("v0.2.0".to_string()));
         assert_eq!(
             extract_json_string(sample, "html_url"),
-            Some("https://github.com/profectus/macSCP/releases/tag/v0.2.0".to_string())
+            Some("https://github.com/profectus/ruster/releases/tag/v0.2.0".to_string())
         );
         assert!(extract_json_string(sample, "body").unwrap().contains("Awesome new release"));
     }

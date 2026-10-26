@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2026-10-26
 
+### Changed
+- **Project Rebranding to Ruster**: Renamed the entire project, binaries, app bundle, Homebrew cask, and configurations from MacSCP to **Ruster**.
+
 ### Added
-- **One-Click In-App Updater**: Added a one-click **"Aktualizovat nyní"** (Update Now) button directly to the update modal. Automatically updates via Homebrew if managed by Homebrew, or downloads, unpacks, un-quarantines, and replaces `/Applications/MacSCP.app` directly from GitHub releases without opening the Terminal.
-- **One-Click Restart**: Added a **"Restartovat MacSCP"** button upon update completion that cleanly re-launches the newly updated MacSCP instance.
+- **One-Click In-App Updater**: Added a one-click **"Aktualizovat nyní"** (Update Now) button directly to the update modal. Automatically updates via Homebrew if managed by Homebrew, or downloads, unpacks, un-quarantines, and replaces `/Applications/Ruster.app` directly from GitHub releases without opening the Terminal.
+- **One-Click Restart**: Added a **"Restartovat Ruster"** button upon update completion that cleanly re-launches the newly updated Ruster instance.
 
 ## [0.2.9] - 2026-10-26
 
@@ -107,7 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-10-25
 
 ### Added
-- Initial release of MacSCP: Native dual-pane SFTP/SCP client for macOS built with Rust and GPUI.
+- Initial release of Ruster (originally MacSCP): Native dual-pane SFTP/SCP client for macOS built with Rust and GPUI.
 - Dual-pane file management (local and remote).
 - Fast multi-threaded transfers over SFTP, SCP, and FTP.
 - Keyring integration for secure password storage.

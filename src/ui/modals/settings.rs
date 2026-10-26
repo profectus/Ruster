@@ -1,11 +1,11 @@
 use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
-use crate::app::MacScpView;
+use crate::app::RusterView;
 use crate::icons::render_icon;
 use crate::model::ActiveModal;
 use crate::theme::ThemeMode;
 use crate::ui::helpers::render_textarea_value_with_cursor;
 
-impl MacScpView {
+impl RusterView {
     pub fn render_settings_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let theme = self.theme();
@@ -13,16 +13,16 @@ impl MacScpView {
         let is_dark = theme.is_dark();
 
         let header_title = match self.locale {
-            crate::i18n::Locale::En => "MacSCP Settings",
-            crate::i18n::Locale::Cs => "Nastavení MacSCP",
-            crate::i18n::Locale::De => "MacSCP Einstellungen",
-            crate::i18n::Locale::Es => "Configuración de MacSCP",
-            crate::i18n::Locale::Fr => "Paramètres MacSCP",
-            crate::i18n::Locale::It => "Impostazioni MacSCP",
-            crate::i18n::Locale::Pl => "Ustawienia MacSCP",
-            crate::i18n::Locale::Pt => "Configurações do MacSCP",
-            crate::i18n::Locale::Zh => "MacSCP 设置",
-            crate::i18n::Locale::Ja => "MacSCP 設定",
+            crate::i18n::Locale::En => "Ruster Settings",
+            crate::i18n::Locale::Cs => "Nastavení Ruster",
+            crate::i18n::Locale::De => "Ruster Einstellungen",
+            crate::i18n::Locale::Es => "Configuración de Ruster",
+            crate::i18n::Locale::Fr => "Paramètres Ruster",
+            crate::i18n::Locale::It => "Impostazioni Ruster",
+            crate::i18n::Locale::Pl => "Ustawienia Ruster",
+            crate::i18n::Locale::Pt => "Configurações do Ruster",
+            crate::i18n::Locale::Zh => "Ruster 设置",
+            crate::i18n::Locale::Ja => "Ruster 設定",
         };
 
         let btn_save_close = match self.locale {
@@ -770,13 +770,13 @@ impl MacScpView {
                                                     .text_xs()
                                                     .font_weight(gpui::FontWeight::SEMIBOLD)
                                                     .text_color(theme.text_primary())
-                                                    .child(format!("MacSCP v{}", env!("CARGO_PKG_VERSION"))),
+                                                    .child(format!("Ruster v{}", env!("CARGO_PKG_VERSION"))),
                                             )
                                             .child(
                                                 div()
                                                     .text_xs()
                                                     .text_color(theme.text_muted())
-                                                    .child("GitHub: profectus/macSCP"),
+                                                    .child("GitHub: profectus/ruster"),
                                             ),
                                     )
                                     .child(

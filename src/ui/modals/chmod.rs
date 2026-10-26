@@ -1,10 +1,10 @@
 use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
-use crate::app::MacScpView;
+use crate::app::RusterView;
 use crate::icons::render_icon;
 use crate::i18n::Locale;
 use crate::model::{mode_to_rwx, ActiveModal};
 
-impl MacScpView {
+impl RusterView {
     pub fn render_chmod_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let theme = self.theme();

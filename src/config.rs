@@ -20,7 +20,12 @@ pub struct AppState {
 
 pub fn config_dir() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
-    PathBuf::from(home).join(".config").join("macscp")
+    let ruster_dir = PathBuf::from(&home).join(".config").join("ruster");
+    let legacy_dir = PathBuf::from(&home).join(".config").join("macscp");
+    if !ruster_dir.exists() && legacy_dir.exists() {
+        let _ = fs::rename(&legacy_dir, &ruster_dir);
+    }
+    ruster_dir
 }
 
 pub fn sites_file_path() -> PathBuf {
@@ -32,9 +37,13 @@ pub fn state_file_path() -> PathBuf {
 }
 
 pub fn cleanup_remote_edit_temp() {
-    let dir = std::env::temp_dir().join("macscp_remote_edit");
+    let dir = std::env::temp_dir().join("ruster_remote_edit");
     if dir.exists() {
         let _ = fs::remove_dir_all(&dir);
+    }
+    let legacy = std::env::temp_dir().join("macscp_remote_edit");
+    if legacy.exists() {
+        let _ = fs::remove_dir_all(&legacy);
     }
 }
 
@@ -154,7 +163,7 @@ pub fn save_app_state(
     fs::write(state_file_path(), content)
 }
 
-/// Loads saved sites from `~/.config/macscp/sites.conf`.
+/// Loads saved sites from `~/.config/ruster/sites.conf`.
 pub fn load_saved_sites() -> Option<Vec<SavedSiteProfile>> {
     let path = sites_file_path();
     let content = fs::read_to_string(path).ok()?;
@@ -214,11 +223,11 @@ pub fn load_saved_sites() -> Option<Vec<SavedSiteProfile>> {
     }
 }
 
-/// Saves sites to `~/.config/macscp/sites.conf`.
+/// Saves sites to `~/.config/ruster/sites.conf`.
 pub fn save_sites_to_disk(sites: &[SavedSiteProfile]) -> std::io::Result<()> {
     let dir = config_dir();
     fs::create_dir_all(&dir)?;
-    let mut out = String::from("# MacSCP Saved Connections\n");
+    let mut out = String::from("# Ruster Saved Connections\n");
     for s in sites {
         out.push_str(&format!(
             "{}\t{}\t{}\t{}\t{}\t{}\t{}\t0x{:06x}\t{}\n",
@@ -366,7 +375,7 @@ pub fn save_password_to_keychain(host: &str, username: &str, password: &str) -> 
     if password.is_empty() {
         return false;
     }
-    let service = format!("MacSCP ({})", host);
+    let service = format!("Ruster ({})", host);
     Command::new("/usr/bin/security")
         .args([
             "add-generic-password",
@@ -385,7 +394,7 @@ pub fn save_password_to_keychain(host: &str, username: &str, password: &str) -> 
 
 /// Reads a password from the native macOS Keychain (`security find-generic-password`).
 pub fn read_password_from_keychain(host: &str, username: &str) -> Option<String> {
-    let service = format!("MacSCP ({})", host);
+    let service = format!("Ruster ({})", host);
     let output = Command::new("/usr/bin/security")
         .args([
             "find-generic-password",
@@ -403,6 +412,27 @@ pub fn read_password_from_keychain(host: &str, username: &str) -> Option<String>
             return Some(pwd);
         }
     }
+
+    // Fallback to legacy keychain service name
+    let legacy_service = format!("MacSCP ({})", host);
+    let legacy_output = Command::new("/usr/bin/security")
+        .args([
+            "find-generic-password",
+            "-s",
+            &legacy_service,
+            "-a",
+            username,
+            "-w",
+        ])
+        .output()
+        .ok()?;
+    if legacy_output.status.success() {
+        let pwd = String::from_utf8_lossy(&legacy_output.stdout).trim().to_string();
+        if !pwd.is_empty() {
+            return Some(pwd);
+        }
+    }
+
     None
 }
 

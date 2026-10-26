@@ -33,7 +33,7 @@ jobs:
       - name: Run Tests
         run: cargo test --release
 
-      - name: Build and Package MacSCP.app
+      - name: Build and Package Ruster.app
         run: |
           chmod +x ./bundle.sh
           ./bundle.sh
@@ -48,33 +48,33 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
           # Calculate SHA256 of the release zip
-          SHA256=$(shasum -a 256 target/release/MacSCP.zip | awk '{print $1}')
+          SHA256=$(shasum -a 256 target/release/Ruster.zip | awk '{print $1}')
           echo "SHA256=$SHA256" >> $GITHUB_ENV
-          echo "$SHA256  MacSCP.zip" > target/release/MacSCP.zip.sha256
+          echo "$SHA256  Ruster.zip" > target/release/Ruster.zip.sha256
           echo "Release archive SHA256: $SHA256"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: MacSCP ${{ env.VERSION }}
+          name: Ruster ${{ env.VERSION }}
           tag_name: ${{ env.VERSION }}
           draft: false
           prerelease: false
           generate_release_notes: true
           files: |
-            target/release/MacSCP.zip
-            target/release/MacSCP.zip.sha256
+            target/release/Ruster.zip
+            target/release/Ruster.zip.sha256
 
       - name: Update Homebrew Cask Formula
         run: |
           CLEAN_VERSION="${VERSION#v}"
-          sed -i '' "s/version \".*\"/version \"$CLEAN_VERSION\"/" Casks/macscp.rb
-          sed -i '' "s/sha256 \".*\"/sha256 \"$SHA256\"/" Casks/macscp.rb
-          sed -i '' "s/sha256 :no_check/sha256 \"$SHA256\"/" Casks/macscp.rb
+          sed -i '' "s/version \".*\"/version \"$CLEAN_VERSION\"/" Casks/ruster.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"$SHA256\"/" Casks/ruster.rb
+          sed -i '' "s/sha256 :no_check/sha256 \"$SHA256\"/" Casks/ruster.rb
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Casks/macscp.rb
+          git add Casks/ruster.rb
           if ! git diff --cached --quiet; then
             git commit -m "chore(cask): bump version to $CLEAN_VERSION [skip ci]"
             git push origin HEAD:main || true

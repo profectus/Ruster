@@ -1,9 +1,9 @@
 use gpui::{px, rgb, svg, AssetSource, IntoElement, Result, SharedString, Styled};
 use std::borrow::Cow;
 
-pub struct MacScpAssets;
+pub struct RusterAssets;
 
-impl AssetSource for MacScpAssets {
+impl AssetSource for RusterAssets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
         let svg_str: &'static str = match path {
             "icons/server.svg" => {

@@ -1,8 +1,8 @@
 [package]
-name = "macscp"
+name = "ruster"
 version = "0.3.0"
 edition = "2021"
-description = "MacSCP"
+description = "Ruster"
 
 [dependencies]
 gpui = { version = "0.2.2", features = ["runtime_shaders"] }
