@@ -71,6 +71,13 @@ brew install --cask macscp
 2. Unpack `MacSCP.zip`.
 3. Drag `MacSCP.app` into your `/Applications` folder.
 
+> [!TIP]
+> **macOS Gatekeeper ("App cannot be opened" / "Apple cannot verify...")**:  
+> Since MacSCP is an open-source project and built without a paid Apple Developer certificate, macOS Gatekeeper may show a security prompt upon first opening. To open it:
+> - In **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
+> - Or in Terminal, run: `xattr -dr com.apple.quarantine /Applications/MacSCP.app`
+> - Or install via Homebrew with: `brew install --cask --no-quarantine macscp`
+
 ---
 
 ## Updates
