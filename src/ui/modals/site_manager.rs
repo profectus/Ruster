@@ -171,7 +171,7 @@ impl MacScpView {
                                                                 this.site_error_message = None;
                                                                 this.site_notice = None;
                                                                 if event.click_count >= 2 {
-                                                                    this.connect_selected_site();
+                                                                    this.connect_selected_site(cx);
                                                                 }
                                                                 cx.notify();
                                                             }),
@@ -880,6 +880,26 @@ impl MacScpView {
                                                             ),
                                                     ),
                                             )
+                                            .when(self.site_is_connecting, |el| {
+                                                let host = selected_site.host.as_str();
+                                                let port = selected_site.port;
+                                                el.child(
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_2()
+                                                        .px_3()
+                                                        .py_2()
+                                                        .rounded(px(5.0))
+                                                        .bg(if theme.is_dark() { rgb(0x172554) } else { rgb(0xeff6ff) })
+                                                        .border_1()
+                                                        .border_color(if theme.is_dark() { rgb(0x1e40af) } else { rgb(0xbfdbfe) })
+                                                        .text_xs()
+                                                        .text_color(if theme.is_dark() { rgb(0x93c5fd) } else { rgb(0x1d4ed8) })
+                                                        .child(render_icon("icons/sync.svg", 14.0, theme.c_icon_active()))
+                                                        .child(t.site_connecting_status(host, port)),
+                                                )
+                                            })
                                             .when_some(self.site_error_message.clone(), |el, err| {
                                                 el.child(
                                                     div()
@@ -951,7 +971,8 @@ impl MacScpView {
                                             .child(
                                                 div()
                                                     .id("btn-connect-now")
-                                                    .cursor_pointer()
+                                                    .when(!self.site_is_connecting, |el| el.cursor_pointer())
+                                                    .when(self.site_is_connecting, |el| el.cursor_default().opacity(0.8))
                                                     .px_4()
                                                     .py_1p5()
                                                     .rounded(px(5.0))
@@ -959,14 +980,25 @@ impl MacScpView {
                                                     .text_xs()
                                                     .font_weight(gpui::FontWeight::MEDIUM)
                                                     .text_color(rgb(0xffffff))
+                                                    .flex()
+                                                    .items_center()
+                                                    .gap_1p5()
                                                     .on_mouse_down(
                                                         MouseButton::Left,
                                                         cx.listener(|this, _, _, cx| {
-                                                            this.connect_selected_site();
-                                                            cx.notify();
+                                                            if !this.site_is_connecting {
+                                                                this.connect_selected_site(cx);
+                                                            }
                                                         }),
                                                     )
-                                                    .child(t.btn_connect()),
+                                                    .when(self.site_is_connecting, |el| {
+                                                        el.child(render_icon("icons/sync.svg", 12.0, 0xffffff))
+                                                    })
+                                                    .child(if self.site_is_connecting {
+                                                        t.btn_connecting()
+                                                    } else {
+                                                        t.btn_connect()
+                                                    }),
                                             ),
                                     ),
                             ),

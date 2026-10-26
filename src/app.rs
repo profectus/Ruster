@@ -166,6 +166,7 @@ pub struct MacScpView {
     pub(crate) modal_cursor_pos: usize,
     pub(crate) site_error_message: Option<String>,
     pub(crate) site_notice: Option<(String, SiteNoticeKind)>,
+    pub(crate) site_is_connecting: bool,
     pub(crate) remote_error_banner: Option<String>,
     pub(crate) active_transfer: Option<ActiveTransferState>,
 
@@ -541,6 +542,7 @@ impl MacScpView {
             modal_cursor_pos: 0,
             site_error_message: None,
             site_notice: None,
+            site_is_connecting: false,
             remote_error_banner: None,
             active_transfer: None,
 
@@ -3048,9 +3050,13 @@ impl MacScpView {
         self.site_password_input.clear();
         self.site_error_message = None;
         self.site_notice = None;
+        self.site_is_connecting = false;
     }
 
-    pub(crate) fn connect_selected_site(&mut self) {
+    pub(crate) fn connect_selected_site(&mut self, cx: &mut Context<Self>) {
+        if self.site_is_connecting {
+            return;
+        }
         self.sort_saved_sites();
         let _ = save_sites_to_disk(&self.saved_sites);
         if let Some(mut site) = self.saved_sites.get(self.selected_site_idx).cloned() {
@@ -3103,45 +3109,92 @@ impl MacScpView {
             self.log_server(ServerLogKind::Status, format!("Připojování k {}:{} ({})...", site.host, site.port, site.protocol.label()));
             self.log_server(ServerLogKind::Command, format!("USER {}", site.username));
 
-            match list_remote_directory(
-                protocol,
-                &site.host,
-                site.port,
-                &site.username,
-                pwd.as_deref(),
-                &remote_dir,
-                self.show_hidden,
-            ) {
-                Ok(entries) => {
-                    self.log_server(ServerLogKind::Response, "230 Uživatel úspěšně přihlášen.".to_string());
-                    self.log_server(ServerLogKind::Command, format!("CWD {}", remote_dir));
-                    self.log_server(ServerLogKind::Response, format!("226 Přenos adresáře dokončen ({} položek)", entries.len()));
-                    self.sessions.push(RemoteSession {
-                        id: new_id,
-                        title: site.host.clone(),
-                        protocol,
-                        host: site.host.clone(),
-                        port: site.port,
-                        username: site.username.clone(),
-                        password: pwd,
-                        env_color: site.env_color,
-                        current_path: remote_dir,
-                        entries,
-                        selected_index: 0,
-                        max_connections: site.max_connections,
-                    });
-                    self.active_session_idx = self.sessions.len() - 1;
-                    self.active_pane = ActivePane::Remote;
-                    self.active_modal = ActiveModal::None;
-                    self.active_site_field = SiteEditField::None;
-                    self.session_dropdown_open = false;
-                    self.site_error_message = None;
+            self.site_is_connecting = true;
+            self.site_error_message = None;
+            self.site_notice = None;
+            cx.notify();
+
+            let host_clone = site.host.clone();
+            let port = site.port;
+            let user_clone = site.username.clone();
+            let pwd_clone = pwd.clone();
+            let remote_dir_clone = remote_dir.clone();
+            let show_hidden = self.show_hidden;
+
+            let (tx, rx) = std::sync::mpsc::channel::<Result<Vec<FileEntry>, String>>();
+
+            std::thread::spawn(move || {
+                let res = list_remote_directory(
+                    protocol,
+                    &host_clone,
+                    port,
+                    &user_clone,
+                    pwd_clone.as_deref(),
+                    &remote_dir_clone,
+                    show_hidden,
+                );
+                let _ = tx.send(res);
+            });
+
+            let site_clone = site.clone();
+            cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+                let mut cx = cx.clone();
+                async move {
+                    loop {
+                        match rx.try_recv() {
+                            Ok(res) => {
+                                let _ = this.update(&mut cx, |view, cx| {
+                                    view.site_is_connecting = false;
+                                    match res {
+                                        Ok(entries) => {
+                                            view.log_server(ServerLogKind::Response, "230 Uživatel úspěšně přihlášen.".to_string());
+                                            view.log_server(ServerLogKind::Command, format!("CWD {}", remote_dir));
+                                            view.log_server(ServerLogKind::Response, format!("226 Přenos adresáře dokončen ({} položek)", entries.len()));
+                                            view.sessions.push(RemoteSession {
+                                                id: new_id,
+                                                title: site_clone.host.clone(),
+                                                protocol,
+                                                host: site_clone.host.clone(),
+                                                port: site_clone.port,
+                                                username: site_clone.username.clone(),
+                                                password: pwd,
+                                                env_color: site_clone.env_color,
+                                                current_path: remote_dir,
+                                                entries,
+                                                selected_index: 0,
+                                                max_connections: site_clone.max_connections,
+                                            });
+                                            view.active_session_idx = view.sessions.len() - 1;
+                                            view.active_pane = ActivePane::Remote;
+                                            view.active_modal = ActiveModal::None;
+                                            view.active_site_field = SiteEditField::None;
+                                            view.session_dropdown_open = false;
+                                            view.site_error_message = None;
+                                        }
+                                        Err(err) => {
+                                            view.log_server(ServerLogKind::Error, format!("Chyba připojení: {}", err));
+                                            view.site_error_message = Some(err);
+                                        }
+                                    }
+                                    cx.notify();
+                                });
+                                break;
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                                cx.background_executor().timer(std::time::Duration::from_millis(50)).await;
+                            }
+                            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                let _ = this.update(&mut cx, |view, cx| {
+                                    view.site_is_connecting = false;
+                                    view.site_error_message = Some("Connection thread disconnected".to_string());
+                                    cx.notify();
+                                });
+                                break;
+                            }
+                        }
+                    }
                 }
-                Err(err) => {
-                    self.log_server(ServerLogKind::Error, format!("Chyba připojení: {}", err));
-                    self.site_error_message = Some(err);
-                }
-            }
+            }).detach();
         }
     }
 
@@ -3514,7 +3567,7 @@ impl MacScpView {
                 return;
             }
             if key == "enter" {
-                self.connect_selected_site();
+                self.connect_selected_site(cx);
                 cx.notify();
                 return;
             }

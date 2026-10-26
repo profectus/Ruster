@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.6] - 2026-10-26
+
+### Added
+- **Asynchronous Connection & Progress Feedback**:
+  - Connection attempts from Connection Manager now run completely in the background via dedicated worker thread and non-blocking polling, preventing window freezes while establishing SSH/FTP connections.
+  - Interactive "Connecting..." button state with animated spinner and click-lock to prevent repeated connection requests.
+  - Informational connecting banner displayed directly in the Site Manager dialog (`Connecting to <host>:<port>...`) with error fallback on connection failure.
+  - Full localization in English, Czech, German, Spanish, French, Italian, Polish, Portuguese, Chinese, and Japanese.
+
 ## [0.2.5] - 2026-10-26
 
 ### Fixed

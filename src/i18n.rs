@@ -1099,6 +1099,36 @@ impl I18n {
         }
     }
 
+    pub fn btn_connecting(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Connecting...",
+            Locale::Cs => "Připojuji...",
+            Locale::De => "Verbinde...",
+            Locale::Es => "Conectando...",
+            Locale::Fr => "Connexion...",
+            Locale::It => "Connessione...",
+            Locale::Pl => "Łączenie...",
+            Locale::Pt => "Conectando...",
+            Locale::Zh => "正在连接...",
+            Locale::Ja => "接続中...",
+        }
+    }
+
+    pub fn site_connecting_status(&self, host: &str, port: u16) -> String {
+        match self.locale {
+            Locale::En => format!("Connecting to {}:{}...", host, port),
+            Locale::Cs => format!("Připojování k {}:{}...", host, port),
+            Locale::De => format!("Verbindungsaufbau zu {}:{}...", host, port),
+            Locale::Es => format!("Conectando a {}:{}...", host, port),
+            Locale::Fr => format!("Connexion à {}:{}...", host, port),
+            Locale::It => format!("Connessione a {}:{}...", host, port),
+            Locale::Pl => format!("Nawiązywanie połączenia z {}:{}...", host, port),
+            Locale::Pt => format!("Conectando a {}:{}...", host, port),
+            Locale::Zh => format!("正在连接到 {}:{}...", host, port),
+            Locale::Ja => format!("{}:{} に接続中...", host, port),
+        }
+    }
+
     pub fn btn_cancel(&self) -> &'static str {
         match self.locale {
             Locale::En => "Cancel",
@@ -1921,6 +1951,8 @@ mod tests {
         for &loc in Locale::ALL {
             let t = I18n::new(loc);
             assert!(!t.btn_import_ssh().is_empty());
+            assert!(!t.btn_connecting().is_empty());
+            assert!(!t.site_connecting_status("example.com", 22).is_empty());
             assert!(!t.notice_ssh_config_not_found().is_empty());
             assert!(!t.notice_ssh_config_no_hosts().is_empty());
             assert!(!t.notice_ssh_config_imported(1).is_empty());
