@@ -127,6 +127,7 @@ pub struct FileTooltip {
 impl Render for FileTooltip {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         div()
+            .mt(px(14.0))
             .px_2p5()
             .py_1p5()
             .max_w(px(500.0))
