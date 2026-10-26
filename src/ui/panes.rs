@@ -1156,26 +1156,18 @@ impl MacScpView {
                                         div()
                                             .flex()
                                             .items_center()
-                                            .gap_1()
                                             .px_1p5()
-                                            .py_0p5()
+                                            .py_1()
                                             .rounded(px(3.5))
                                             .bg(rgba(((session.env_color & 0xffffff) << 8) | 0x24))
                                             .border_1()
                                             .border_color(rgba(((session.env_color & 0xffffff) << 8) | 0x55))
                                             .child(
                                                 div()
-                                                    .w(px(6.0))
-                                                    .h(px(6.0))
-                                                    .rounded(px(3.0))
+                                                    .w(px(7.0))
+                                                    .h(px(7.0))
+                                                    .rounded(px(3.5))
                                                     .bg(rgb(session.env_color)),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_xs()
-                                                    .font_weight(gpui::FontWeight::SEMIBOLD)
-                                                    .text_color(rgb(session.env_color))
-                                                    .child(t.environment_name(session.env_color)),
                                             ),
                                     )
                                     .child(

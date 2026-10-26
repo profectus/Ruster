@@ -495,28 +495,28 @@ pub struct EnvironmentColor {
 pub const ENV_COLORS: [EnvironmentColor; 5] = [
     EnvironmentColor {
         color: 0xef4444, // Red
-        name_en: "Production",
-        name_cs: "Produkce",
+        name_en: "Red",
+        name_cs: "Červená",
     },
     EnvironmentColor {
         color: 0xf59e0b, // Orange
-        name_en: "Staging",
-        name_cs: "Staging",
+        name_en: "Orange",
+        name_cs: "Oranžová",
     },
     EnvironmentColor {
         color: 0x2563eb, // Blue
-        name_en: "Development",
-        name_cs: "Vývoj",
+        name_en: "Blue",
+        name_cs: "Modrá",
     },
     EnvironmentColor {
         color: 0x10b981, // Green
-        name_en: "Testing",
-        name_cs: "Testování",
+        name_en: "Green",
+        name_cs: "Zelená",
     },
     EnvironmentColor {
         color: 0x8b5cf6, // Purple
-        name_en: "Internal",
-        name_cs: "Interní",
+        name_en: "Purple",
+        name_cs: "Fialová",
     },
 ];
 
@@ -1026,15 +1026,15 @@ mod tests {
     #[test]
     fn test_environment_colors() {
         assert_eq!(ENV_COLORS.len(), 5);
-        assert_eq!(ENV_COLORS[0].name_en, "Production");
+        assert_eq!(ENV_COLORS[0].name_en, "Red");
         assert_eq!(ENV_COLORS[0].color, 0xef4444);
-        assert_eq!(ENV_COLORS[1].name_en, "Staging");
+        assert_eq!(ENV_COLORS[1].name_en, "Orange");
         assert_eq!(ENV_COLORS[1].color, 0xf59e0b);
-        assert_eq!(ENV_COLORS[2].name_en, "Development");
+        assert_eq!(ENV_COLORS[2].name_en, "Blue");
         assert_eq!(ENV_COLORS[2].color, 0x2563eb);
-        assert_eq!(ENV_COLORS[3].name_en, "Testing");
+        assert_eq!(ENV_COLORS[3].name_en, "Green");
         assert_eq!(ENV_COLORS[3].color, 0x10b981);
-        assert_eq!(ENV_COLORS[4].name_en, "Internal");
+        assert_eq!(ENV_COLORS[4].name_en, "Purple");
         assert_eq!(ENV_COLORS[4].color, 0x8b5cf6);
     }
 }

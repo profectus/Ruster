@@ -1,4 +1,4 @@
-use gpui::{div, prelude::*, px, rgb, rgba, Context, IntoElement, MouseButton};
+use gpui::{div, prelude::*, px, rgb, rgba, Context, IntoElement, MouseButton, MouseDownEvent};
 use crate::app::MacScpView;
 use crate::config::{import_from_ssh_config, save_password_to_keychain, save_sites_to_disk};
 use crate::icons::render_icon;
@@ -153,7 +153,7 @@ impl MacScpView {
                                                         })
                                                         .on_mouse_down(
                                                             MouseButton::Left,
-                                                            cx.listener(move |this, _, _, cx| {
+                                                            cx.listener(move |this, event: &MouseDownEvent, _, cx| {
                                                                 this.selected_site_idx = idx;
                                                                 this.draft_protocol = proto;
                                                                 this.active_site_field =
@@ -166,6 +166,9 @@ impl MacScpView {
                                                                 this.site_cursor_pos =
                                                                     this.current_site_field_val().chars().count();
                                                                 this.site_error_message = None;
+                                                                if event.click_count >= 2 {
+                                                                    this.connect_selected_site();
+                                                                }
                                                                 cx.notify();
                                                             }),
                                                         )
@@ -748,21 +751,8 @@ impl MacScpView {
                                                             .bg(theme.modal_card_bg())
                                                             .child(
                                                                 div()
-                                                                    .flex()
-                                                                    .flex_col()
-                                                                    .gap_0p5()
-                                                                    .child(
-                                                                        div()
-                                                                            .text_color(theme.text_secondary())
-                                                                            .child(t.label_environment()),
-                                                                    )
-                                                                    .child(
-                                                                        div()
-                                                                            .text_xs()
-                                                                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                                                                            .text_color(rgb(selected_site.env_color))
-                                                                            .child(t.environment_name(selected_site.env_color)),
-                                                                    ),
+                                                                    .text_color(theme.text_secondary())
+                                                                    .child(t.label_environment()),
                                                             )
                                                             .child(
                                                                 div()
