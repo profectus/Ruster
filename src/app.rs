@@ -905,6 +905,74 @@ impl MacScpView {
         }
     }
 
+    pub fn start_in_app_update(&mut self, version: String, cx: &mut Context<Self>) {
+        self.update_status = Some(crate::update::UpdateStatus::Updating {
+            version: version.clone(),
+            message: "Příprava aktualizace...".to_string(),
+        });
+        cx.notify();
+
+        let (tx, rx) = std::sync::mpsc::channel::<Result<String, String>>();
+        let ver = version.clone();
+
+        std::thread::spawn(move || {
+            let res = crate::update::perform_in_app_update(&ver, |msg| {
+                let _ = tx.send(Ok(msg));
+            });
+            match res {
+                Ok(()) => {
+                    let _ = tx.send(Ok("__DONE__".to_string()));
+                }
+                Err(e) => {
+                    let _ = tx.send(Err(e));
+                }
+            }
+        });
+
+        cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                loop {
+                    let mut got_msg = false;
+                    while let Ok(msg) = rx.try_recv() {
+                        got_msg = true;
+                        match msg {
+                            Ok(text) if text == "__DONE__" => {
+                                let _ = this.update(&mut cx, |view, cx| {
+                                    view.update_status = Some(crate::update::UpdateStatus::ReadyToRestart {
+                                        version: version.clone(),
+                                    });
+                                    cx.notify();
+                                });
+                                return;
+                            }
+                            Ok(progress_text) => {
+                                let _ = this.update(&mut cx, |view, cx| {
+                                    view.update_status = Some(crate::update::UpdateStatus::Updating {
+                                        version: version.clone(),
+                                        message: progress_text,
+                                    });
+                                    cx.notify();
+                                });
+                            }
+                            Err(err) => {
+                                let _ = this.update(&mut cx, |view, cx| {
+                                    view.update_status = Some(crate::update::UpdateStatus::Error(err));
+                                    cx.notify();
+                                });
+                                return;
+                            }
+                        }
+                    }
+
+                    if !got_msg {
+                        cx.background_executor().timer(std::time::Duration::from_millis(50)).await;
+                    }
+                }
+            }
+        }).detach();
+    }
+
     pub(crate) fn persist_app_state(&self) {
         let _ = save_app_state(
             self.show_local_pane,

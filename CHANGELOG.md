@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-10-26
+
+### Added
+- **One-Click In-App Updater**: Added a one-click **"Aktualizovat nyní"** (Update Now) button directly to the update modal. Automatically updates via Homebrew if managed by Homebrew, or downloads, unpacks, un-quarantines, and replaces `/Applications/MacSCP.app` directly from GitHub releases without opening the Terminal.
+- **One-Click Restart**: Added a **"Restartovat MacSCP"** button upon update completion that cleanly re-launches the newly updated MacSCP instance.
+
 ## [0.2.9] - 2026-10-26
 
 ### Added

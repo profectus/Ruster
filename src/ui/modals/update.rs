@@ -10,11 +10,6 @@ impl MacScpView {
     pub fn render_update_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme();
         let t = self.i18n();
-        let download_url = if let Some(UpdateStatus::Available(ref info)) = self.update_status {
-            Some(info.release_url.clone())
-        } else {
-            None
-        };
 
         div()
             .id("modal-update-backdrop")
@@ -239,6 +234,73 @@ impl MacScpView {
                                                 ),
                                         )
                                 }
+                                Some(UpdateStatus::Updating { version, message }) => {
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .items_center()
+                                        .justify_center()
+                                        .py_8()
+                                        .gap_3()
+                                        .child(render_icon("icons/sync.svg", 32.0, 0x2563eb))
+                                        .child(
+                                            div()
+                                                .text_base()
+                                                .font_weight(gpui::FontWeight::BOLD)
+                                                .text_color(theme.text_primary())
+                                                .child(t.update_updating_title()),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(theme.text_secondary())
+                                                .child(message.clone()),
+                                        )
+                                        .child(
+                                            div()
+                                                .px_2()
+                                                .py_0p5()
+                                                .rounded(px(4.0))
+                                                .bg(theme.modal_card_bg())
+                                                .text_xs()
+                                                .text_color(theme.text_muted())
+                                                .child(format!("v{version}")),
+                                        )
+                                }
+                                Some(UpdateStatus::ReadyToRestart { version }) => {
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .items_center()
+                                        .justify_center()
+                                        .py_6()
+                                        .gap_3()
+                                        .child(render_icon("icons/check.svg", 36.0, 0x16a34a))
+                                        .child(
+                                            div()
+                                                .text_base()
+                                                .font_weight(gpui::FontWeight::BOLD)
+                                                .text_color(theme.text_primary())
+                                                .child(t.update_success_title()),
+                                        )
+                                        .child(
+                                            div()
+                                                .text_xs()
+                                                .text_color(theme.text_secondary())
+                                                .child(t.update_restart_desc()),
+                                        )
+                                        .child(
+                                            div()
+                                                .px_2()
+                                                .py_0p5()
+                                                .rounded(px(4.0))
+                                                .bg(rgb(0x16a34a))
+                                                .text_xs()
+                                                .font_weight(gpui::FontWeight::BOLD)
+                                                .text_color(rgb(0xffffff))
+                                                .child(format!("v{version}")),
+                                        )
+                                }
                                 Some(UpdateStatus::Error(err)) => {
                                     div()
                                         .flex()
@@ -277,50 +339,139 @@ impl MacScpView {
                             .justify_end()
                             .gap_2()
                             .bg(theme.modal_header_bg())
-                            .child(
-                                div()
-                                    .id("btn-close-update")
-                                    .cursor_pointer()
-                                    .px_4()
-                                    .py_1p5()
-                                    .rounded(px(5.0))
-                                    .bg(theme.button_bg())
-                                    .border_1()
-                                    .border_color(theme.border())
-                                    .text_xs()
-                                    .font_weight(gpui::FontWeight::MEDIUM)
-                                    .text_color(theme.text_primary())
-                                    .hover(|s| s.bg(theme.button_hover_bg()))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                        this.active_modal = ActiveModal::None;
-                                        cx.notify();
-                                    }))
-                                    .child(if matches!(self.update_status, Some(UpdateStatus::Available(_))) {
-                                        t.btn_cancel()
-                                    } else {
-                                        "OK"
-                                    }),
-                            )
-                            .when_some(download_url, |el, url| {
-                                el.child(
-                                    div()
-                                        .id("btn-download-update")
-                                        .cursor_pointer()
-                                        .px_3p5()
-                                        .py_1p5()
-                                        .rounded(px(5.0))
-                                        .bg(rgb(0x2563eb))
-                                        .text_xs()
-                                        .font_weight(gpui::FontWeight::MEDIUM)
-                                        .text_color(rgb(0xffffff))
-                                        .hover(|s| s.bg(rgb(0x1d4ed8)))
-                                        .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                                            let _ = std::process::Command::new("open").arg(&url).spawn();
-                                            this.active_modal = ActiveModal::None;
-                                            cx.notify();
-                                        }))
-                                        .child(t.update_download_btn()),
-                                )
+                            .children(match &self.update_status {
+                                Some(UpdateStatus::Available(info)) => {
+                                    let latest = info.latest_version.clone();
+                                    let url = info.release_url.clone();
+                                    vec![
+                                        div()
+                                            .id("btn-close-update")
+                                            .cursor_pointer()
+                                            .px_4()
+                                            .py_1p5()
+                                            .rounded(px(5.0))
+                                            .bg(theme.button_bg())
+                                            .border_1()
+                                            .border_color(theme.border())
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme.text_primary())
+                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.active_modal = ActiveModal::None;
+                                                cx.notify();
+                                            }))
+                                            .child(t.btn_cancel())
+                                            .into_any_element(),
+                                        div()
+                                            .id("btn-github-update")
+                                            .cursor_pointer()
+                                            .px_3p5()
+                                            .py_1p5()
+                                            .rounded(px(5.0))
+                                            .bg(theme.button_bg())
+                                            .border_1()
+                                            .border_color(theme.border())
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme.text_primary())
+                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                let _ = std::process::Command::new("open").arg(&url).spawn();
+                                                this.active_modal = ActiveModal::None;
+                                                cx.notify();
+                                            }))
+                                            .child(t.update_download_btn())
+                                            .into_any_element(),
+                                        div()
+                                            .id("btn-start-update-now")
+                                            .cursor_pointer()
+                                            .px_4()
+                                            .py_1p5()
+                                            .rounded(px(5.0))
+                                            .bg(rgb(0x2563eb))
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::BOLD)
+                                            .text_color(rgb(0xffffff))
+                                            .hover(|s| s.bg(rgb(0x1d4ed8)))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                this.start_in_app_update(latest.clone(), cx);
+                                            }))
+                                            .child(t.update_btn_now())
+                                            .into_any_element(),
+                                    ]
+                                }
+                                Some(UpdateStatus::Updating { .. }) => {
+                                    vec![
+                                        div()
+                                            .text_xs()
+                                            .text_color(theme.text_muted())
+                                            .child("Probíhá instalace...")
+                                            .into_any_element(),
+                                    ]
+                                }
+                                Some(UpdateStatus::ReadyToRestart { .. }) => {
+                                    vec![
+                                        div()
+                                            .id("btn-restart-later")
+                                            .cursor_pointer()
+                                            .px_4()
+                                            .py_1p5()
+                                            .rounded(px(5.0))
+                                            .bg(theme.button_bg())
+                                            .border_1()
+                                            .border_color(theme.border())
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme.text_primary())
+                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.active_modal = ActiveModal::None;
+                                                cx.notify();
+                                            }))
+                                            .child(t.update_later_btn())
+                                            .into_any_element(),
+                                        div()
+                                            .id("btn-restart-now")
+                                            .cursor_pointer()
+                                            .px_4()
+                                            .py_1p5()
+                                            .rounded(px(5.0))
+                                            .bg(rgb(0x16a34a))
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::BOLD)
+                                            .text_color(rgb(0xffffff))
+                                            .hover(|s| s.bg(rgb(0x15803d)))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, _| {
+                                                crate::update::restart_app();
+                                            }))
+                                            .child(t.update_restart_btn())
+                                            .into_any_element(),
+                                    ]
+                                }
+                                _ => {
+                                    vec![
+                                        div()
+                                            .id("btn-close-update")
+                                            .cursor_pointer()
+                                            .px_4()
+                                            .py_1p5()
+                                            .rounded(px(5.0))
+                                            .bg(theme.button_bg())
+                                            .border_1()
+                                            .border_color(theme.border())
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme.text_primary())
+                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.active_modal = ActiveModal::None;
+                                                cx.notify();
+                                            }))
+                                            .child("OK")
+                                            .into_any_element(),
+                                    ]
+                                }
                             }),
                     ),
             )

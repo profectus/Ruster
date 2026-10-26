@@ -1909,6 +1909,96 @@ impl I18n {
         }
     }
 
+    pub fn update_btn_now(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Update Now",
+            Locale::Cs => "Aktualizovat nyní",
+            Locale::De => "Jetzt aktualisieren",
+            Locale::Es => "Actualizar ahora",
+            Locale::Fr => "Mettre à jour maintenant",
+            Locale::It => "Aggiorna ora",
+            Locale::Pl => "Zaktualizuj teraz",
+            Locale::Pt => "Atualizar agora",
+            Locale::Zh => "立即更新",
+            Locale::Ja => "今すぐ更新",
+        }
+    }
+
+    pub fn update_updating_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Updating MacSCP...",
+            Locale::Cs => "Aktualizuji MacSCP...",
+            Locale::De => "MacSCP wird aktualisiert...",
+            Locale::Es => "Actualizando MacSCP...",
+            Locale::Fr => "Mise à jour de MacSCP...",
+            Locale::It => "Aggiornamento di MacSCP...",
+            Locale::Pl => "Aktualizowanie MacSCP...",
+            Locale::Pt => "Atualizando MacSCP...",
+            Locale::Zh => "正在更新 MacSCP...",
+            Locale::Ja => "MacSCP を更新中...",
+        }
+    }
+
+    pub fn update_success_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Update Installed Successfully!",
+            Locale::Cs => "Aktualizace úspěšně nainstalována!",
+            Locale::De => "Update erfolgreich installiert!",
+            Locale::Es => "¡Actualización instalada con éxito!",
+            Locale::Fr => "Mise à jour installée avec succès !",
+            Locale::It => "Aggiornamento installato con successo!",
+            Locale::Pl => "Aktualizacja zainstalowana pomyślnie!",
+            Locale::Pt => "Atualização instalada com sucesso!",
+            Locale::Zh => "更新已成功安装！",
+            Locale::Ja => "更新が正常にインストールされました！",
+        }
+    }
+
+    pub fn update_restart_btn(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Restart MacSCP",
+            Locale::Cs => "Restartovat MacSCP",
+            Locale::De => "MacSCP neu starten",
+            Locale::Es => "Reiniciar MacSCP",
+            Locale::Fr => "Redémarrer MacSCP",
+            Locale::It => "Riavvia MacSCP",
+            Locale::Pl => "Uruchom ponownie MacSCP",
+            Locale::Pt => "Reiniciar MacSCP",
+            Locale::Zh => "重启 MacSCP",
+            Locale::Ja => "MacSCP を再起動",
+        }
+    }
+
+    pub fn update_restart_desc(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "The new version is installed. Restart to apply the update.",
+            Locale::Cs => "Nová verze je připravena. Restartujte aplikaci pro dokončení.",
+            Locale::De => "Die neue Version ist installiert. Starten Sie neu, um das Update anzuwenden.",
+            Locale::Es => "La nueva versión está instalada. Reinicie para aplicar la actualización.",
+            Locale::Fr => "La nouvelle version est installée. Redémarrez pour appliquer la mise à jour.",
+            Locale::It => "La nuova versione è installata. Riavvia per applicare l'aggiornamento.",
+            Locale::Pl => "Nowa wersja jest zainstalowana. Uruchom ponownie, aby zastosować aktualizację.",
+            Locale::Pt => "A nova versão está instalada. Reinicie para aplicar a atualização.",
+            Locale::Zh => "新版本已安装。重启以应用更新。",
+            Locale::Ja => "新しいバージョンがインストールされました。再起動して適用してください。",
+        }
+    }
+
+    pub fn update_later_btn(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Later",
+            Locale::Cs => "Později",
+            Locale::De => "Später",
+            Locale::Es => "Más tarde",
+            Locale::Fr => "Plus tard",
+            Locale::It => "Più tardi",
+            Locale::Pl => "Później",
+            Locale::Pt => "Mais tarde",
+            Locale::Zh => "稍后",
+            Locale::Ja => "後で",
+        }
+    }
+
     pub fn update_copy_cmd(&self) -> &'static str {
         match self.locale {
             Locale::En => "Copy",

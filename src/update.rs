@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::Command;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -12,6 +13,8 @@ pub struct UpdateInfo {
 pub enum UpdateStatus {
     Checking,
     Available(UpdateInfo),
+    Updating { version: String, message: String },
+    ReadyToRestart { version: String },
     UpToDate(String),
     Error(String),
 }
@@ -128,6 +131,161 @@ fn extract_json_string(json: &str, field: &str) -> Option<String> {
         }
     }
     None
+}
+
+pub fn find_brew_binary() -> Option<PathBuf> {
+    for p in &["/opt/homebrew/bin/brew", "/usr/local/bin/brew"] {
+        let path = PathBuf::from(p);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    if let Ok(output) = Command::new("which").arg("brew").output() {
+        if output.status.success() {
+            let s = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !s.is_empty() {
+                return Some(PathBuf::from(s));
+            }
+        }
+    }
+    None
+}
+
+pub fn locate_target_app() -> PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        let mut curr = exe.as_path();
+        while let Some(parent) = curr.parent() {
+            if curr.extension().and_then(|e| e.to_str()) == Some("app") {
+                return curr.to_path_buf();
+            }
+            curr = parent;
+        }
+    }
+    PathBuf::from("/Applications/MacSCP.app")
+}
+
+pub fn restart_app() {
+    let target_app = locate_target_app();
+    let script = format!(
+        "sleep 0.5 && /usr/bin/open -n \"{}\"",
+        target_app.to_string_lossy()
+    );
+    let _ = Command::new("/bin/sh")
+        .args(["-c", &script])
+        .spawn();
+
+    std::process::exit(0);
+}
+
+pub fn perform_in_app_update(version: &str, mut on_progress: impl FnMut(String)) -> Result<(), String> {
+    on_progress("Ověřuji instalaci...".to_string());
+
+    // 1. If Homebrew is managing macscp, try upgrading through brew first
+    if let Some(brew) = find_brew_binary() {
+        let is_cask = Command::new(&brew)
+            .args(["list", "--cask", "macscp"])
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+
+        if is_cask {
+            on_progress("Aktualizuji repozitář Homebrew...".to_string());
+            let _ = Command::new(&brew).arg("update").output();
+
+            on_progress("Instaluji novou verzi přes Homebrew...".to_string());
+            let res = Command::new(&brew)
+                .args(["upgrade", "--cask", "--no-ask", "macscp"])
+                .output();
+
+            if let Ok(out) = res {
+                if out.status.success() {
+                    let _ = Command::new("/usr/bin/xattr")
+                        .args(["-dr", "com.apple.quarantine", "/Applications/MacSCP.app"])
+                        .output();
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    // 2. Direct download from GitHub releases
+    on_progress(format!("Stahuji balíček v{} z GitHubu...", version));
+    let tmp_dir = PathBuf::from("/tmp/macscp_update");
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+    std::fs::create_dir_all(&tmp_dir).map_err(|e| format!("Nelze vytvořit dočasnou složku: {e}"))?;
+
+    let zip_path = tmp_dir.join("MacSCP.zip");
+    let download_url = format!("https://github.com/profectus/macSCP/releases/download/v{version}/MacSCP.zip");
+
+    let curl_res = Command::new("/usr/bin/curl")
+        .args([
+            "-L",
+            "--fail",
+            "-s",
+            "--max-time", "120",
+            "-o", zip_path.to_str().unwrap(),
+            &download_url,
+        ])
+        .output()
+        .map_err(|e| format!("Chyba při stahování: {e}"))?;
+
+    if !curl_res.status.success() {
+        return Err("Stažení nové verze se nezdařilo".to_string());
+    }
+
+    on_progress("Rozbaluji novou verzi...".to_string());
+    let extract_dir = tmp_dir.join("extracted");
+    let _ = std::fs::create_dir_all(&extract_dir);
+
+    let ditto_res = Command::new("/usr/bin/ditto")
+        .args([
+            "-xk",
+            zip_path.to_str().unwrap(),
+            extract_dir.to_str().unwrap(),
+        ])
+        .output()
+        .map_err(|e| format!("Chyba při rozbalování: {e}"))?;
+
+    if !ditto_res.status.success() {
+        return Err("Nepodařilo se rozbalit archiv aplikace".to_string());
+    }
+
+    let new_app = extract_dir.join("MacSCP.app");
+    if !new_app.exists() {
+        return Err("V archivu nebyl nalezen soubor MacSCP.app".to_string());
+    }
+
+    // Remove Gatekeeper quarantine
+    let _ = Command::new("/usr/bin/xattr")
+        .args(["-dr", "com.apple.quarantine", new_app.to_str().unwrap()])
+        .output();
+
+    on_progress("Instaluji novou verzi do /Applications...".to_string());
+    let target_app = locate_target_app();
+
+    let _ = Command::new("/bin/rm")
+        .args(["-rf", target_app.to_str().unwrap()])
+        .output();
+
+    let cp_res = Command::new("/bin/cp")
+        .args([
+            "-R",
+            new_app.to_str().unwrap(),
+            target_app.to_str().unwrap(),
+        ])
+        .output()
+        .map_err(|e| format!("Chyba při kopírování: {e}"))?;
+
+    if !cp_res.status.success() {
+        return Err("Nepodařilo se přepsat stávající aplikaci".to_string());
+    }
+
+    let _ = Command::new("/usr/bin/xattr")
+        .args(["-dr", "com.apple.quarantine", target_app.to_str().unwrap()])
+        .output();
+
+    let _ = std::fs::remove_dir_all(&tmp_dir);
+    Ok(())
 }
 
 #[cfg(test)]
