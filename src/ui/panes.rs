@@ -1773,21 +1773,27 @@ impl MacScpView {
         };
         let drag_payload = DraggedFileItem::new(ActivePane::Local, drag_items);
 
+        let is_overlay_open = self.active_modal != ActiveModal::None || self.context_menu.is_some();
+
         div()
             .id(("local-row", idx))
             .cursor_pointer()
             .w_full()
             .when(!is_dotdot, |el| {
                 let text = entry_name.clone();
-                el.tooltip(move |_, cx| {
-                    cx.new(|_| FileTooltip {
-                        text: text.clone(),
-                        is_dark,
+                el.when(!is_overlay_open, |el| {
+                    el.tooltip(move |_, cx| {
+                        cx.new(|_| FileTooltip {
+                            text: text.clone(),
+                            is_dark,
+                        })
+                        .into()
                     })
-                    .into()
                 })
-                .on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
-                    cx.new(|_| info.clone().position(pos))
+                .when(!is_overlay_open, |el| {
+                    el.on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
+                        cx.new(|_| info.clone().position(pos))
+                    })
                 })
             })
             .flex()
@@ -2000,21 +2006,27 @@ impl MacScpView {
         };
         let drag_payload = DraggedFileItem::new(ActivePane::Remote, drag_items);
 
+        let is_overlay_open = self.active_modal != ActiveModal::None || self.context_menu.is_some();
+
         div()
             .id(("right-local-row", idx))
             .cursor_pointer()
             .w_full()
             .when(!is_dotdot, |el| {
                 let text = entry_name.clone();
-                el.tooltip(move |_, cx| {
-                    cx.new(|_| FileTooltip {
-                        text: text.clone(),
-                        is_dark,
+                el.when(!is_overlay_open, |el| {
+                    el.tooltip(move |_, cx| {
+                        cx.new(|_| FileTooltip {
+                            text: text.clone(),
+                            is_dark,
+                        })
+                        .into()
                     })
-                    .into()
                 })
-                .on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
-                    cx.new(|_| info.clone().position(pos))
+                .when(!is_overlay_open, |el| {
+                    el.on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
+                        cx.new(|_| info.clone().position(pos))
+                    })
                 })
             })
             .flex()
@@ -2232,21 +2244,27 @@ impl MacScpView {
         };
         let drag_payload = DraggedFileItem::new(ActivePane::Remote, drag_items);
 
+        let is_overlay_open = self.active_modal != ActiveModal::None || self.context_menu.is_some();
+
         div()
             .id(("remote-row", idx))
             .cursor_pointer()
             .w_full()
             .when(!is_dotdot, |el| {
                 let text = entry_name.clone();
-                el.tooltip(move |_, cx| {
-                    cx.new(|_| FileTooltip {
-                        text: text.clone(),
-                        is_dark,
+                el.when(!is_overlay_open, |el| {
+                    el.tooltip(move |_, cx| {
+                        cx.new(|_| FileTooltip {
+                            text: text.clone(),
+                            is_dark,
+                        })
+                        .into()
                     })
-                    .into()
                 })
-                .on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
-                    cx.new(|_| info.clone().position(pos))
+                .when(!is_overlay_open, |el| {
+                    el.on_drag(drag_payload, |info: &DraggedFileItem, pos, _, cx| {
+                        cx.new(|_| info.clone().position(pos))
+                    })
                 })
             })
             .flex()

@@ -2696,7 +2696,7 @@ impl MacScpView {
                                             view.sync_state.items = items;
                                             view.sync_state.error_message = None;
                                         }
-                                        Ok(Err(err)) => {
+                                        Err(err) => {
                                             view.sync_state.error_message = Some(err);
                                         }
                                     }
