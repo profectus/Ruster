@@ -1743,7 +1743,7 @@ impl MacScpView {
         let max_workers = if let Some(session) = self.sessions.get(self.active_session_idx) {
             session.max_connections.clamp(1, 10)
         } else {
-            2
+            self.max_concurrent_transfers.clamp(1, 10)
         };
 
         // Spawn background worker thread

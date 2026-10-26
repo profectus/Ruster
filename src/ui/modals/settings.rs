@@ -549,6 +549,117 @@ impl MacScpView {
                                             ),
                                     ),
                             )
+                            // Section: Transfers & Concurrent Connections
+                            .child(
+                                div()
+                                    .flex()
+                                    .flex_col()
+                                    .gap_2()
+                                    .child(
+                                        div()
+                                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                                            .text_xs()
+                                            .text_color(theme.text_secondary())
+                                            .child(t.transfers_section_title()),
+                                    )
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .justify_between()
+                                            .p_2p5()
+                                            .bg(theme.modal_card_bg())
+                                            .rounded(px(6.0))
+                                            .border_1()
+                                            .border_color(theme.border())
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap_0p5()
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                                            .text_color(theme.text_primary())
+                                                            .child(t.label_max_connections()),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .text_color(theme.text_secondary())
+                                                            .child(t.max_concurrent_desc()),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .items_center()
+                                                    .gap_2()
+                                                    .child(
+                                                        div()
+                                                            .id("settings-conn-minus")
+                                                            .cursor_pointer()
+                                                            .w(px(24.0))
+                                                            .h(px(24.0))
+                                                            .rounded(px(4.0))
+                                                            .bg(theme.button_bg())
+                                                            .border_1()
+                                                            .border_color(theme.border())
+                                                            .flex()
+                                                            .items_center()
+                                                            .justify_center()
+                                                            .text_xs()
+                                                            .font_weight(gpui::FontWeight::BOLD)
+                                                            .text_color(theme.text_primary())
+                                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                                if this.max_concurrent_transfers > 1 {
+                                                                    this.max_concurrent_transfers -= 1;
+                                                                    this.persist_app_state();
+                                                                    cx.notify();
+                                                                }
+                                                            }))
+                                                            .child("-"),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .w(px(32.0))
+                                                            .text_center()
+                                                            .font_weight(gpui::FontWeight::BOLD)
+                                                            .text_sm()
+                                                            .text_color(theme.text_primary())
+                                                            .child(format!("{}", self.max_concurrent_transfers.clamp(1, 10))),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .id("settings-conn-plus")
+                                                            .cursor_pointer()
+                                                            .w(px(24.0))
+                                                            .h(px(24.0))
+                                                            .rounded(px(4.0))
+                                                            .bg(theme.button_bg())
+                                                            .border_1()
+                                                            .border_color(theme.border())
+                                                            .flex()
+                                                            .items_center()
+                                                            .justify_center()
+                                                            .text_xs()
+                                                            .font_weight(gpui::FontWeight::BOLD)
+                                                            .text_color(theme.text_primary())
+                                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                                if this.max_concurrent_transfers < 10 {
+                                                                    this.max_concurrent_transfers += 1;
+                                                                    this.persist_app_state();
+                                                                    cx.notify();
+                                                                }
+                                                            }))
+                                                            .child("+"),
+                                                    ),
+                                            ),
+                                    ),
+                            )
                             // Section: Remote Editing & File Types
                             .child(
                                 div()

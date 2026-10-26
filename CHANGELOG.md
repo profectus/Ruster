@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.9] - 2026-10-26
+
+### Added
+- **Transfers & Concurrent Connections Setting in Settings Modal**: Added configuration control for maximum concurrent transfers (1 to 10) in global application Settings (`Cmd+,`).
+- **Concurrent Transfer Visual Indicators**: Batch header in the bottom transfer bar now shows total aggregate speed across all active worker threads and displays the number of active parallel transfers (e.g. `— 3 paralelně`).
+
 ## [0.2.8] - 2026-10-26
 
 ### Removed

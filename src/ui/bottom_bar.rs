@@ -465,8 +465,8 @@ impl MacScpView {
                 let completed_count = items.iter().filter(|i| !i.is_dir && i.status == TransferStatus::Completed).count();
                 let total_file_count = items.iter().filter(|i| !i.is_dir).count().max(1);
 
-                let active_item = items.iter().find(|i| i.status == TransferStatus::Transferring && !i.is_dir);
-                let active_speed = active_item.map(|i| i.speed_mbps).unwrap_or(0.0);
+                let active_items: Vec<&TransferQueueItem> = items.iter().copied().filter(|i| i.status == TransferStatus::Transferring && !i.is_dir).collect();
+                let active_speed: f64 = active_items.iter().map(|i| i.speed_mbps).sum();
                 let batch_pct = if total_bytes > 0 {
                     ((transferred_bytes as f64 / total_bytes as f64) * 100.0).clamp(0.0, 100.0) as f32
                 } else {
@@ -485,6 +485,14 @@ impl MacScpView {
                 let title_text = match direction {
                     TransferDirection::Download => format!("Stahování ({} položek)", total_items_count),
                     TransferDirection::Upload => format!("Nahrávání ({} položek)", total_items_count),
+                };
+
+                let active_subtitle = if active_items.len() > 1 {
+                    Some(format!("- {} paralelně", active_items.len()))
+                } else if let Some(first) = active_items.first() {
+                    Some(format!("- {}", first.filename))
+                } else {
+                    None
                 };
 
                 let speed_str = if active_speed > 0.05 {
@@ -558,14 +566,14 @@ impl MacScpView {
                                             .whitespace_nowrap()
                                             .child(title_text),
                                     )
-                                    .when_some(active_item, |el, ai| {
+                                    .when_some(active_subtitle, |el, sub| {
                                         el.child(
                                             div()
                                                 .text_color(theme.text_secondary())
                                                 .overflow_hidden()
                                                 .text_ellipsis()
                                                 .whitespace_nowrap()
-                                                .child(format!("- {}", ai.filename)),
+                                                .child(sub),
                                         )
                                     }),
                             )

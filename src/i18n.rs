@@ -992,6 +992,36 @@ impl I18n {
         }
     }
 
+    pub fn transfers_section_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "TRANSFERS & CONCURRENT CONNECTIONS",
+            Locale::Cs => "PŘENOSY A PARALELNÍ SPOJENÍ",
+            Locale::De => "ÜBERTRAGUNGEN & PARALLELE VERBINDUNGEN",
+            Locale::Es => "TRANSFERENCIAS Y CONEXIONES SIMULTÁNEAS",
+            Locale::Fr => "TRANSFERTS ET CONNEXIONS SIMULTANÉES",
+            Locale::It => "TRASFERIMENTI E CONNESSIONI SIMULTANEE",
+            Locale::Pl => "TRANSFERY I POŁĄCZENIA RÓWNOLEGŁE",
+            Locale::Pt => "TRANSFERÊNCIAS E CONEXÕES SIMULTÂNEAS",
+            Locale::Zh => "传输与并发连接",
+            Locale::Ja => "転送と並行接続",
+        }
+    }
+
+    pub fn max_concurrent_desc(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Default number of parallel file transfers (1–10)",
+            Locale::Cs => "Výchozí počet paralelních přenosů souborů (1–10)",
+            Locale::De => "Standardanzahl paralleler Dateiübertragungen (1–10)",
+            Locale::Es => "Número predeterminado de transferencias de archivos en paralelo (1–10)",
+            Locale::Fr => "Nombre par défaut de transferts de fichiers en parallèle (1–10)",
+            Locale::It => "Numero predefinito di trasferimenti file paralleli (1–10)",
+            Locale::Pl => "Domyślna liczba równoległych transferów plików (1–10)",
+            Locale::Pt => "Número padrão de transferências paralelas de arquivos (1–10)",
+            Locale::Zh => "默认并发文件传输数 (1–10)",
+            Locale::Ja => "デフォルトの並行ファイル転送数 (1–10)",
+        }
+    }
+
     pub fn label_environment(&self) -> &'static str {
         match self.locale {
             Locale::En => "Color:",
