@@ -500,14 +500,30 @@ impl MacScpView {
                 .items_center()
                 .justify_center()
                 .gap_3()
-                .child(render_icon("icons/sync.svg", 24.0, theme.c_icon_active()))
+                .child(render_icon("icons/sync.svg", 26.0, theme.c_icon_active()))
                 .child(
                     div()
                         .text_sm()
                         .font_weight(gpui::FontWeight::MEDIUM)
                         .text_color(theme.text_primary())
                         .child(t.sync_status_comparing()),
-                );
+                )
+                .when_some(state.progress_msg.clone(), |el, pmsg| {
+                    el.child(
+                        div()
+                            .max_w(px(550.0))
+                            .px_3()
+                            .py_1p5()
+                            .rounded(px(5.0))
+                            .bg(theme.input_bg())
+                            .border_1()
+                            .border_color(theme.border())
+                            .text_xs()
+                            .text_color(theme.text_secondary())
+                            .truncate()
+                            .child(pmsg),
+                    )
+                });
         }
 
         if let Some(err) = &state.error_message {

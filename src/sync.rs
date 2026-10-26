@@ -20,6 +20,16 @@ pub fn scan_local_dir(
     recursive: bool,
     show_hidden: bool,
 ) -> Result<HashMap<String, ScannedFile>, String> {
+    scan_local_dir_with_progress(root, recursive, show_hidden, |_, _| {})
+}
+
+/// Recursively or non-recursively scans a local directory with progress callback.
+pub fn scan_local_dir_with_progress<F: FnMut(&str, usize)>(
+    root: &Path,
+    recursive: bool,
+    show_hidden: bool,
+    mut on_progress: F,
+) -> Result<HashMap<String, ScannedFile>, String> {
     let mut result = HashMap::new();
     if !root.exists() {
         return Err(format!("Local path does not exist: {}", root.display()));
@@ -28,6 +38,9 @@ pub fn scan_local_dir(
     let mut dir_queue: Vec<PathBuf> = vec![PathBuf::new()];
 
     while let Some(current_rel) = dir_queue.pop() {
+        let current_rel_str = current_rel.to_string_lossy().to_string();
+        on_progress(&current_rel_str, result.len());
+
         let current_dir = root.join(&current_rel);
         let read_dir = match std::fs::read_dir(&current_dir) {
             Ok(rd) => rd,
@@ -104,6 +117,31 @@ pub fn scan_remote_dir(
     recursive: bool,
     show_hidden: bool,
 ) -> Result<HashMap<String, ScannedFile>, String> {
+    scan_remote_dir_with_progress(
+        protocol,
+        host,
+        port,
+        username,
+        password,
+        remote_root,
+        recursive,
+        show_hidden,
+        |_, _| {},
+    )
+}
+
+/// Recursively or non-recursively scans a remote directory with progress callback.
+pub fn scan_remote_dir_with_progress<F: FnMut(&str, usize)>(
+    protocol: Protocol,
+    host: &str,
+    port: u16,
+    username: &str,
+    password: Option<&str>,
+    remote_root: &str,
+    recursive: bool,
+    show_hidden: bool,
+    mut on_progress: F,
+) -> Result<HashMap<String, ScannedFile>, String> {
     let mut result = HashMap::new();
     let root_clean = remote_root.trim_end_matches('/').to_string();
     let root_clean = if root_clean.is_empty() { "/".to_string() } else { root_clean };
@@ -116,6 +154,8 @@ pub fn scan_remote_dir(
             continue;
         }
         visited.insert(curr_remote.clone());
+
+        on_progress(&curr_remote, result.len());
 
         let entries = list_remote_directory(
             protocol,

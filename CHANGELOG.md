@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5] - 2026-10-26
+
+### Fixed
+- **Non-Blocking Directory Synchronization**:
+  - Replaced blocking thread join with a non-blocking background thread and asynchronous message queue, eliminating UI freezes and beachball cursors during directory comparison.
+  - Added real-time scanning progress indicator in the Synchronize modal (`Scanning local...`, `Scanning remote...`, count of discovered items).
+  - Maintained 120fps UI responsiveness so the window can be moved, resized, or closed freely while scanning remote files.
+
 ## [0.2.4] - 2026-10-26
 
 ### Fixed

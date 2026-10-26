@@ -734,6 +734,7 @@ pub struct SyncState {
     pub mirror_delete: bool,
     pub is_comparing: bool,
     pub has_compared: bool,
+    pub progress_msg: Option<String>,
     pub error_message: Option<String>,
     pub items: Vec<SyncItem>,
 }
@@ -747,6 +748,7 @@ impl Default for SyncState {
             mirror_delete: false,
             is_comparing: false,
             has_compared: false,
+            progress_msg: None,
             error_message: None,
             items: Vec::new(),
         }

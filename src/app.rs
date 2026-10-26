@@ -2539,6 +2539,7 @@ impl MacScpView {
         self.sync_state.items.clear();
         self.sync_state.has_compared = false;
         self.sync_state.is_comparing = false;
+        self.sync_state.progress_msg = None;
         self.sync_state.error_message = None;
         self.active_modal = ActiveModal::Synchronize;
         self.run_sync_comparison(cx);
@@ -2547,6 +2548,7 @@ impl MacScpView {
 
     pub(crate) fn run_sync_comparison(&mut self, cx: &mut Context<Self>) {
         self.sync_state.is_comparing = true;
+        self.sync_state.progress_msg = None;
         self.sync_state.error_message = None;
         self.sync_state.has_compared = false;
         self.sync_state.items.clear();
@@ -2571,61 +2573,147 @@ impl MacScpView {
         let mirror_delete = self.sync_state.mirror_delete;
         let show_hidden = self.show_hidden;
 
+        enum SyncCompareMsg {
+            Progress(String),
+            Finished(Result<Vec<SyncItem>, String>),
+        }
+
+        let (tx, rx) = std::sync::mpsc::channel::<SyncCompareMsg>();
+
+        let tx_thread = tx.clone();
+        std::thread::spawn(move || {
+            let tx1 = tx_thread.clone();
+            let _ = tx_thread.send(SyncCompareMsg::Progress("Scanning local files...".to_string()));
+            let local_map = match crate::sync::scan_local_dir_with_progress(
+                &local_dir,
+                recursive,
+                show_hidden,
+                move |rel, count| {
+                    let disp = if rel.is_empty() { "root" } else { rel };
+                    let _ = tx1.send(SyncCompareMsg::Progress(format!(
+                        "Scanning local: {} ({} items)",
+                        disp, count
+                    )));
+                },
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    let _ = tx_thread.send(SyncCompareMsg::Finished(Err(e)));
+                    return;
+                }
+            };
+
+            let tx2 = tx_thread.clone();
+            let remote_map = if is_remote_session {
+                if let Some((proto, host, port, user, pass, rem_path)) = session_info {
+                    let _ = tx_thread.send(SyncCompareMsg::Progress(format!(
+                        "Connecting & scanning remote: {}...",
+                        rem_path
+                    )));
+                    match crate::sync::scan_remote_dir_with_progress(
+                        proto,
+                        &host,
+                        port,
+                        &user,
+                        pass.as_deref(),
+                        &rem_path,
+                        recursive,
+                        show_hidden,
+                        move |curr, count| {
+                            let _ = tx2.send(SyncCompareMsg::Progress(format!(
+                                "Scanning remote: {} ({} items)",
+                                curr, count
+                            )));
+                        },
+                    ) {
+                        Ok(m) => m,
+                        Err(e) => {
+                            let _ = tx_thread.send(SyncCompareMsg::Finished(Err(e)));
+                            return;
+                        }
+                    }
+                } else {
+                    HashMap::new()
+                }
+            } else {
+                let tx3 = tx_thread.clone();
+                let _ = tx_thread.send(SyncCompareMsg::Progress("Scanning target folder...".to_string()));
+                match crate::sync::scan_local_dir_with_progress(
+                    &right_dir,
+                    recursive,
+                    show_hidden,
+                    move |rel, count| {
+                        let disp = if rel.is_empty() { "root" } else { rel };
+                        let _ = tx3.send(SyncCompareMsg::Progress(format!(
+                            "Scanning target: {} ({} items)",
+                            disp, count
+                        )));
+                    },
+                ) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        let _ = tx_thread.send(SyncCompareMsg::Finished(Err(e)));
+                        return;
+                    }
+                }
+            };
+
+            let _ = tx_thread.send(SyncCompareMsg::Progress("Comparing file lists...".to_string()));
+            let items = crate::sync::compare_directories(
+                &local_map,
+                &remote_map,
+                direction,
+                criterion,
+                mirror_delete,
+            );
+
+            let _ = tx_thread.send(SyncCompareMsg::Finished(Ok(items)));
+        });
+
         cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
-                let res = std::thread::spawn(move || -> Result<Vec<SyncItem>, String> {
-                    let local_map = crate::sync::scan_local_dir(&local_dir, recursive, show_hidden)?;
-
-                    let remote_map = if is_remote_session {
-                        if let Some((proto, host, port, user, pass, rem_path)) = session_info {
-                            crate::sync::scan_remote_dir(
-                                proto,
-                                &host,
-                                port,
-                                &user,
-                                pass.as_deref(),
-                                &rem_path,
-                                recursive,
-                                show_hidden,
-                            )?
-                        } else {
-                            HashMap::new()
-                        }
-                    } else {
-                        crate::sync::scan_local_dir(&right_dir, recursive, show_hidden)?
-                    };
-
-                    let items = crate::sync::compare_directories(
-                        &local_map,
-                        &remote_map,
-                        direction,
-                        criterion,
-                        mirror_delete,
-                    );
-
-                    Ok(items)
-                }).join();
-
-                let _ = this.update(&mut cx, |view, cx| {
-                    view.sync_state.is_comparing = false;
-                    view.sync_state.has_compared = true;
-                    match res {
-                        Ok(Ok(items)) => {
-                            view.sync_state.items = items;
-                            view.sync_state.error_message = None;
-                        }
-                        Ok(Err(err)) => {
-                            view.sync_state.error_message = Some(err);
-                        }
-                        Err(_) => {
-                            view.sync_state.error_message = Some("Comparison thread crashed".to_string());
+                loop {
+                    let mut got_msg = false;
+                    while let Ok(msg) = rx.try_recv() {
+                        got_msg = true;
+                        match msg {
+                            SyncCompareMsg::Progress(status) => {
+                                let _ = this.update(&mut cx, |view, cx| {
+                                    view.sync_state.progress_msg = Some(status);
+                                    cx.notify();
+                                });
+                            }
+                            SyncCompareMsg::Finished(res) => {
+                                let _ = this.update(&mut cx, |view, cx| {
+                                    view.sync_state.is_comparing = false;
+                                    view.sync_state.progress_msg = None;
+                                    view.sync_state.has_compared = true;
+                                    match res {
+                                        Ok(items) => {
+                                            view.sync_state.items = items;
+                                            view.sync_state.error_message = None;
+                                        }
+                                        Ok(Err(err)) => {
+                                            view.sync_state.error_message = Some(err);
+                                        }
+                                    }
+                                    cx.notify();
+                                });
+                                return;
+                            }
                         }
                     }
-                    cx.notify();
-                });
+
+                    if !got_msg {
+                        cx.background_executor()
+                            .timer(std::time::Duration::from_millis(40))
+                            .await;
+                    }
+                }
             }
-        }).detach();
+        })
+        .detach();
     }
 
     pub(crate) fn execute_synchronization(&mut self, cx: &mut Context<Self>) {
