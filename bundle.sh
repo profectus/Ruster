@@ -13,7 +13,10 @@ cp target/release/macscp "$APP_DIR/Contents/MacOS/macscp"
 cp assets/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
 chmod +x "$APP_DIR/Contents/MacOS/macscp"
 
-cat << 'EOF' > "$APP_DIR/Contents/Info.plist"
+VERSION=$(grep -m1 '^version =' Cargo.toml | cut -d '"' -f2)
+VERSION=${VERSION:-0.1.1}
+
+cat << EOF > "$APP_DIR/Contents/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -31,7 +34,7 @@ cat << 'EOF' > "$APP_DIR/Contents/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>$VERSION</string>
     <key>CFBundleVersion</key>
     <string>1</string>
     <key>LSMinimumSystemVersion</key>
