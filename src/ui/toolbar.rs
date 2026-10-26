@@ -182,28 +182,18 @@ impl MacScpView {
                     .child(self.render_icon_btn(
                         "act-quick-filter",
                         "icons/search.svg",
-                        match self.active_pane {
-                            ActivePane::Local => self.show_local_filter,
-                            ActivePane::Remote => self.show_remote_filter,
-                        },
+                        self.show_local_filter || self.show_remote_filter,
                         cx,
                         |this, cx| {
-                            match this.active_pane {
-                                ActivePane::Local => {
-                                    this.show_local_filter = !this.show_local_filter;
-                                    if !this.show_local_filter {
-                                        this.local_filter_query.clear();
-                                    }
-                                    this.ensure_local_selection();
-                                }
-                                ActivePane::Remote => {
-                                    this.show_remote_filter = !this.show_remote_filter;
-                                    if !this.show_remote_filter {
-                                        this.remote_filter_query.clear();
-                                    }
-                                    this.ensure_remote_selection();
-                                }
+                            let should_show = !(this.show_local_filter && this.show_remote_filter);
+                            this.show_local_filter = should_show;
+                            this.show_remote_filter = should_show;
+                            if !should_show {
+                                this.local_filter_query.clear();
+                                this.remote_filter_query.clear();
                             }
+                            this.ensure_local_selection();
+                            this.ensure_remote_selection();
                             cx.notify();
                         },
                     ))
@@ -298,24 +288,37 @@ impl MacScpView {
         let theme = self.theme();
         let is_active_pane = self.active_pane == pane;
         let (query, visible_count, total_count, close_id) = match pane {
-            ActivePane::Local => (
-                self.local_filter_query.clone(),
-                self.filtered_local_indices().len(),
-                self.local_entries.len(),
-                "close-local-filter-bar",
-            ),
-            ActivePane::Remote => (
-                self.remote_filter_query.clone(),
-                self.filtered_remote_indices().len(),
-                if self.sessions.is_empty() {
-                    self.right_entries.len()
+            ActivePane::Local => {
+                let vc = self
+                    .filtered_local_indices()
+                    .iter()
+                    .filter(|&&i| self.local_entries.get(i).map(|e| e.name != "..").unwrap_or(false))
+                    .count();
+                let tc = self.local_entries.iter().filter(|e| e.name != "..").count();
+                (self.local_filter_query.clone(), vc, tc, "close-local-filter-bar")
+            }
+            ActivePane::Remote => {
+                let (vc, tc) = if self.sessions.is_empty() {
+                    let v = self
+                        .filtered_remote_indices()
+                        .iter()
+                        .filter(|&&i| self.right_entries.get(i).map(|e| e.name != "..").unwrap_or(false))
+                        .count();
+                    let t = self.right_entries.iter().filter(|e| e.name != "..").count();
+                    (v, t)
                 } else if let Some(s) = self.sessions.get(self.active_session_idx) {
-                    s.entries.len()
+                    let v = self
+                        .filtered_remote_indices()
+                        .iter()
+                        .filter(|&&i| s.entries.get(i).map(|e| e.name != "..").unwrap_or(false))
+                        .count();
+                    let t = s.entries.iter().filter(|e| e.name != "..").count();
+                    (v, t)
                 } else {
-                    0
-                },
-                "close-remote-filter-bar",
-            ),
+                    (0, 0)
+                };
+                (self.remote_filter_query.clone(), vc, tc, "close-remote-filter-bar")
+            }
         };
 
         div()

@@ -3668,17 +3668,28 @@ impl MacScpView {
 
         if active_filter_open {
             if key == "escape" {
-                match self.active_pane {
-                    ActivePane::Local => {
-                        self.show_local_filter = false;
-                        self.local_filter_query.clear();
-                        self.ensure_local_selection();
+                let has_active_query = match self.active_pane {
+                    ActivePane::Local => !self.local_filter_query.is_empty(),
+                    ActivePane::Remote => !self.remote_filter_query.is_empty(),
+                };
+                if has_active_query {
+                    match self.active_pane {
+                        ActivePane::Local => {
+                            self.local_filter_query.clear();
+                            self.ensure_local_selection();
+                        }
+                        ActivePane::Remote => {
+                            self.remote_filter_query.clear();
+                            self.ensure_remote_selection();
+                        }
                     }
-                    ActivePane::Remote => {
-                        self.show_remote_filter = false;
-                        self.remote_filter_query.clear();
-                        self.ensure_remote_selection();
-                    }
+                } else {
+                    self.show_local_filter = false;
+                    self.show_remote_filter = false;
+                    self.local_filter_query.clear();
+                    self.remote_filter_query.clear();
+                    self.ensure_local_selection();
+                    self.ensure_remote_selection();
                 }
                 cx.notify();
                 return;
@@ -3840,14 +3851,12 @@ impl MacScpView {
             "escape" => {
                 self.context_menu = None;
                 self.session_dropdown_open = false;
-                if self.show_local_filter {
+                if self.show_local_filter || self.show_remote_filter {
                     self.show_local_filter = false;
-                    self.local_filter_query.clear();
-                    self.ensure_local_selection();
-                }
-                if self.show_remote_filter {
                     self.show_remote_filter = false;
+                    self.local_filter_query.clear();
                     self.remote_filter_query.clear();
+                    self.ensure_local_selection();
                     self.ensure_remote_selection();
                 }
                 cx.notify();
@@ -3991,22 +4000,15 @@ impl Render for MacScpView {
             }))
             .on_action(cx.listener(|this, _: &ToggleQuickFilter, _, cx| {
                 if this.active_modal != ActiveModal::None { return; }
-                match this.active_pane {
-                    ActivePane::Local => {
-                        this.show_local_filter = !this.show_local_filter;
-                        if !this.show_local_filter {
-                            this.local_filter_query.clear();
-                        }
-                        this.ensure_local_selection();
-                    }
-                    ActivePane::Remote => {
-                        this.show_remote_filter = !this.show_remote_filter;
-                        if !this.show_remote_filter {
-                            this.remote_filter_query.clear();
-                        }
-                        this.ensure_remote_selection();
-                    }
+                let should_show = !(this.show_local_filter && this.show_remote_filter);
+                this.show_local_filter = should_show;
+                this.show_remote_filter = should_show;
+                if !should_show {
+                    this.local_filter_query.clear();
+                    this.remote_filter_query.clear();
                 }
+                this.ensure_local_selection();
+                this.ensure_remote_selection();
                 cx.notify();
             }))
             .on_action(cx.listener(|this, _: &RefreshPanes, _, cx| {

@@ -1011,6 +1011,16 @@ mod tests {
         // non-matching query only returns ".."
         let none = filter_entries("xyz");
         assert_eq!(none, vec![".."]);
+
+        // Count of found items never counts ".."
+        let found_count = |query: &str| -> usize {
+            filter_entries(query).into_iter().filter(|n| n != "..").count()
+        };
+        assert_eq!(found_count(""), 3);
+        assert_eq!(found_count(".pdf"), 2);
+        assert_eq!(found_count("pdf"), 2);
+        assert_eq!(found_count("docx"), 1);
+        assert_eq!(found_count("xyz"), 0);
     }
 
     #[test]

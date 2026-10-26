@@ -101,12 +101,21 @@ impl MacScpView {
         local_breadcrumbs.reverse();
         let crumb_count = local_breadcrumbs.len();
 
-        let total_files = self.local_entries.iter().filter(|e| !e.is_dir).count();
-        let total_dirs = self
-            .local_entries
-            .iter()
-            .filter(|e| e.is_dir && e.name != "..")
-            .count();
+        let visible_indices = self.filtered_local_indices();
+        let (total_dirs, total_files) = if self.show_local_filter && !self.local_filter_query.trim().is_empty() {
+            let visible_entries: Vec<&FileEntry> = visible_indices.iter().filter_map(|&i| self.local_entries.get(i)).collect();
+            let dirs = visible_entries.iter().filter(|e| e.is_dir && e.name != "..").count();
+            let files = visible_entries.iter().filter(|e| !e.is_dir).count();
+            (dirs, files)
+        } else {
+            let dirs = self
+                .local_entries
+                .iter()
+                .filter(|e| e.is_dir && e.name != "..")
+                .count();
+            let files = self.local_entries.iter().filter(|e| !e.is_dir).count();
+            (dirs, files)
+        };
         let any_selected: Vec<&FileEntry> = self
             .local_entries
             .iter()
@@ -114,7 +123,6 @@ impl MacScpView {
             .collect();
         let selected_count = any_selected.len();
         let selected_size: u64 = any_selected.iter().map(|e| e.effective_size()).sum();
-        let visible_indices = self.filtered_local_indices();
 
         div()
             .id("pane-local")
@@ -296,11 +304,15 @@ impl MacScpView {
                                         MouseButton::Left,
                                         cx.listener(|this, _, _, cx| {
                                             this.active_pane = ActivePane::Local;
-                                            this.show_local_filter = !this.show_local_filter;
-                                            if !this.show_local_filter {
+                                            let should_show = !(this.show_local_filter && this.show_remote_filter);
+                                            this.show_local_filter = should_show;
+                                            this.show_remote_filter = should_show;
+                                            if !should_show {
                                                 this.local_filter_query.clear();
+                                                this.remote_filter_query.clear();
                                             }
                                             this.ensure_local_selection();
+                                            this.ensure_remote_selection();
                                             cx.notify();
                                         }),
                                     )
@@ -561,12 +573,21 @@ impl MacScpView {
         right_breadcrumbs.reverse();
         let crumb_count = right_breadcrumbs.len();
 
-        let total_files = self.right_entries.iter().filter(|e| !e.is_dir).count();
-        let total_dirs = self
-            .right_entries
-            .iter()
-            .filter(|e| e.is_dir && e.name != "..")
-            .count();
+        let visible_indices = self.filtered_remote_indices();
+        let (total_dirs, total_files) = if self.show_remote_filter && !self.remote_filter_query.trim().is_empty() {
+            let visible_entries: Vec<&FileEntry> = visible_indices.iter().filter_map(|&i| self.right_entries.get(i)).collect();
+            let dirs = visible_entries.iter().filter(|e| e.is_dir && e.name != "..").count();
+            let files = visible_entries.iter().filter(|e| !e.is_dir).count();
+            (dirs, files)
+        } else {
+            let dirs = self
+                .right_entries
+                .iter()
+                .filter(|e| e.is_dir && e.name != "..")
+                .count();
+            let files = self.right_entries.iter().filter(|e| !e.is_dir).count();
+            (dirs, files)
+        };
         let any_selected: Vec<&FileEntry> = self
             .right_entries
             .iter()
@@ -574,7 +595,6 @@ impl MacScpView {
             .collect();
         let selected_count = any_selected.len();
         let selected_size: u64 = any_selected.iter().map(|e| e.effective_size()).sum();
-        let visible_indices = self.filtered_remote_indices();
 
         div()
             .id("pane-right-local")
@@ -756,10 +776,14 @@ impl MacScpView {
                                         MouseButton::Left,
                                         cx.listener(|this, _, _, cx| {
                                             this.active_pane = ActivePane::Remote;
-                                            this.show_remote_filter = !this.show_remote_filter;
-                                            if !this.show_remote_filter {
+                                            let should_show = !(this.show_local_filter && this.show_remote_filter);
+                                            this.show_local_filter = should_show;
+                                            this.show_remote_filter = should_show;
+                                            if !should_show {
+                                                this.local_filter_query.clear();
                                                 this.remote_filter_query.clear();
                                             }
+                                            this.ensure_local_selection();
                                             this.ensure_remote_selection();
                                             cx.notify();
                                         }),
@@ -1026,12 +1050,21 @@ impl MacScpView {
             remote_tree_nodes.push((child_depth, entry.name.clone(), p));
         }
 
-        let total_files = session.entries.iter().filter(|e| !e.is_dir).count();
-        let total_dirs = session
-            .entries
-            .iter()
-            .filter(|e| e.is_dir && e.name != "..")
-            .count();
+        let visible_indices = self.filtered_remote_indices();
+        let (total_dirs, total_files) = if self.show_remote_filter && !self.remote_filter_query.trim().is_empty() {
+            let visible_entries: Vec<&FileEntry> = visible_indices.iter().filter_map(|&i| session.entries.get(i)).collect();
+            let dirs = visible_entries.iter().filter(|e| e.is_dir && e.name != "..").count();
+            let files = visible_entries.iter().filter(|e| !e.is_dir).count();
+            (dirs, files)
+        } else {
+            let dirs = session
+                .entries
+                .iter()
+                .filter(|e| e.is_dir && e.name != "..")
+                .count();
+            let files = session.entries.iter().filter(|e| !e.is_dir).count();
+            (dirs, files)
+        };
         let any_selected: Vec<&FileEntry> = session
             .entries
             .iter()
@@ -1039,7 +1072,6 @@ impl MacScpView {
             .collect();
         let selected_count = any_selected.len();
         let selected_size: u64 = any_selected.iter().map(|e| e.effective_size()).sum();
-        let visible_indices = self.filtered_remote_indices();
 
         div()
             .id("pane-remote")
@@ -1253,10 +1285,14 @@ impl MacScpView {
                                         MouseButton::Left,
                                         cx.listener(|this, _, _, cx| {
                                             this.active_pane = ActivePane::Remote;
-                                            this.show_remote_filter = !this.show_remote_filter;
-                                            if !this.show_remote_filter {
+                                            let should_show = !(this.show_local_filter && this.show_remote_filter);
+                                            this.show_local_filter = should_show;
+                                            this.show_remote_filter = should_show;
+                                            if !should_show {
+                                                this.local_filter_query.clear();
                                                 this.remote_filter_query.clear();
                                             }
+                                            this.ensure_local_selection();
                                             this.ensure_remote_selection();
                                             cx.notify();
                                         }),
