@@ -1919,7 +1919,7 @@ mod tests {
 
         // Test SSH config notice translations
         for &loc in Locale::ALL {
-            let t = Translations::new(loc);
+            let t = I18n::new(loc);
             assert!(!t.btn_import_ssh().is_empty());
             assert!(!t.notice_ssh_config_not_found().is_empty());
             assert!(!t.notice_ssh_config_no_hosts().is_empty());

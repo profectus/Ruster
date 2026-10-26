@@ -459,7 +459,7 @@ pub struct RemoteSession {
     pub max_connections: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SavedSiteProfile {
     pub name: String,
     pub folder: String,
