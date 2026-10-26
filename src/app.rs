@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use gpui::{
     div, prelude::*, px, rgb, rgba, Context, FocusHandle, KeyDownEvent,
@@ -17,6 +18,7 @@ use crate::model::{
     move_local_item_with_progress, read_local_directory, rename_local_item, sort_entries,
     ActiveModal, ActivePane, ActiveTransferState, BottomPanelTab, FileEntry, Protocol,
     RemoteSession, SavedSiteProfile, ServerLogEntry, ServerLogKind, SiteEditField, SortColumn,
+    SyncAction, SyncItem, SyncState,
     TransferDirection, TransferQueueItem, TransferStatus, TreeNode, WatchedRemoteFile,
 };
 use crate::network::{
@@ -178,6 +180,7 @@ pub struct MacScpView {
 
     pub(crate) update_status: Option<crate::update::UpdateStatus>,
     pub(crate) update_copied_notice: bool,
+    pub(crate) sync_state: SyncState,
 
     pub(crate) window_width: f32,
     pub(crate) window_height: f32,
@@ -216,7 +219,7 @@ enum TransferKind {
 }
 
 #[derive(Clone, Debug)]
-struct TransferTask {
+pub(crate) struct TransferTask {
     queue_id: usize,
     filename: String,
     source_display: String,
@@ -542,6 +545,7 @@ impl MacScpView {
 
             update_status: None,
             update_copied_notice: false,
+            sync_state: SyncState::default(),
 
             window_width: saved_state.window_width,
             window_height: saved_state.window_height,
@@ -1598,6 +1602,16 @@ impl MacScpView {
             }
         }
 
+        self.dispatch_transfer_tasks(tasks, direction, batch_id, cx);
+    }
+
+    pub(crate) fn dispatch_transfer_tasks(
+        &mut self,
+        tasks: Vec<TransferTask>,
+        direction: TransferDirection,
+        batch_id: usize,
+        cx: &mut Context<Self>,
+    ) {
         if tasks.is_empty() {
             return;
         }
@@ -2428,6 +2442,333 @@ impl MacScpView {
             }
         }
         self.active_modal = ActiveModal::None;
+    }
+
+    pub(crate) fn open_sync_modal(&mut self, cx: &mut Context<Self>) {
+        self.sync_state.items.clear();
+        self.sync_state.has_compared = false;
+        self.sync_state.is_comparing = false;
+        self.sync_state.error_message = None;
+        self.active_modal = ActiveModal::Synchronize;
+        self.run_sync_comparison(cx);
+        cx.notify();
+    }
+
+    pub(crate) fn run_sync_comparison(&mut self, cx: &mut Context<Self>) {
+        self.sync_state.is_comparing = true;
+        self.sync_state.error_message = None;
+        self.sync_state.has_compared = false;
+        self.sync_state.items.clear();
+        cx.notify();
+
+        let local_dir = self.local_dir.clone();
+        let is_remote_session = !self.sessions.is_empty();
+        let session_info = self.sessions.get(self.active_session_idx).map(|s| {
+            (
+                s.protocol,
+                s.host.clone(),
+                s.port,
+                s.username.clone(),
+                s.password.clone(),
+                s.current_path.clone(),
+            )
+        });
+        let right_dir = self.right_dir.clone();
+        let recursive = self.sync_state.recursive;
+        let direction = self.sync_state.direction;
+        let criterion = self.sync_state.criterion;
+        let mirror_delete = self.sync_state.mirror_delete;
+        let show_hidden = self.show_hidden;
+
+        cx.spawn(move |this: gpui::WeakEntity<MacScpView>, cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                let res = std::thread::spawn(move || -> Result<Vec<SyncItem>, String> {
+                    let local_map = crate::sync::scan_local_dir(&local_dir, recursive, show_hidden)?;
+
+                    let remote_map = if is_remote_session {
+                        if let Some((proto, host, port, user, pass, rem_path)) = session_info {
+                            crate::sync::scan_remote_dir(
+                                proto,
+                                &host,
+                                port,
+                                &user,
+                                pass.as_deref(),
+                                &rem_path,
+                                recursive,
+                                show_hidden,
+                            )?
+                        } else {
+                            HashMap::new()
+                        }
+                    } else {
+                        crate::sync::scan_local_dir(&right_dir, recursive, show_hidden)?
+                    };
+
+                    let items = crate::sync::compare_directories(
+                        &local_map,
+                        &remote_map,
+                        direction,
+                        criterion,
+                        mirror_delete,
+                    );
+
+                    Ok(items)
+                }).join();
+
+                let _ = this.update(&mut cx, |view, cx| {
+                    view.sync_state.is_comparing = false;
+                    view.sync_state.has_compared = true;
+                    match res {
+                        Ok(Ok(items)) => {
+                            view.sync_state.items = items;
+                            view.sync_state.error_message = None;
+                        }
+                        Ok(Err(err)) => {
+                            view.sync_state.error_message = Some(err);
+                        }
+                        Err(_) => {
+                            view.sync_state.error_message = Some("Comparison thread crashed".to_string());
+                        }
+                    }
+                    cx.notify();
+                });
+            }
+        }).detach();
+    }
+
+    pub(crate) fn execute_synchronization(&mut self, cx: &mut Context<Self>) {
+        let selected_items: Vec<SyncItem> = self
+            .sync_state
+            .items
+            .iter()
+            .filter(|i| i.selected)
+            .cloned()
+            .collect();
+
+        if selected_items.is_empty() {
+            self.active_modal = ActiveModal::None;
+            cx.notify();
+            return;
+        }
+
+        let is_remote_session = !self.sessions.is_empty();
+        let session_info = self.sessions.get(self.active_session_idx).map(|s| {
+            (
+                s.protocol,
+                s.host.clone(),
+                s.port,
+                s.username.clone(),
+                s.password.clone(),
+                s.current_path.clone(),
+            )
+        });
+        let local_root = self.local_dir.clone();
+        let right_root = self.right_dir.clone();
+
+        let batch_id = self.next_batch_id;
+        self.next_batch_id += 1;
+
+        let mut tasks = Vec::new();
+        let mut deletes_remote = Vec::new();
+        let mut deletes_local = Vec::new();
+
+        for item in selected_items {
+            let rel_path = item.rel_path;
+            match item.action {
+                SyncAction::DeleteRemote => {
+                    if is_remote_session {
+                        if let Some((_, _, _, _, _, rem_root)) = &session_info {
+                            let rem_full = format!("{}/{}", rem_root.trim_end_matches('/'), rel_path);
+                            deletes_remote.push((rem_full, item.is_dir));
+                        }
+                    } else {
+                        let target_path = right_root.join(&rel_path);
+                        deletes_local.push((target_path, item.is_dir));
+                    }
+                }
+                SyncAction::DeleteLocal => {
+                    let local_path = local_root.join(&rel_path);
+                    deletes_local.push((local_path, item.is_dir));
+                }
+                SyncAction::Upload => {
+                    let qid = self.next_transfer_id;
+                    self.next_transfer_id += 1;
+                    let local_path = local_root.join(&rel_path);
+
+                    if is_remote_session {
+                        if let Some((proto, host, port, user, pass, rem_root)) = &session_info {
+                            let rem_full = format!("{}/{}", rem_root.trim_end_matches('/'), rel_path);
+                            self.transfer_queue.push(TransferQueueItem {
+                                id: qid,
+                                batch_id,
+                                filename: item.filename.clone(),
+                                source_path: local_path.to_string_lossy().to_string(),
+                                target_path: rem_full.clone(),
+                                direction: TransferDirection::Upload,
+                                protocol: *proto,
+                                size_bytes: item.local_size,
+                                transferred_bytes: 0,
+                                speed_mbps: 0.0,
+                                status: TransferStatus::Queued,
+                                is_dir: item.is_dir,
+                                parent_id: None,
+                            });
+                            tasks.push(TransferTask {
+                                queue_id: qid,
+                                filename: item.filename.clone(),
+                                source_display: local_path.to_string_lossy().to_string(),
+                                target_display: rem_full.clone(),
+                                size_bytes: item.local_size,
+                                kind: TransferKind::Upload {
+                                    protocol: *proto,
+                                    host: host.clone(),
+                                    port: *port,
+                                    username: user.clone(),
+                                    password: pass.clone(),
+                                    local_path,
+                                    remote_path: rem_full,
+                                    is_dir: item.is_dir,
+                                    remove_source: false,
+                                },
+                            });
+                        }
+                    } else {
+                        let right_path = right_root.join(&rel_path);
+                        self.transfer_queue.push(TransferQueueItem {
+                            id: qid,
+                            batch_id,
+                            filename: item.filename.clone(),
+                            source_path: local_path.to_string_lossy().to_string(),
+                            target_path: right_path.to_string_lossy().to_string(),
+                            direction: TransferDirection::Upload,
+                            protocol: Protocol::Sftp,
+                            size_bytes: item.local_size,
+                            transferred_bytes: 0,
+                            speed_mbps: 0.0,
+                            status: TransferStatus::Queued,
+                            is_dir: item.is_dir,
+                            parent_id: None,
+                        });
+                        tasks.push(TransferTask {
+                            queue_id: qid,
+                            filename: item.filename.clone(),
+                            source_display: local_path.to_string_lossy().to_string(),
+                            target_display: right_path.to_string_lossy().to_string(),
+                            size_bytes: item.local_size,
+                            kind: TransferKind::Local {
+                                src: local_path,
+                                dest: right_path,
+                                remove_source: false,
+                            },
+                        });
+                    }
+                }
+                SyncAction::Download => {
+                    let qid = self.next_transfer_id;
+                    self.next_transfer_id += 1;
+                    let local_path = local_root.join(&rel_path);
+
+                    if is_remote_session {
+                        if let Some((proto, host, port, user, pass, rem_root)) = &session_info {
+                            let rem_full = format!("{}/{}", rem_root.trim_end_matches('/'), rel_path);
+                            self.transfer_queue.push(TransferQueueItem {
+                                id: qid,
+                                batch_id,
+                                filename: item.filename.clone(),
+                                source_path: rem_full.clone(),
+                                target_path: local_path.to_string_lossy().to_string(),
+                                direction: TransferDirection::Download,
+                                protocol: *proto,
+                                size_bytes: item.remote_size,
+                                transferred_bytes: 0,
+                                speed_mbps: 0.0,
+                                status: TransferStatus::Queued,
+                                is_dir: item.is_dir,
+                                parent_id: None,
+                            });
+                            tasks.push(TransferTask {
+                                queue_id: qid,
+                                filename: item.filename.clone(),
+                                source_display: rem_full.clone(),
+                                target_display: local_path.to_string_lossy().to_string(),
+                                size_bytes: item.remote_size,
+                                kind: TransferKind::Download {
+                                    protocol: *proto,
+                                    host: host.clone(),
+                                    port: *port,
+                                    username: user.clone(),
+                                    password: pass.clone(),
+                                    remote_path: rem_full,
+                                    local_path,
+                                    is_dir: item.is_dir,
+                                    remove_source: false,
+                                },
+                            });
+                        }
+                    } else {
+                        let right_path = right_root.join(&rel_path);
+                        self.transfer_queue.push(TransferQueueItem {
+                            id: qid,
+                            batch_id,
+                            filename: item.filename.clone(),
+                            source_path: right_path.to_string_lossy().to_string(),
+                            target_path: local_path.to_string_lossy().to_string(),
+                            direction: TransferDirection::Download,
+                            protocol: Protocol::Sftp,
+                            size_bytes: item.remote_size,
+                            transferred_bytes: 0,
+                            speed_mbps: 0.0,
+                            status: TransferStatus::Queued,
+                            is_dir: item.is_dir,
+                            parent_id: None,
+                        });
+                        tasks.push(TransferTask {
+                            queue_id: qid,
+                            filename: item.filename.clone(),
+                            source_display: right_path.to_string_lossy().to_string(),
+                            target_display: local_path.to_string_lossy().to_string(),
+                            size_bytes: item.remote_size,
+                            kind: TransferKind::Local {
+                                src: right_path,
+                                dest: local_path,
+                                remove_source: false,
+                            },
+                        });
+                    }
+                }
+            }
+        }
+
+        // Execute deletions if any
+        if !deletes_local.is_empty() {
+            for (p, is_dir) in deletes_local {
+                let _ = crate::model::delete_local_item(&p, is_dir);
+            }
+        }
+        if !deletes_remote.is_empty() {
+            if let Some((proto, host, port, user, pass, _)) = session_info {
+                std::thread::spawn(move || {
+                    for (rem_path, _is_dir) in deletes_remote {
+                        let _ = crate::network::remote_delete(proto, &host, port, &user, pass.as_deref(), &rem_path);
+                    }
+                });
+            }
+        }
+
+        self.active_modal = ActiveModal::None;
+        if !tasks.is_empty() {
+            let dir = tasks.first().map(|t| match t.kind {
+                TransferKind::Upload { .. } => TransferDirection::Upload,
+                TransferKind::Download { .. } => TransferDirection::Download,
+                TransferKind::Local { .. } => TransferDirection::Upload,
+            }).unwrap_or(TransferDirection::Upload);
+            self.dispatch_transfer_tasks(tasks, dir, batch_id, cx);
+        } else {
+            self.reload_local();
+            self.reload_right();
+            cx.notify();
+        }
     }
 
     pub(crate) fn get_clipboard_text(&self, cx: &mut Context<Self>) -> Option<String> {
@@ -3512,8 +3853,7 @@ impl Render for MacScpView {
             }))
             .on_action(cx.listener(|this, _: &SynchronizeModal, _, cx| {
                 if this.active_modal != ActiveModal::None { return; }
-                this.active_modal = ActiveModal::Synchronize;
-                cx.notify();
+                this.open_sync_modal(cx);
             }))
             .on_action(cx.listener(|this, _: &RevealInFinder, _, cx| {
                 if this.active_modal != ActiveModal::None { return; }

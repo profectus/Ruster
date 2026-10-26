@@ -853,6 +853,41 @@ fn format_dos_date(date_part: &str, time_part: &str) -> String {
     }
 }
 
+pub fn parse_datetime_to_ts(s: &str) -> i64 {
+    let parts: Vec<&str> = s.split_whitespace().collect();
+    if parts.is_empty() {
+        return 0;
+    }
+    let d_parts: Vec<&str> = parts[0].split('-').collect();
+    if d_parts.len() < 3 {
+        return 0;
+    }
+    let y = d_parts[0].parse::<i32>().unwrap_or(1970);
+    let m = d_parts[1].parse::<i32>().unwrap_or(1);
+    let d = d_parts[2].parse::<i32>().unwrap_or(1);
+
+    let (hh, mm, ss) = if parts.len() > 1 {
+        let t_parts: Vec<&str> = parts[1].split(':').collect();
+        let hh = t_parts.first().and_then(|x| x.parse::<i32>().ok()).unwrap_or(0);
+        let mm = t_parts.get(1).and_then(|x| x.parse::<i32>().ok()).unwrap_or(0);
+        let ss = t_parts.get(2).and_then(|x| x.parse::<i32>().ok()).unwrap_or(0);
+        (hh, mm, ss)
+    } else {
+        (0, 0, 0)
+    };
+
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    tm.tm_year = y - 1900;
+    tm.tm_mon = m - 1;
+    tm.tm_mday = d;
+    tm.tm_hour = hh;
+    tm.tm_min = mm;
+    tm.tm_sec = ss;
+    tm.tm_isdst = -1;
+    let t = unsafe { libc::mktime(&mut tm) };
+    if t < 0 { 0 } else { t as i64 }
+}
+
 /// Parses standard Unix `ls -la` or Windows/DOS directory listings into `Vec<FileEntry>`.
 pub fn parse_unix_ls_output(raw: &str, remote_dir: &str, show_hidden: bool) -> Vec<FileEntry> {
     let mut entries = Vec::new();
@@ -947,8 +982,8 @@ pub fn parse_unix_ls_output(raw: &str, remote_dir: &str, show_hidden: bool) -> V
                 is_dir,
                 is_symlink,
                 size: if is_dir { 0 } else { size },
-                modified,
-                modified_ts: 0,
+                modified: modified.clone(),
+                modified_ts: parse_datetime_to_ts(&modified),
                 permissions_str: mode_to_rwx(octal_mode, is_dir, is_symlink),
                 octal_mode,
                 owner,
@@ -993,15 +1028,15 @@ pub fn parse_unix_ls_output(raw: &str, remote_dir: &str, show_hidden: bool) -> V
                     is_dir: true,
                     is_symlink: false,
                     size: 0,
-                    modified,
-                    modified_ts: 0,
+                    modified: modified.clone(),
+                    modified_ts: parse_datetime_to_ts(&modified),
                     permissions_str: "drwxr-xr-x".to_string(),
                     octal_mode: 0o755,
                     owner: String::new(),
                     selected: false,
                     space_marked: false,
                     calculating_size: false,
-                calculated_dir_size: None,
+                    calculated_dir_size: None,
                 });
             }
         } else if parts.len() >= 3 && parts[0].chars().any(|c| c.is_ascii_digit()) && (parts[0].contains('-') || parts[0].contains('/') || parts[0].contains('.')) {
@@ -1039,15 +1074,15 @@ pub fn parse_unix_ls_output(raw: &str, remote_dir: &str, show_hidden: bool) -> V
                     is_dir: false,
                     is_symlink: false,
                     size,
-                    modified,
-                    modified_ts: 0,
+                    modified: modified.clone(),
+                    modified_ts: parse_datetime_to_ts(&modified),
                     permissions_str: "-rw-r--r--".to_string(),
                     octal_mode: 0o644,
                     owner: String::new(),
                     selected: false,
                     space_marked: false,
                     calculating_size: false,
-                calculated_dir_size: None,
+                    calculated_dir_size: None,
                 });
             }
         }

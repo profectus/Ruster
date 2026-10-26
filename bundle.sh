@@ -14,7 +14,7 @@ cp assets/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
 chmod +x "$APP_DIR/Contents/MacOS/macscp"
 
 VERSION=$(grep -m1 '^version =' Cargo.toml | cut -d '"' -f2)
-VERSION=${VERSION:-0.1.1}
+VERSION=${VERSION:-0.2.0}
 
 cat << EOF > "$APP_DIR/Contents/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>

@@ -1166,6 +1166,261 @@ impl I18n {
         }
     }
 
+    pub fn sync_dir_local_to_remote(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Local ➔ Remote (Upload)",
+            Locale::Cs => "Lokální ➔ Vzdálený (Nahrát)",
+            Locale::De => "Lokal ➔ Server (Hochladen)",
+            Locale::Es => "Local ➔ Remoto (Subir)",
+            Locale::Fr => "Local ➔ Distant (Téléverser)",
+            Locale::It => "Locale ➔ Remoto (Carica)",
+            Locale::Pl => "Lokalny ➔ Zdalny (Wyślij)",
+            Locale::Pt => "Local ➔ Remoto (Enviar)",
+            Locale::Zh => "本地 ➔ 远程 (上传)",
+            Locale::Ja => "ローカル ➔ リモート (アップロード)",
+        }
+    }
+
+    pub fn sync_dir_remote_to_local(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Remote ➔ Local (Download)",
+            Locale::Cs => "Vzdálený ➔ Lokální (Stáhnout)",
+            Locale::De => "Server ➔ Lokal (Herunterladen)",
+            Locale::Es => "Remoto ➔ Local (Descargar)",
+            Locale::Fr => "Distant ➔ Local (Télécharger)",
+            Locale::It => "Remoto ➔ Locale (Scarica)",
+            Locale::Pl => "Zdalny ➔ Lokalny (Pobierz)",
+            Locale::Pt => "Remoto ➔ Local (Baixar)",
+            Locale::Zh => "远程 ➔ 本地 (下载)",
+            Locale::Ja => "リモート ➔ ローカル (ダウンロード)",
+        }
+    }
+
+    pub fn sync_dir_two_way(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Both Directions ⇄",
+            Locale::Cs => "Obousměrně ⇄",
+            Locale::De => "Beide Richtungen ⇄",
+            Locale::Es => "Ambas direcciones ⇄",
+            Locale::Fr => "Bidirectionnel ⇄",
+            Locale::It => "Entrambe le direzioni ⇄",
+            Locale::Pl => "Oba kierunki ⇄",
+            Locale::Pt => "Ambas as direções ⇄",
+            Locale::Zh => "双向同步 ⇄",
+            Locale::Ja => "双方向同期 ⇄",
+        }
+    }
+
+    pub fn sync_opt_recursive(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Include subdirectories",
+            Locale::Cs => "Rekurzivně (včetně podsložek)",
+            Locale::De => "Unterverzeichnisse einbeziehen",
+            Locale::Es => "Incluir subdirectorios",
+            Locale::Fr => "Inclure les sous-dossiers",
+            Locale::It => "Includi sottocartelle",
+            Locale::Pl => "Uwzględnij podkatalogi",
+            Locale::Pt => "Incluir subdiretórios",
+            Locale::Zh => "包含子目录",
+            Locale::Ja => "サブディレクトリを含める",
+        }
+    }
+
+    pub fn sync_opt_time_size(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Compare by modification time & size",
+            Locale::Cs => "Porovnávat čas úpravy a velikost",
+            Locale::De => "Nach Änderungszeit und Größe vergleichen",
+            Locale::Es => "Comparar por fecha y tamaño",
+            Locale::Fr => "Comparer par date et taille",
+            Locale::It => "Confronta per data e dimensione",
+            Locale::Pl => "Porównaj czas modyfikacji i rozmiar",
+            Locale::Pt => "Comparar por data e tamanho",
+            Locale::Zh => "按修改时间和大小比较",
+            Locale::Ja => "更新日時とサイズで比較",
+        }
+    }
+
+    pub fn sync_opt_mirror(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Delete target files missing in source (Mirror)",
+            Locale::Cs => "Smazat v cíli soubory chybějící ve zdroji (Zrcadlení)",
+            Locale::De => "Zieldateien löschen, die in der Quelle fehlen (Spiegeln)",
+            Locale::Es => "Eliminar archivos en destino que falten en origen (Espejo)",
+            Locale::Fr => "Supprimer dans la cible les fichiers absents de la source (Miroir)",
+            Locale::It => "Elimina file di destinazione mancanti nell'origine (Mirror)",
+            Locale::Pl => "Usuń w celu pliki brakujące w źródle (Lustro)",
+            Locale::Pt => "Excluir arquivos no destino ausentes na origem (Espelho)",
+            Locale::Zh => "删除目标中源不存在的文件 (镜像)",
+            Locale::Ja => "ソースに存在しないファイルを削除 (ミラー)",
+        }
+    }
+
+    pub fn sync_btn_compare(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Compare Directories",
+            Locale::Cs => "Porovnat adresáře",
+            Locale::De => "Verzeichnisse vergleichen",
+            Locale::Es => "Comparar directorios",
+            Locale::Fr => "Comparer répertoires",
+            Locale::It => "Confronta cartelle",
+            Locale::Pl => "Porównaj katalogi",
+            Locale::Pt => "Comparar diretórios",
+            Locale::Zh => "比较目录",
+            Locale::Ja => "ディレクトリを比較",
+        }
+    }
+
+    pub fn sync_btn_start(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Start Synchronization",
+            Locale::Cs => "Spustit synchronizaci",
+            Locale::De => "Synchronisation starten",
+            Locale::Es => "Iniciar sincronización",
+            Locale::Fr => "Démarrer synchronisation",
+            Locale::It => "Avvia sincronizzazione",
+            Locale::Pl => "Rozpocznij synchronizację",
+            Locale::Pt => "Iniciar sincronização",
+            Locale::Zh => "开始同步",
+            Locale::Ja => "同期を開始",
+        }
+    }
+
+    pub fn sync_status_comparing(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Comparing directories...",
+            Locale::Cs => "Porovnávám adresáře...",
+            Locale::De => "Verzeichnisse werden verglichen...",
+            Locale::Es => "Comparando directorios...",
+            Locale::Fr => "Comparaison des répertoires...",
+            Locale::It => "Confronto in corso...",
+            Locale::Pl => "Porównywanie katalogów...",
+            Locale::Pt => "Comparando diretórios...",
+            Locale::Zh => "正在比较目录...",
+            Locale::Ja => "ディレクトリを比較中...",
+        }
+    }
+
+    pub fn sync_status_identical(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Directories are synchronized. No differences found.",
+            Locale::Cs => "Adresáře jsou synchronizované. Žádné rozdíly nebyly nalezeny.",
+            Locale::De => "Verzeichnisse sind synchronisiert. Keine Unterschiede.",
+            Locale::Es => "Directorios sincronizados. No se encontraron diferencias.",
+            Locale::Fr => "Répertoires synchronisés. Aucune différence trouvée.",
+            Locale::It => "Le cartelle sono sincronizzate. Nessuna differenza.",
+            Locale::Pl => "Katalogi są zsynchronizowane. Brak różnic.",
+            Locale::Pt => "Diretórios sincronizados. Nenhuma diferença encontrada.",
+            Locale::Zh => "目录已同步，未发现任何差异。",
+            Locale::Ja => "ディレクトリは同期されています。差分はありません。",
+        }
+    }
+
+    pub fn sync_col_file(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "File / Path",
+            Locale::Cs => "Soubor / Cesta",
+            Locale::De => "Datei / Pfad",
+            Locale::Es => "Archivo / Ruta",
+            Locale::Fr => "Fichier / Chemin",
+            Locale::It => "File / Percorso",
+            Locale::Pl => "Plik / Ścieżka",
+            Locale::Pt => "Arquivo / Caminho",
+            Locale::Zh => "文件 / 路径",
+            Locale::Ja => "ファイル / パス",
+        }
+    }
+
+    pub fn sync_col_action(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Action",
+            Locale::Cs => "Akce",
+            Locale::De => "Aktion",
+            Locale::Es => "Acción",
+            Locale::Fr => "Action",
+            Locale::It => "Azione",
+            Locale::Pl => "Akcja",
+            Locale::Pt => "Ação",
+            Locale::Zh => "操作",
+            Locale::Ja => "アクション",
+        }
+    }
+
+    pub fn sync_col_source(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Local",
+            Locale::Cs => "Lokální",
+            Locale::De => "Lokal",
+            Locale::Es => "Local",
+            Locale::Fr => "Local",
+            Locale::It => "Locale",
+            Locale::Pl => "Lokalny",
+            Locale::Pt => "Local",
+            Locale::Zh => "本地",
+            Locale::Ja => "ローカル",
+        }
+    }
+
+    pub fn sync_col_target(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Remote",
+            Locale::Cs => "Vzdálený",
+            Locale::De => "Server",
+            Locale::Es => "Remoto",
+            Locale::Fr => "Distant",
+            Locale::It => "Remoto",
+            Locale::Pl => "Zdalny",
+            Locale::Pt => "Remoto",
+            Locale::Zh => "远程",
+            Locale::Ja => "リモート",
+        }
+    }
+
+    pub fn sync_col_reason(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Reason",
+            Locale::Cs => "Důvod",
+            Locale::De => "Grund",
+            Locale::Es => "Motivo",
+            Locale::Fr => "Raison",
+            Locale::It => "Motivo",
+            Locale::Pl => "Powód",
+            Locale::Pt => "Motivo",
+            Locale::Zh => "原因",
+            Locale::Ja => "理由",
+        }
+    }
+
+    pub fn sync_select_all(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Select All",
+            Locale::Cs => "Vybrat vše",
+            Locale::De => "Alle auswählen",
+            Locale::Es => "Seleccionar todo",
+            Locale::Fr => "Tout sélectionner",
+            Locale::It => "Seleziona tutto",
+            Locale::Pl => "Zaznacz wszystko",
+            Locale::Pt => "Selecionar tudo",
+            Locale::Zh => "全选",
+            Locale::Ja => "すべて選択",
+        }
+    }
+
+    pub fn sync_deselect_all(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Deselect All",
+            Locale::Cs => "Odznačit vše",
+            Locale::De => "Alle abwählen",
+            Locale::Es => "Deseleccionar todo",
+            Locale::Fr => "Tout désélectionner",
+            Locale::It => "Deseleziona tutto",
+            Locale::Pl => "Odznacz wszystko",
+            Locale::Pt => "Desmarcar tudo",
+            Locale::Zh => "取消全选",
+            Locale::Ja => "選択解除",
+        }
+    }
+
     pub fn modal_new_folder_title(&self) -> &'static str {
         match self.locale {
             Locale::En => "New Folder",

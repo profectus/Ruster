@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-10-26
+
+### Added
+- **Full Directory Synchronization (`Cmd+S`)**:
+  - Compare local and remote (or dual local) directories with recursive subfolder scanning.
+  - Direction selection: **Local ➔ Remote (Upload)**, **Remote ➔ Local (Download)**, and **Both Directions ⇄ (Two-Way)**.
+  - Flexible comparison criteria: By modification timestamp & file size, timestamp only, or size only.
+  - Optional **Mirror Mode**: Remove obsolete target files that no longer exist in the source directory.
+  - Interactive Diff Preview: Review missing, newer, and size-differing files with per-file checkboxes, summary stats, and "Select All" / "Deselect All" toggles.
+  - Seamless background execution via the transfer queue with real-time transfer progress, speed, and auto-refresh on completion.
+  - Complete internationalization across all 10 supported languages.
+
 ## [0.1.1] - 2026-10-26
 
 ### Fixed

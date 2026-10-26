@@ -655,6 +655,100 @@ pub enum ActiveModal {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SyncDirection {
+    LocalToRemote,
+    RemoteToLocal,
+    TwoWay,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SyncCriterion {
+    TimeAndSize,
+    TimeOnly,
+    SizeOnly,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SyncAction {
+    Upload,
+    Download,
+    DeleteRemote,
+    DeleteLocal,
+}
+
+#[derive(Clone, Debug)]
+pub struct SyncItem {
+    pub id: usize,
+    pub rel_path: String,
+    pub filename: String,
+    pub action: SyncAction,
+    pub is_dir: bool,
+    pub local_size: u64,
+    pub remote_size: u64,
+    pub local_mtime: i64,
+    pub remote_mtime: i64,
+    pub reason: String,
+    pub selected: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct SyncState {
+    pub direction: SyncDirection,
+    pub criterion: SyncCriterion,
+    pub recursive: bool,
+    pub mirror_delete: bool,
+    pub is_comparing: bool,
+    pub has_compared: bool,
+    pub error_message: Option<String>,
+    pub items: Vec<SyncItem>,
+}
+
+impl Default for SyncState {
+    fn default() -> Self {
+        Self {
+            direction: SyncDirection::LocalToRemote,
+            criterion: SyncCriterion::TimeAndSize,
+            recursive: true,
+            mirror_delete: false,
+            is_comparing: false,
+            has_compared: false,
+            error_message: None,
+            items: Vec::new(),
+        }
+    }
+}
+
+impl SyncState {
+    pub fn selected_count(&self) -> usize {
+        self.items.iter().filter(|i| i.selected).count()
+    }
+
+    pub fn selected_bytes(&self) -> u64 {
+        self.items.iter().filter(|i| i.selected).map(|i| match i.action {
+            SyncAction::Upload => i.local_size,
+            SyncAction::Download => i.remote_size,
+            _ => 0,
+        }).sum()
+    }
+
+    pub fn all_selected(&self) -> bool {
+        !self.items.is_empty() && self.items.iter().all(|i| i.selected)
+    }
+
+    pub fn set_all_selected(&mut self, selected: bool) {
+        for item in &mut self.items {
+            item.selected = selected;
+        }
+    }
+
+    pub fn toggle_item(&mut self, id: usize) {
+        if let Some(item) = self.items.iter_mut().find(|i| i.id == id) {
+            item.selected = !item.selected;
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SiteEditField {
     None,
     Name,

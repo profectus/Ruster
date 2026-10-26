@@ -6,6 +6,7 @@ mod model;
 mod network;
 mod theme;
 mod ui;
+pub mod sync;
 pub mod update;
 
 use gpui::{
