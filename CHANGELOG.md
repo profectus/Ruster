@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.8] - 2026-10-26
+
+### Removed
+- **Unformatted Changelog Box in Update Modal**: Removed the unformatted raw Markdown/URL changelog box from the update dialog in favor of a clean dialog layout with version comparisons, direct Homebrew upgrade command, and a primary GitHub release action button.
+
 ## [0.2.7] - 2026-10-26
 
 ### Fixed

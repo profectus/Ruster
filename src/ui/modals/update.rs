@@ -10,6 +10,11 @@ impl MacScpView {
     pub fn render_update_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme();
         let t = self.i18n();
+        let download_url = if let Some(UpdateStatus::Available(ref info)) = self.update_status {
+            Some(info.release_url.clone())
+        } else {
+            None
+        };
 
         div()
             .id("modal-update-backdrop")
@@ -125,7 +130,6 @@ impl MacScpView {
                                 Some(UpdateStatus::Available(info)) => {
                                     let latest = info.latest_version.clone();
                                     let current = info.current_version.clone();
-                                    let url = info.release_url.clone();
                                     let copied = self.update_copied_notice;
 
                                     div()
@@ -234,51 +238,6 @@ impl MacScpView {
                                                         ),
                                                 ),
                                         )
-                                        // Release Notes snippet if available
-                                        .when(!info.release_notes.is_empty(), |el| {
-                                            el.child(
-                                                div()
-                                                    .id("update-release-notes")
-                                                    .max_h(px(90.0))
-                                                    .overflow_y_scroll()
-                                                    .p_2p5()
-                                                    .rounded(px(5.0))
-                                                    .bg(theme.modal_card_bg())
-                                                    .border_1()
-                                                    .border_color(theme.border())
-                                                    .text_xs()
-                                                    .text_color(theme.text_secondary())
-                                                    .child(info.release_notes.clone()),
-                                            )
-                                        })
-                                        // Action buttons
-                                        .child(
-                                            div()
-                                                .flex()
-                                                .items_center()
-                                                .justify_end()
-                                                .gap_2()
-                                                .pt_2()
-                                                .child(
-                                                    div()
-                                                        .id("btn-download-update")
-                                                        .cursor_pointer()
-                                                        .px_3p5()
-                                                        .py_1p5()
-                                                        .rounded(px(5.0))
-                                                        .bg(rgb(0x2563eb))
-                                                        .text_xs()
-                                                        .font_weight(gpui::FontWeight::MEDIUM)
-                                                        .text_color(rgb(0xffffff))
-                                                        .hover(|s| s.bg(rgb(0x1d4ed8)))
-                                                        .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                                                            let _ = std::process::Command::new("open").arg(&url).spawn();
-                                                            this.active_modal = ActiveModal::None;
-                                                            cx.notify();
-                                                        }))
-                                                        .child(t.update_download_btn()),
-                                                ),
-                                        )
                                 }
                                 Some(UpdateStatus::Error(err)) => {
                                     div()
@@ -316,6 +275,7 @@ impl MacScpView {
                             .flex()
                             .items_center()
                             .justify_end()
+                            .gap_2()
                             .bg(theme.modal_header_bg())
                             .child(
                                 div()
@@ -340,7 +300,28 @@ impl MacScpView {
                                     } else {
                                         "OK"
                                     }),
-                            ),
+                            )
+                            .when_some(download_url, |el, url| {
+                                el.child(
+                                    div()
+                                        .id("btn-download-update")
+                                        .cursor_pointer()
+                                        .px_3p5()
+                                        .py_1p5()
+                                        .rounded(px(5.0))
+                                        .bg(rgb(0x2563eb))
+                                        .text_xs()
+                                        .font_weight(gpui::FontWeight::MEDIUM)
+                                        .text_color(rgb(0xffffff))
+                                        .hover(|s| s.bg(rgb(0x1d4ed8)))
+                                        .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                            let _ = std::process::Command::new("open").arg(&url).spawn();
+                                            this.active_modal = ActiveModal::None;
+                                            cx.notify();
+                                        }))
+                                        .child(t.update_download_btn()),
+                                )
+                            }),
                     ),
             )
     }
