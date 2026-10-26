@@ -49,6 +49,7 @@ impl MacScpView {
                     // 1. Header
                     .child(
                         div()
+                            .flex_shrink_0()
                             .px_4()
                             .py_3()
                             .rounded_t(px(10.0))
@@ -92,6 +93,7 @@ impl MacScpView {
                     // 2. Configuration Card
                     .child(
                         div()
+                            .flex_shrink_0()
                             .p_3p5()
                             .border_b_1()
                             .border_color(theme.border())
@@ -222,12 +224,14 @@ impl MacScpView {
                                     .flex()
                                     .items_center()
                                     .justify_between()
-                                    .gap_3()
+                                    .gap_2()
                                     .child(
                                         div()
                                             .flex()
+                                            .flex_wrap()
                                             .items_center()
-                                            .gap_4()
+                                            .gap_x_3p5()
+                                            .gap_y_1p5()
                                             // Checkbox: recursive
                                             .child(self.render_sync_checkbox(
                                                 "sync-chk-recursive",
@@ -268,29 +272,33 @@ impl MacScpView {
                                     )
                                     .child(
                                         div()
-                                            .id("sync-btn-compare")
-                                            .cursor_pointer()
-                                            .flex()
-                                            .items_center()
-                                            .gap_1p5()
-                                            .px_3()
-                                            .py_1p5()
-                                            .rounded(px(5.0))
-                                            .bg(theme.button_bg())
-                                            .border_1()
-                                            .border_color(theme.border_strong())
-                                            .text_xs()
-                                            .font_weight(gpui::FontWeight::MEDIUM)
-                                            .text_color(theme.text_primary())
-                                            .hover(|s| s.bg(theme.button_hover_bg()))
-                                            .on_mouse_down(
-                                                MouseButton::Left,
-                                                cx.listener(|this, _, _, cx| {
-                                                    this.run_sync_comparison(cx);
-                                                }),
-                                            )
-                                            .child(render_icon("icons/sync.svg", 12.0, theme.c_icon_default()))
-                                            .child(t.sync_btn_compare()),
+                                            .flex_shrink_0()
+                                            .child(
+                                                div()
+                                                    .id("sync-btn-compare")
+                                                    .cursor_pointer()
+                                                    .flex()
+                                                    .items_center()
+                                                    .gap_1p5()
+                                                    .px_3()
+                                                    .py_1p5()
+                                                    .rounded(px(5.0))
+                                                    .bg(theme.button_bg())
+                                                    .border_1()
+                                                    .border_color(theme.border_strong())
+                                                    .text_xs()
+                                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                                    .text_color(theme.text_primary())
+                                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                                    .on_mouse_down(
+                                                        MouseButton::Left,
+                                                        cx.listener(|this, _, _, cx| {
+                                                            this.run_sync_comparison(cx);
+                                                        }),
+                                                    )
+                                                    .child(render_icon("icons/sync.svg", 12.0, theme.c_icon_default()))
+                                                    .child(t.sync_btn_compare()),
+                                            ),
                                     ),
                             ),
                     )
@@ -298,6 +306,7 @@ impl MacScpView {
                     .child(
                         div()
                             .flex_1()
+                            .min_h_0()
                             .flex()
                             .flex_col()
                             .overflow_hidden()
@@ -307,6 +316,7 @@ impl MacScpView {
                     // 4. Footer
                     .child(
                         div()
+                            .flex_shrink_0()
                             .px_4()
                             .py_3()
                             .rounded_b(px(10.0))
@@ -503,13 +513,14 @@ impl MacScpView {
         if let Some(err) = &state.error_message {
             return div()
                 .size_full()
+                .min_h_0()
                 .flex()
                 .flex_col()
                 .items_center()
                 .justify_center()
-                .gap_3()
-                .p_6()
-                .child(render_icon("icons/alert-circle.svg", 28.0, 0xef4444))
+                .gap_2p5()
+                .p_4()
+                .child(render_icon("icons/alert-circle.svg", 26.0, 0xef4444))
                 .child(
                     div()
                         .text_sm()
@@ -519,6 +530,15 @@ impl MacScpView {
                 )
                 .child(
                     div()
+                        .id("sync-error-scroll")
+                        .max_h(px(140.0))
+                        .max_w(px(600.0))
+                        .overflow_y_scroll()
+                        .p_2p5()
+                        .rounded(px(6.0))
+                        .bg(theme.input_bg())
+                        .border_1()
+                        .border_color(theme.border())
                         .text_xs()
                         .text_color(theme.text_secondary())
                         .child(err.clone()),

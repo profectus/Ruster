@@ -41,7 +41,7 @@ impl MacScpView {
             .on_mouse_down(MouseButton::Right, cx.listener(|_, _, _, cx| cx.stop_propagation()))
             .child(
                 div()
-                    .w(px(680.0))
+                    .w(px(740.0))
                     .rounded(px(8.0))
                     .bg(theme.modal_bg())
                     .border_1()
@@ -54,6 +54,7 @@ impl MacScpView {
                     .on_mouse_down(MouseButton::Right, cx.listener(|_, _, _, cx| cx.stop_propagation()))
                     .child(
                         div()
+                            .flex_shrink_0()
                             .flex()
                             .items_center()
                             .justify_between()
@@ -104,7 +105,7 @@ impl MacScpView {
                     .child(
                         div()
                             .flex()
-                            .h(px(380.0))
+                            .h(px(460.0))
                             .child(
                                 div()
                                     .w(px(230.0))
@@ -328,9 +329,14 @@ impl MacScpView {
                                     .p_4()
                                     .flex()
                                     .flex_col()
-                                    .justify_between()
+                                    .overflow_hidden()
                                     .child(
                                         div()
+                                            .id("site-form-scroll")
+                                            .flex_1()
+                                            .min_h_0()
+                                            .overflow_y_scroll()
+                                            .pr_1()
                                             .flex()
                                             .flex_col()
                                             .gap_2p5()
@@ -717,7 +723,7 @@ impl MacScpView {
                                                 el.child(
                                                     div()
                                                         .px_3()
-                                                        .py_1p5()
+                                                        .py_2()
                                                         .rounded(px(5.0))
                                                         .bg(if theme.is_dark() { rgb(0x451a1a) } else { rgb(0xfef2f2) })
                                                         .border_1()
@@ -730,6 +736,10 @@ impl MacScpView {
                                     )
                                     .child(
                                         div()
+                                            .flex_shrink_0()
+                                            .pt_3()
+                                            .border_t_1()
+                                            .border_color(theme.border())
                                             .flex()
                                             .justify_end()
                                             .gap_2()

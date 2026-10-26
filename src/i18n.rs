@@ -1213,46 +1213,46 @@ impl I18n {
 
     pub fn sync_opt_recursive(&self) -> &'static str {
         match self.locale {
-            Locale::En => "Include subdirectories",
-            Locale::Cs => "Rekurzivně (včetně podsložek)",
-            Locale::De => "Unterverzeichnisse einbeziehen",
-            Locale::Es => "Incluir subdirectorios",
-            Locale::Fr => "Inclure les sous-dossiers",
+            Locale::En => "Include subfolders",
+            Locale::Cs => "Rekurzivně (podsložky)",
+            Locale::De => "Unterordner einbeziehen",
+            Locale::Es => "Incluir subcarpetas",
+            Locale::Fr => "Inclure sous-dossiers",
             Locale::It => "Includi sottocartelle",
             Locale::Pl => "Uwzględnij podkatalogi",
-            Locale::Pt => "Incluir subdiretórios",
-            Locale::Zh => "包含子目录",
-            Locale::Ja => "サブディレクトリを含める",
+            Locale::Pt => "Incluir subpastas",
+            Locale::Zh => "包含子文件夹",
+            Locale::Ja => "サブフォルダを含める",
         }
     }
 
     pub fn sync_opt_time_size(&self) -> &'static str {
         match self.locale {
-            Locale::En => "Compare by modification time & size",
-            Locale::Cs => "Porovnávat čas úpravy a velikost",
-            Locale::De => "Nach Änderungszeit und Größe vergleichen",
-            Locale::Es => "Comparar por fecha y tamaño",
-            Locale::Fr => "Comparer par date et taille",
-            Locale::It => "Confronta per data e dimensione",
-            Locale::Pl => "Porównaj czas modyfikacji i rozmiar",
-            Locale::Pt => "Comparar por data e tamanho",
-            Locale::Zh => "按修改时间和大小比较",
-            Locale::Ja => "更新日時とサイズで比較",
+            Locale::En => "Modtime & size",
+            Locale::Cs => "Čas úpravy a velikost",
+            Locale::De => "Zeit & Größe",
+            Locale::Es => "Fecha y tamaño",
+            Locale::Fr => "Date et taille",
+            Locale::It => "Data e dimensione",
+            Locale::Pl => "Czas i rozmiar",
+            Locale::Pt => "Data e tamanho",
+            Locale::Zh => "修改时间和大小",
+            Locale::Ja => "更新日時とサイズ",
         }
     }
 
     pub fn sync_opt_mirror(&self) -> &'static str {
         match self.locale {
-            Locale::En => "Delete target files missing in source (Mirror)",
-            Locale::Cs => "Smazat v cíli soubory chybějící ve zdroji (Zrcadlení)",
-            Locale::De => "Zieldateien löschen, die in der Quelle fehlen (Spiegeln)",
-            Locale::Es => "Eliminar archivos en destino que falten en origen (Espejo)",
-            Locale::Fr => "Supprimer dans la cible les fichiers absents de la source (Miroir)",
-            Locale::It => "Elimina file di destinazione mancanti nell'origine (Mirror)",
-            Locale::Pl => "Usuń w celu pliki brakujące w źródle (Lustro)",
-            Locale::Pt => "Excluir arquivos no destino ausentes na origem (Espelho)",
-            Locale::Zh => "删除目标中源不存在的文件 (镜像)",
-            Locale::Ja => "ソースに存在しないファイルを削除 (ミラー)",
+            Locale::En => "Mirror (delete missing in target)",
+            Locale::Cs => "Zrcadlení (smazat chybějící v cíli)",
+            Locale::De => "Spiegeln (fehlende im Ziel löschen)",
+            Locale::Es => "Espejo (eliminar faltantes en destino)",
+            Locale::Fr => "Miroir (supprimer absents de la cible)",
+            Locale::It => "Mirror (elimina mancanti in destinazione)",
+            Locale::Pl => "Lustro (usuń brakujące w celu)",
+            Locale::Pt => "Espelho (excluir ausentes no destino)",
+            Locale::Zh => "镜像 (删除目标中缺失项)",
+            Locale::Ja => "ミラー (ターゲットの欠落ファイルを削除)",
         }
     }
 
