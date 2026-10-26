@@ -173,12 +173,40 @@ impl MacScpView {
                         },
                     )),
             )
-            // Right: Only the 3 layout icon buttons (Dual Pane, Swap Sides, Directory Trees)
+            // Right: Layout & quick filter icon buttons
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap_1()
+                    .child(self.render_icon_btn(
+                        "act-quick-filter",
+                        "icons/search.svg",
+                        match self.active_pane {
+                            ActivePane::Local => self.show_local_filter,
+                            ActivePane::Remote => self.show_remote_filter,
+                        },
+                        cx,
+                        |this, cx| {
+                            match this.active_pane {
+                                ActivePane::Local => {
+                                    this.show_local_filter = !this.show_local_filter;
+                                    if !this.show_local_filter {
+                                        this.local_filter_query.clear();
+                                    }
+                                    this.ensure_local_selection();
+                                }
+                                ActivePane::Remote => {
+                                    this.show_remote_filter = !this.show_remote_filter;
+                                    if !this.show_remote_filter {
+                                        this.remote_filter_query.clear();
+                                    }
+                                    this.ensure_remote_selection();
+                                }
+                            }
+                            cx.notify();
+                        },
+                    ))
                     .child(self.render_icon_btn(
                         "act-local-pane",
                         "icons/columns-2.svg",

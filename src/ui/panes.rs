@@ -271,6 +271,50 @@ impl MacScpView {
                             .gap_1()
                             .child(
                                 div()
+                                    .id("local-filter-btn")
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(22.0))
+                                    .h(px(22.0))
+                                    .rounded(px(4.0))
+                                    .bg(if self.show_local_filter {
+                                        theme.button_active_bg()
+                                    } else {
+                                        theme.button_secondary_bg()
+                                    })
+                                    .border_1()
+                                    .border_color(if self.show_local_filter {
+                                        theme.button_active_border()
+                                    } else {
+                                        theme.border()
+                                    })
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            this.active_pane = ActivePane::Local;
+                                            this.show_local_filter = !this.show_local_filter;
+                                            if !this.show_local_filter {
+                                                this.local_filter_query.clear();
+                                            }
+                                            this.ensure_local_selection();
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(render_icon(
+                                        "icons/search.svg",
+                                        13.0,
+                                        if self.show_local_filter {
+                                            theme.c_icon_active()
+                                        } else {
+                                            theme.c_icon_dark()
+                                        },
+                                    )),
+                            )
+                            .child(
+                                div()
                                     .id("local-up")
                                     .cursor_pointer()
                                     .flex()
@@ -685,6 +729,50 @@ impl MacScpView {
                             .flex()
                             .items_center()
                             .gap_1()
+                            .child(
+                                div()
+                                    .id("right-local-filter-btn")
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(22.0))
+                                    .h(px(22.0))
+                                    .rounded(px(4.0))
+                                    .bg(if self.show_remote_filter {
+                                        theme.button_active_bg()
+                                    } else {
+                                        theme.button_secondary_bg()
+                                    })
+                                    .border_1()
+                                    .border_color(if self.show_remote_filter {
+                                        theme.button_active_border()
+                                    } else {
+                                        theme.border()
+                                    })
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            this.active_pane = ActivePane::Remote;
+                                            this.show_remote_filter = !this.show_remote_filter;
+                                            if !this.show_remote_filter {
+                                                this.remote_filter_query.clear();
+                                            }
+                                            this.ensure_remote_selection();
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(render_icon(
+                                        "icons/search.svg",
+                                        13.0,
+                                        if self.show_remote_filter {
+                                            theme.c_icon_active()
+                                        } else {
+                                            theme.c_icon_dark()
+                                        },
+                                    )),
+                            )
                             .child(
                                 div()
                                     .id("right-local-up")
@@ -1138,6 +1226,50 @@ impl MacScpView {
                             .flex()
                             .items_center()
                             .gap_1()
+                            .child(
+                                div()
+                                    .id("remote-filter-btn")
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(22.0))
+                                    .h(px(22.0))
+                                    .rounded(px(4.0))
+                                    .bg(if self.show_remote_filter {
+                                        theme.button_active_bg()
+                                    } else {
+                                        theme.button_secondary_bg()
+                                    })
+                                    .border_1()
+                                    .border_color(if self.show_remote_filter {
+                                        theme.button_active_border()
+                                    } else {
+                                        theme.border()
+                                    })
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            this.active_pane = ActivePane::Remote;
+                                            this.show_remote_filter = !this.show_remote_filter;
+                                            if !this.show_remote_filter {
+                                                this.remote_filter_query.clear();
+                                            }
+                                            this.ensure_remote_selection();
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(render_icon(
+                                        "icons/search.svg",
+                                        13.0,
+                                        if self.show_remote_filter {
+                                            theme.c_icon_active()
+                                        } else {
+                                            theme.c_icon_dark()
+                                        },
+                                    )),
+                            )
                             .child(
                                 div()
                                     .id("rem-root")
