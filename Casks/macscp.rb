@@ -7,8 +7,7 @@ cask "macscp" do
   desc "Native dual-pane SFTP/SCP client for macOS built with Rust & GPUI"
   homepage "https://github.com/profectus/macSCP"
 
-  auto_updates true
-  depends_on macos: ">= :monterey"
+  depends_on macos: :monterey
 
   app "MacSCP.app"
 
