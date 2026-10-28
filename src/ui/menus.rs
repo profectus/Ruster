@@ -55,6 +55,11 @@ impl RusterView {
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(move |this, _, _, cx| {
+                            if this.active_session_idx != idx {
+                                if let Some(s) = this.sessions.get(idx) {
+                                    this.trigger_remote_flash(s.env_color, false, cx);
+                                }
+                            }
                             this.active_session_idx = idx;
                             this.session_dropdown_open = false;
                             this.active_pane = ActivePane::Remote;

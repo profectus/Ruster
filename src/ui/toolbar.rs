@@ -103,7 +103,7 @@ impl RusterView {
                                 .on_mouse_down(
                                     MouseButton::Left,
                                     cx.listener(|this, _, _, cx| {
-                                        this.disconnect_active_session();
+                                        this.disconnect_active_session(cx);
                                         cx.notify();
                                     }),
                                 )

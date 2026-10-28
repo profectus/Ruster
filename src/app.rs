@@ -16,7 +16,7 @@ use crate::model::{
     apply_local_chmod, build_local_tree, calculate_local_dir_size, copy_local_item_with_progress,
     create_local_folder, default_saved_sites, delete_local_item, is_editable_file,
     move_local_item_with_progress, read_local_directory, rename_local_item, sort_entries,
-    ActiveModal, ActivePane, ActiveTransferState, BottomPanelTab, FileEntry, Protocol,
+    ActiveModal, ActivePane, ActiveTransferState, BottomPanelTab, FileEntry, PaneFlash, Protocol,
     RemoteSession, SavedSiteProfile, ServerLogEntry, ServerLogKind, SiteEditField, SortColumn,
     SyncAction, SyncItem, SyncState,
     TransferDirection, TransferErrorAction, TransferErrorPromptState, TransferQueueItem, TransferStatus, TreeNode, WatchedRemoteFile,
@@ -143,6 +143,9 @@ pub struct RusterView {
     pub(crate) right_entries: Vec<FileEntry>,
     pub(crate) right_tree: Vec<TreeNode>,
     pub(crate) right_selected: usize,
+
+    pub(crate) remote_flash: Option<PaneFlash>,
+    pub(crate) remote_flash_id: usize,
 
     pub(crate) sessions: Vec<RemoteSession>,
     pub(crate) active_session_idx: usize,
@@ -533,6 +536,9 @@ impl RusterView {
             right_tree,
             right_selected: right_initial_idx,
 
+            remote_flash: None,
+            remote_flash_id: 0,
+
             sessions: Vec::new(),
             active_session_idx: 0,
             remote_sort_col: SortColumn::Name,
@@ -851,7 +857,7 @@ impl RusterView {
     }
 
     pub fn trigger_background_update_check(&self, cx: &mut Context<Self>) {
-        cx.spawn(|this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 let res = std::thread::spawn(|| crate::update::fetch_latest_release()).join();
@@ -2249,7 +2255,7 @@ impl RusterView {
         });
 
         // Spawn GPUI task to pump messages into UI
-        cx.spawn(|this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 loop {
@@ -3438,6 +3444,7 @@ impl RusterView {
                                             view.active_site_field = SiteEditField::None;
                                             view.session_dropdown_open = false;
                                             view.site_error_message = None;
+                                            view.trigger_remote_flash(site_clone.env_color, false, cx);
                                         }
                                         Err(err) => {
                                             view.log_server(ServerLogKind::Error, format!("Chyba připojení: {}", err));
@@ -3603,7 +3610,7 @@ impl RusterView {
     }
 
     pub(crate) fn start_remote_edit_watcher(cx: &mut Context<Self>) {
-        cx.spawn(|this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
                 loop {
@@ -3730,10 +3737,63 @@ impl RusterView {
         }).detach();
     }
 
-    pub(crate) fn disconnect_active_session(&mut self) {
+    pub(crate) fn trigger_remote_flash(&mut self, color: u32, is_disconnect: bool, cx: &mut Context<Self>) {
+        self.remote_flash_id = self.remote_flash_id.wrapping_add(1);
+        let flash_id = self.remote_flash_id;
+
+        self.remote_flash = Some(PaneFlash {
+            color,
+            opacity: 1.0,
+            is_disconnect,
+        });
+        cx.notify();
+
+        let total_duration_ms = if is_disconnect { 450 } else { 750 };
+        let frame_interval_ms = 16;
+        let total_frames = (total_duration_ms / frame_interval_ms).max(1);
+
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                for frame in 1..=total_frames {
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_millis(frame_interval_ms as u64))
+                        .await;
+
+                    let progress = frame as f32 / total_frames as f32;
+                    let opacity = (1.0 - progress).powi(2);
+
+                    let still_running = this.update(&mut cx, |view, cx| {
+                        if view.remote_flash_id != flash_id {
+                            return false;
+                        }
+                        if let Some(flash) = &mut view.remote_flash {
+                            flash.opacity = opacity;
+                        }
+                        cx.notify();
+                        true
+                    });
+
+                    if still_running.is_err() || still_running.ok() == Some(false) {
+                        return;
+                    }
+                }
+
+                let _ = this.update(&mut cx, |view, cx| {
+                    if view.remote_flash_id == flash_id {
+                        view.remote_flash = None;
+                        cx.notify();
+                    }
+                });
+            }
+        }).detach();
+    }
+
+    pub(crate) fn disconnect_active_session(&mut self, cx: &mut Context<Self>) {
         if !self.sessions.is_empty() {
             let session = self.sessions.remove(self.active_session_idx);
             let session_id = session.id;
+            let env_color = session.env_color;
             self.watched_remote_files.retain(|w| w.session_id != session_id);
             if self.active_session_idx >= self.sessions.len() {
                 self.active_session_idx = self.sessions.len().saturating_sub(1);
@@ -3743,6 +3803,7 @@ impl RusterView {
                 self.active_pane = ActivePane::Local;
                 self.reload_right();
             }
+            self.trigger_remote_flash(env_color, true, cx);
         }
         self.session_dropdown_open = false;
     }

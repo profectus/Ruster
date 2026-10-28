@@ -459,6 +459,13 @@ pub struct RemoteSession {
     pub max_connections: usize,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PaneFlash {
+    pub color: u32,
+    pub opacity: f32,
+    pub is_disconnect: bool,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SavedSiteProfile {
     pub name: String,

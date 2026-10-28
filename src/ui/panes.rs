@@ -425,11 +425,42 @@ impl RusterView {
     }
 
     pub fn render_remote_pane(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.sessions.is_empty() {
+        let content = if self.sessions.is_empty() {
             self.render_right_local_pane(cx).into_any_element()
         } else {
             self.render_connected_remote_pane(cx).into_any_element()
-        }
+        };
+
+        let flash = self.remote_flash;
+
+        div()
+            .id("pane-remote-wrapper")
+            .relative()
+            .size_full()
+            .overflow_hidden()
+            .child(content)
+            .when_some(flash, |el, f| {
+                if f.opacity <= 0.005 {
+                    return el;
+                }
+                let color = f.color;
+                let (max_bg, max_border) = if f.is_disconnect {
+                    (0.07, 0.50)
+                } else {
+                    (0.12, 0.85)
+                };
+                let bg_alpha = ((f.opacity * max_bg * 255.0) as u32).clamp(0, 255);
+                let border_alpha = ((f.opacity * max_border * 255.0) as u32).clamp(0, 255);
+
+                el.child(
+                    div()
+                        .absolute()
+                        .inset_0()
+                        .bg(rgba(((color & 0xffffff) << 8) | bg_alpha))
+                        .border_2()
+                        .border_color(rgba(((color & 0xffffff) << 8) | border_alpha)),
+                )
+            })
     }
 
     pub fn render_right_local_pane(&self, cx: &mut Context<Self>) -> impl IntoElement {
