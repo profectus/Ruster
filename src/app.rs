@@ -19,7 +19,7 @@ use crate::model::{
     ActiveModal, ActivePane, ActiveTransferState, BottomPanelTab, FileEntry, Protocol,
     RemoteSession, SavedSiteProfile, ServerLogEntry, ServerLogKind, SiteEditField, SortColumn,
     SyncAction, SyncItem, SyncState,
-    TransferDirection, TransferQueueItem, TransferStatus, TreeNode, WatchedRemoteFile,
+    TransferDirection, TransferErrorAction, TransferErrorPromptState, TransferQueueItem, TransferStatus, TreeNode, WatchedRemoteFile,
 };
 use crate::network::{
     calculate_remote_dir_size,
@@ -172,6 +172,8 @@ pub struct RusterView {
 
     pub(crate) server_log: Vec<ServerLogEntry>,
     pub(crate) bottom_tab: BottomPanelTab,
+    pub(crate) show_transfer_log: bool,
+    pub(crate) transfer_error_prompt: Option<TransferErrorPromptState>,
 
     pub(crate) chmod_mode: u32,
     pub(crate) chmod_recursive: bool,
@@ -266,6 +268,14 @@ enum TransferProgressUpdate {
     ItemFailed {
         queue_id: usize,
         error: String,
+    },
+    PromptError {
+        queue_id: usize,
+        filename: String,
+        src: String,
+        target: String,
+        error: String,
+        resp_tx: std::sync::mpsc::Sender<TransferErrorAction>,
     },
     DiscoveredItems {
         items: Vec<TransferQueueItem>,
@@ -547,7 +557,9 @@ impl RusterView {
             active_transfer: None,
 
             server_log: Vec::new(),
-            bottom_tab: BottomPanelTab::Split,
+            bottom_tab: BottomPanelTab::Transfers,
+            show_transfer_log: false,
+            transfer_error_prompt: None,
 
             chmod_mode: 0o755,
             chmod_recursive: false,
@@ -1987,117 +1999,219 @@ impl RusterView {
 
             let num_workers = max_workers.clamp(1, 8).min(file_tasks.len());
             let work_queue = std::sync::Arc::new(std::sync::Mutex::new(file_tasks));
+            let pause_lock = std::sync::Arc::new(std::sync::Mutex::new(false));
+            let pause_cvar = std::sync::Arc::new(std::sync::Condvar::new());
+            let skip_all_errors = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let cancelled = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
             let mut worker_handles = Vec::new();
 
             for _ in 0..num_workers {
                 let q = std::sync::Arc::clone(&work_queue);
                 let tx = tx.clone();
+                let pause_lock = std::sync::Arc::clone(&pause_lock);
+                let pause_cvar = std::sync::Arc::clone(&pause_cvar);
+                let skip_all_errors = std::sync::Arc::clone(&skip_all_errors);
+                let cancelled = std::sync::Arc::clone(&cancelled);
+
                 let h = std::thread::spawn(move || {
-                    while let Some(task) = {
-                        let mut guard = q.lock().unwrap();
-                        guard.pop_front()
-                    } {
-                        let queue_id = task.queue_id;
-                        let task_size = task.size_bytes;
-                        let filename = task.filename.clone();
+                    loop {
+                        // Wait if paused due to an error in another worker
+                        {
+                            let mut paused = pause_lock.lock().unwrap();
+                            while *paused && !cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                                paused = pause_cvar.wait(paused).unwrap();
+                            }
+                        }
 
-                        let _ = tx.send(TransferProgressUpdate::ItemStarted {
-                            filename: filename.clone(),
-                            src: task.source_display.clone(),
-                            target: task.target_display.clone(),
-                            size_bytes: task_size,
-                            queue_id,
-                        });
+                        if cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                            break;
+                        }
 
-                        let start_time = std::time::Instant::now();
-                        let tx_prog = tx.clone();
-                        let mut on_prog = move |cur_bytes: u64, total_bytes: u64| {
-                            let real_total = if total_bytes > 0 { total_bytes } else { task_size };
-                            let elapsed = start_time.elapsed().as_secs_f64();
-                            let speed = if elapsed > 0.05 {
-                                (cur_bytes as f64 / 1_048_576.0) / elapsed
-                            } else {
-                                0.0
-                            };
-                            let eta = if speed > 0.01 && real_total > cur_bytes {
-                                Some(((real_total.saturating_sub(cur_bytes)) as f64 / (speed * 1_048_576.0)) as u64)
-                            } else {
-                                None
-                            };
-                            let _ = tx_prog.send(TransferProgressUpdate::Progress {
-                                queue_id,
-                                bytes_transferred: cur_bytes,
-                                total_bytes: real_total,
-                                speed_mbps: speed,
-                                eta_seconds: eta,
-                            });
+                        let task = {
+                            let mut guard = q.lock().unwrap();
+                            guard.pop_front()
+                        };
+                        let Some(task) = task else {
+                            break;
                         };
 
-                        let tx_log = tx.clone();
-                        let mut on_log = move |kind: ServerLogKind, message: String| {
-                            let _ = tx_log.send(TransferProgressUpdate::Log { kind, message });
-                        };
+                        loop {
+                            if cancelled.load(std::sync::atomic::Ordering::SeqCst) {
+                                break;
+                            }
 
-                        let res = match task.kind {
-                            TransferKind::Download { protocol, host, port, username, password, remote_path, local_path, remove_source, .. } => {
-                                let r = download_from_remote_with_progress_and_log(
-                                    protocol,
-                                    &host,
-                                    port,
-                                    &username,
-                                    password.as_deref(),
-                                    &remote_path,
-                                    &local_path,
-                                    task_size,
-                                    &mut on_prog,
-                                    &mut on_log,
-                                );
-                                if r.is_ok() && remove_source {
-                                    let _ = remote_delete(protocol, &host, port, &username, password.as_deref(), &remote_path);
-                                }
-                                r
-                            }
-                            TransferKind::Upload { protocol, host, port, username, password, local_path, remote_path, remove_source, .. } => {
-                                let r = upload_to_remote_with_progress_and_log(
-                                    protocol,
-                                    &host,
-                                    port,
-                                    &username,
-                                    password.as_deref(),
-                                    &local_path,
-                                    &remote_path,
-                                    &mut on_prog,
-                                    &mut on_log,
-                                );
-                                if r.is_ok() && remove_source {
-                                    let _ = delete_local_item(&local_path, false);
-                                }
-                                r
-                            }
-                            TransferKind::Local { src, dest, remove_source } => {
-                                if remove_source {
-                                    move_local_item_with_progress(&src, &dest, &mut on_prog).map_err(|e| e.to_string())
-                                } else {
-                                    copy_local_item_with_progress(&src, &dest, &mut on_prog).map(|_| ()).map_err(|e| e.to_string())
-                                }
-                            }
-                        };
+                            let queue_id = task.queue_id;
+                            let task_size = task.size_bytes;
+                            let filename = task.filename.clone();
 
-                        if let Err(err_str) = res {
-                            let _ = tx.send(TransferProgressUpdate::Log {
-                                kind: ServerLogKind::Error,
-                                message: format!("Chyba přenosu {}: {}", filename, err_str),
-                            });
-                            let _ = tx.send(TransferProgressUpdate::ItemFailed { queue_id, error: err_str });
-                        } else {
-                            let _ = tx.send(TransferProgressUpdate::Log {
-                                kind: ServerLogKind::Response,
-                                message: format!("226 Přenos dokončen: {}", filename),
-                            });
-                            let _ = tx.send(TransferProgressUpdate::ItemDone {
-                                queue_id,
+                            let _ = tx.send(TransferProgressUpdate::ItemStarted {
+                                filename: filename.clone(),
+                                src: task.source_display.clone(),
+                                target: task.target_display.clone(),
                                 size_bytes: task_size,
+                                queue_id,
                             });
+
+                            let start_time = std::time::Instant::now();
+                            let tx_prog = tx.clone();
+                            let mut on_prog = move |cur_bytes: u64, total_bytes: u64| {
+                                let real_total = if total_bytes > 0 { total_bytes } else { task_size };
+                                let elapsed = start_time.elapsed().as_secs_f64();
+                                let speed = if elapsed > 0.05 {
+                                    (cur_bytes as f64 / 1_048_576.0) / elapsed
+                                } else {
+                                    0.0
+                                };
+                                let eta = if speed > 0.01 && real_total > cur_bytes {
+                                    Some(((real_total.saturating_sub(cur_bytes)) as f64 / (speed * 1_048_576.0)) as u64)
+                                } else {
+                                    None
+                                };
+                                let _ = tx_prog.send(TransferProgressUpdate::Progress {
+                                    queue_id,
+                                    bytes_transferred: cur_bytes,
+                                    total_bytes: real_total,
+                                    speed_mbps: speed,
+                                    eta_seconds: eta,
+                                });
+                            };
+
+                            let tx_log = tx.clone();
+                            let mut on_log = move |kind: ServerLogKind, message: String| {
+                                let _ = tx_log.send(TransferProgressUpdate::Log { kind, message });
+                            };
+
+                            let res = match &task.kind {
+                                TransferKind::Download { protocol, host, port, username, password, remote_path, local_path, remove_source, .. } => {
+                                    let r = download_from_remote_with_progress_and_log(
+                                        *protocol,
+                                        host,
+                                        *port,
+                                        username,
+                                        password.as_deref(),
+                                        remote_path,
+                                        local_path,
+                                        task_size,
+                                        &mut on_prog,
+                                        &mut on_log,
+                                    );
+                                    if r.is_ok() && *remove_source {
+                                        let _ = remote_delete(*protocol, host, *port, username, password.as_deref(), remote_path);
+                                    }
+                                    r
+                                }
+                                TransferKind::Upload { protocol, host, port, username, password, local_path, remote_path, remove_source, .. } => {
+                                    let r = upload_to_remote_with_progress_and_log(
+                                        *protocol,
+                                        host,
+                                        *port,
+                                        username,
+                                        password.as_deref(),
+                                        local_path,
+                                        remote_path,
+                                        &mut on_prog,
+                                        &mut on_log,
+                                    );
+                                    if r.is_ok() && *remove_source {
+                                        let _ = delete_local_item(local_path, false);
+                                    }
+                                    r
+                                }
+                                TransferKind::Local { src, dest, remove_source } => {
+                                    if *remove_source {
+                                        move_local_item_with_progress(src, dest, &mut on_prog).map_err(|e| e.to_string())
+                                    } else {
+                                        copy_local_item_with_progress(src, dest, &mut on_prog).map(|_| ()).map_err(|e| e.to_string())
+                                    }
+                                }
+                            };
+
+                            if let Err(err_str) = res {
+                                let _ = tx.send(TransferProgressUpdate::Log {
+                                    kind: ServerLogKind::Error,
+                                    message: format!("Chyba přenosu {}: {}", filename, err_str),
+                                });
+
+                                if skip_all_errors.load(std::sync::atomic::Ordering::SeqCst) {
+                                    let _ = tx.send(TransferProgressUpdate::ItemFailed { queue_id, error: err_str });
+                                    break;
+                                }
+
+                                // Stop other workers from picking up new tasks while user decides
+                                {
+                                    let mut p = pause_lock.lock().unwrap();
+                                    *p = true;
+                                }
+
+                                let (resp_tx, resp_rx) = std::sync::mpsc::channel();
+                                let _ = tx.send(TransferProgressUpdate::PromptError {
+                                    queue_id,
+                                    filename: filename.clone(),
+                                    src: task.source_display.clone(),
+                                    target: task.target_display.clone(),
+                                    error: err_str.clone(),
+                                    resp_tx,
+                                });
+
+                                let action = resp_rx.recv().unwrap_or(TransferErrorAction::Cancel);
+                                match action {
+                                    TransferErrorAction::Retry => {
+                                        // Loop again to retry transferring this task
+                                        continue;
+                                    }
+                                    TransferErrorAction::Skip => {
+                                        let _ = tx.send(TransferProgressUpdate::ItemFailed { queue_id, error: err_str });
+                                        {
+                                            let mut p = pause_lock.lock().unwrap();
+                                            *p = false;
+                                            pause_cvar.notify_all();
+                                        }
+                                        break;
+                                    }
+                                    TransferErrorAction::SkipAll => {
+                                        skip_all_errors.store(true, std::sync::atomic::Ordering::SeqCst);
+                                        let _ = tx.send(TransferProgressUpdate::ItemFailed { queue_id, error: err_str });
+                                        {
+                                            let mut p = pause_lock.lock().unwrap();
+                                            *p = false;
+                                            pause_cvar.notify_all();
+                                        }
+                                        break;
+                                    }
+                                    TransferErrorAction::Cancel => {
+                                        cancelled.store(true, std::sync::atomic::Ordering::SeqCst);
+                                        {
+                                            let mut guard = q.lock().unwrap();
+                                            guard.clear();
+                                        }
+                                        let _ = tx.send(TransferProgressUpdate::ItemFailed { queue_id, error: err_str });
+                                        {
+                                            let mut p = pause_lock.lock().unwrap();
+                                            *p = false;
+                                            pause_cvar.notify_all();
+                                        }
+                                        break;
+                                    }
+                                }
+                            } else {
+                                let _ = tx.send(TransferProgressUpdate::Log {
+                                    kind: ServerLogKind::Response,
+                                    message: format!("226 Přenos dokončen: {}", filename),
+                                });
+                                let _ = tx.send(TransferProgressUpdate::ItemDone {
+                                    queue_id,
+                                    size_bytes: task_size,
+                                });
+                                // If unpausing after successful retry
+                                {
+                                    let mut p = pause_lock.lock().unwrap();
+                                    if *p {
+                                        *p = false;
+                                        pause_cvar.notify_all();
+                                    }
+                                }
+                                break;
+                            }
                         }
                     }
                 });
@@ -2177,6 +2291,20 @@ impl RusterView {
                                         t.error_message = Some(error);
                                     }
                                 }
+                                TransferProgressUpdate::PromptError { queue_id, filename, src, target, error, resp_tx } => {
+                                    if let Some(t) = &mut view.active_transfer {
+                                        t.error_message = Some(error.clone());
+                                    }
+                                    view.transfer_error_prompt = Some(TransferErrorPromptState {
+                                        queue_id,
+                                        filename,
+                                        source: src,
+                                        target,
+                                        error,
+                                        resp_tx,
+                                    });
+                                    view.active_modal = ActiveModal::TransferError;
+                                }
                                 TransferProgressUpdate::DiscoveredItems { items } => {
                                     for it in &items {
                                         if it.is_dir {
@@ -2221,6 +2349,25 @@ impl RusterView {
                 }
             }
         }).detach();
+    }
+
+    pub(crate) fn handle_transfer_error_action(
+        &mut self,
+        action: TransferErrorAction,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(prompt) = self.transfer_error_prompt.take() {
+            if action == TransferErrorAction::Cancel {
+                for item in &mut self.transfer_queue {
+                    if item.status == TransferStatus::Queued || item.status == TransferStatus::Transferring {
+                        item.status = TransferStatus::Failed;
+                    }
+                }
+            }
+            let _ = prompt.resp_tx.send(action);
+        }
+        self.active_modal = ActiveModal::None;
+        cx.notify();
     }
 
     pub(crate) fn copy_selected_item(&mut self, remove_source: bool, cx: &mut Context<Self>) {
@@ -4428,6 +4575,13 @@ impl Render for RusterView {
             })
             .when(self.active_modal == ActiveModal::TransferProgress, |el| {
                 el.child(self.render_transfer_modal(cx))
+            })
+            .when(self.active_modal == ActiveModal::TransferError, |el| {
+                if let Some(prompt) = self.transfer_error_prompt.clone() {
+                    el.child(self.render_transfer_error_modal(prompt, cx))
+                } else {
+                    el
+                }
             })
             .when(self.active_modal == ActiveModal::Settings, |el| {
                 el.child(self.render_settings_modal(cx))

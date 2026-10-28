@@ -685,8 +685,27 @@ pub enum ActiveModal {
     DeleteConfirm,
     GoToFolder,
     TransferProgress,
+    TransferError,
     Settings,
     Update,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum TransferErrorAction {
+    Retry,
+    Skip,
+    SkipAll,
+    Cancel,
+}
+
+#[derive(Clone, Debug)]
+pub struct TransferErrorPromptState {
+    pub queue_id: usize,
+    pub filename: String,
+    pub source: String,
+    pub target: String,
+    pub error: String,
+    pub resp_tx: std::sync::mpsc::Sender<TransferErrorAction>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -958,6 +977,21 @@ mod tests {
         assert!(!is_editable_file("image.png", &exts));
         assert!(!is_editable_file("video.mp4", &exts));
         assert!(!is_editable_file("app.exe", &exts));
+    }
+
+    #[test]
+    fn test_transfer_error_actions() {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let prompt = TransferErrorPromptState {
+            queue_id: 42,
+            filename: "upload.dat".to_string(),
+            source: "/local/upload.dat".to_string(),
+            target: "/remote/upload.dat".to_string(),
+            error: "Permission denied".to_string(),
+            resp_tx: tx,
+        };
+        prompt.resp_tx.send(TransferErrorAction::Retry).unwrap();
+        assert_eq!(rx.recv().unwrap(), TransferErrorAction::Retry);
     }
 
     #[test]

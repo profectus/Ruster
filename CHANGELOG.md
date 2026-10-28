@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-10-28
+
+### Added
+- **Remote Synchronization Quick Action**: Added a direct synchronization icon to the top toolbar when connected to an active remote server, opening the directory synchronization modal with one click.
+- **Interactive Transfer Error Recovery**: Transfers now pause on failed uploads/downloads/copies and present an action dialog with options to Retry (Zkusit znovu), Skip (Přeskočit), Skip All (Přeskočit vše), or Cancel (Zrušit přenos).
+- **Collapsible Transfer Log**: The server transfer log is now hidden by default in the bottom transfer panel, allowing the file queue and progress bars to occupy full width. Added a quick toggle button to reveal/hide the log on demand.
+
 ## [0.3.1] - 2026-10-26
 
 ### Changed

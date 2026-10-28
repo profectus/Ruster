@@ -886,6 +886,126 @@ impl I18n {
         }
     }
 
+    pub fn modal_transfer_error_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "File Transfer Error",
+            Locale::Cs => "Chyba přenosu souboru",
+            Locale::De => "Dateiübertragungsfehler",
+            Locale::Es => "Error de transferencia de archivo",
+            Locale::Fr => "Erreur de transfert de fichier",
+            Locale::It => "Errore di trasferimento file",
+            Locale::Pl => "Błąd transferu pliku",
+            Locale::Pt => "Erro na transferência de arquivo",
+            Locale::Zh => "文件传输错误",
+            Locale::Ja => "ファイル転送エラー",
+        }
+    }
+
+    pub fn transfer_error_question(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "What would you like to do?",
+            Locale::Cs => "Jak si přejete pokračovat?",
+            Locale::De => "Wie möchten Sie fortfahren?",
+            Locale::Es => "¿Qué desea hacer?",
+            Locale::Fr => "Que souhaitez-vous faire ?",
+            Locale::It => "Come desideri procedere?",
+            Locale::Pl => "Co chcesz zrobić?",
+            Locale::Pt => "O que você deseja fazer?",
+            Locale::Zh => "您想如何处理？",
+            Locale::Ja => "どうしますか？",
+        }
+    }
+
+    pub fn btn_retry(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Retry",
+            Locale::Cs => "Zkusit znovu",
+            Locale::De => "Wiederholen",
+            Locale::Es => "Reintentar",
+            Locale::Fr => "Réessayer",
+            Locale::It => "Riprova",
+            Locale::Pl => "Ponów",
+            Locale::Pt => "Tentar novamente",
+            Locale::Zh => "重试",
+            Locale::Ja => "再試行",
+        }
+    }
+
+    pub fn btn_skip(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Skip",
+            Locale::Cs => "Přeskočit",
+            Locale::De => "Überspringen",
+            Locale::Es => "Omitir",
+            Locale::Fr => "Ignorer",
+            Locale::It => "Salta",
+            Locale::Pl => "Pomiń",
+            Locale::Pt => "Ignorar",
+            Locale::Zh => "跳过",
+            Locale::Ja => "スキップ",
+        }
+    }
+
+    pub fn btn_skip_all(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Skip All",
+            Locale::Cs => "Přeskočit vše",
+            Locale::De => "Alle überspringen",
+            Locale::Es => "Omitir todo",
+            Locale::Fr => "Tout ignorer",
+            Locale::It => "Salta tutti",
+            Locale::Pl => "Pomiń wszystko",
+            Locale::Pt => "Ignorar tudo",
+            Locale::Zh => "全部跳过",
+            Locale::Ja => "すべてスキップ",
+        }
+    }
+
+    pub fn btn_abort_transfer(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Cancel Transfer",
+            Locale::Cs => "Zrušit přenos",
+            Locale::De => "Übertragung abbrechen",
+            Locale::Es => "Cancelar transferencia",
+            Locale::Fr => "Annuler le transfert",
+            Locale::It => "Annulla trasferimento",
+            Locale::Pl => "Anuluj transfer",
+            Locale::Pt => "Cancelar transferência",
+            Locale::Zh => "取消传输",
+            Locale::Ja => "転送を中止",
+        }
+    }
+
+    pub fn btn_show_log(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Show Log",
+            Locale::Cs => "Zobrazit log",
+            Locale::De => "Log anzeigen",
+            Locale::Es => "Mostrar registro",
+            Locale::Fr => "Afficher le journal",
+            Locale::It => "Mostra registro",
+            Locale::Pl => "Pokaż dziennik",
+            Locale::Pt => "Mostrar registro",
+            Locale::Zh => "显示日志",
+            Locale::Ja => "ログを表示",
+        }
+    }
+
+    pub fn btn_hide_log(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Hide Log",
+            Locale::Cs => "Skrýt log",
+            Locale::De => "Log ausblenden",
+            Locale::Es => "Ocultar registro",
+            Locale::Fr => "Masquer le journal",
+            Locale::It => "Nascondi registro",
+            Locale::Pl => "Ukryj dziennik",
+            Locale::Pt => "Ocultar registro",
+            Locale::Zh => "隐藏日志",
+            Locale::Ja => "ログを非表示",
+        }
+    }
+
     // --- Modals & Buttons ---
     pub fn modal_site_manager_title(&self) -> &'static str {
         match self.locale {
@@ -2078,6 +2198,19 @@ mod tests {
             assert!(!t.notice_ssh_config_imported(1).is_empty());
             assert!(!t.notice_ssh_config_imported(3).is_empty());
             assert!(!t.notice_ssh_config_all_exist(2).is_empty());
+        }
+
+        // Test transfer error and log i18n
+        for &loc in Locale::ALL {
+            let t = I18n::new(loc);
+            assert!(!t.modal_transfer_error_title().is_empty());
+            assert!(!t.transfer_error_question().is_empty());
+            assert!(!t.btn_retry().is_empty());
+            assert!(!t.btn_skip().is_empty());
+            assert!(!t.btn_skip_all().is_empty());
+            assert!(!t.btn_abort_transfer().is_empty());
+            assert!(!t.btn_show_log().is_empty());
+            assert!(!t.btn_hide_log().is_empty());
         }
     }
 }

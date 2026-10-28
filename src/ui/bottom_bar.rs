@@ -90,7 +90,10 @@ impl RusterView {
     }
 
     pub fn render_transfer_queue_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = self.i18n();
         let theme = self.theme();
+        let show_log = self.show_transfer_log;
+
         div()
             .flex()
             .flex_col()
@@ -98,7 +101,104 @@ impl RusterView {
             .bg(theme.bottom_panel_bg())
             .border_t_1()
             .border_color(theme.border())
-            // Permanent split view: Transfers (55%) + Console (45%)
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .h(px(24.0))
+                    .px_2()
+                    .bg(theme.top_bar_bg())
+                    .border_b_1()
+                    .border_color(theme.border())
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
+                            .child(render_icon("icons/transfer.svg", 12.0, theme.c_icon_active()))
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .text_color(theme.text_primary())
+                                    .child(t.transfer_queue_title()),
+                            )
+                            .when(!self.transfer_queue.is_empty(), |el| {
+                                let active_count = self.transfer_queue.iter().filter(|i| !i.is_dir && i.status == TransferStatus::Transferring).count();
+                                let queued_count = self.transfer_queue.iter().filter(|i| !i.is_dir && i.status == TransferStatus::Queued).count();
+                                let label = if active_count > 0 {
+                                    format!("{} aktivní, {} ve frontě", active_count, queued_count)
+                                } else {
+                                    format!("{} ve frontě", queued_count)
+                                };
+                                el.child(
+                                    div()
+                                        .px_1p5()
+                                        .py_0p5()
+                                        .rounded(px(3.0))
+                                        .bg(theme.button_secondary_bg())
+                                        .text_xs()
+                                        .text_color(theme.text_secondary())
+                                        .child(label),
+                                )
+                            }),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_1p5()
+                            // Toggle transfer log button
+                            .child(
+                                div()
+                                    .id("btn-toggle-transfer-log")
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .gap_1()
+                                    .px_2()
+                                    .h(px(18.0))
+                                    .rounded(px(3.0))
+                                    .bg(if show_log { theme.button_active_bg() } else { theme.button_bg() })
+                                    .border_1()
+                                    .border_color(if show_log { theme.button_active_border() } else { theme.border() })
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .text_xs()
+                                    .text_color(if show_log { theme.text_accent() } else { theme.text_secondary() })
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            this.show_transfer_log = !this.show_transfer_log;
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(render_icon("icons/file-text.svg", 10.0, if show_log { theme.c_icon_active() } else { theme.c_icon_secondary() }))
+                                    .child(if show_log { t.btn_hide_log() } else { t.btn_show_log() }),
+                            )
+                            // Close queue panel
+                            .child(
+                                div()
+                                    .id("btn-close-queue-panel")
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(18.0))
+                                    .h(px(18.0))
+                                    .rounded(px(3.0))
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            this.show_queue = false;
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(render_icon("icons/close.svg", 10.0, theme.c_icon_secondary())),
+                            ),
+                    ),
+            )
             .child(
                 div()
                     .flex_1()
@@ -107,19 +207,22 @@ impl RusterView {
                     .overflow_hidden()
                     .child(
                         div()
-                            .w(gpui::DefiniteLength::Fraction(0.55))
+                            .when(!show_log, |el| el.w_full())
+                            .when(show_log, |el| el.w(gpui::DefiniteLength::Fraction(0.55)))
                             .h_full()
                             .overflow_hidden()
                             .child(self.render_transfers_list(cx)),
                     )
-                    .child(div().w(px(1.0)).h_full().bg(theme.border()))
-                    .child(
-                        div()
-                            .w(gpui::DefiniteLength::Fraction(0.45))
-                            .h_full()
-                            .overflow_hidden()
-                            .child(self.render_server_console()),
-                    ),
+                    .when(show_log, |el| {
+                        el.child(div().w(px(1.0)).h_full().bg(theme.border()))
+                            .child(
+                                div()
+                                    .w(gpui::DefiniteLength::Fraction(0.45))
+                                    .h_full()
+                                    .overflow_hidden()
+                                    .child(self.render_server_console()),
+                            )
+                    }),
             )
     }
 }

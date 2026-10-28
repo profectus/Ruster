@@ -2,6 +2,7 @@ use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
 use crate::app::RusterView;
 use crate::icons::render_icon;
 use crate::model::{ActiveModal, ActivePane};
+use crate::ui::helpers::FileTooltip;
 
 impl RusterView {
     pub fn render_top_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -108,6 +109,29 @@ impl RusterView {
                                 )
                                 .child(render_icon("icons/close.svg", 11.0, if theme.is_dark() { 0xfca5a5 } else { 0xb91c1c }))
                                 .child(t.btn_disconnect()),
+                        )
+                        .child(
+                            self.render_icon_btn(
+                                "btn-open-sync",
+                                "icons/sync.svg",
+                                self.active_modal == ActiveModal::Synchronize,
+                                cx,
+                                |this, cx| {
+                                    this.open_sync_modal(cx);
+                                    cx.notify();
+                                },
+                            )
+                            .tooltip({
+                                let tooltip_text = t.act_synchronize().to_string();
+                                let is_dark = theme.is_dark();
+                                move |_, cx| {
+                                    cx.new(|_| FileTooltip {
+                                        text: tooltip_text.clone(),
+                                        is_dark,
+                                    })
+                                    .into()
+                                }
+                            }),
                         )
                     })
                     .when(!has_session, |el| {
@@ -245,7 +269,7 @@ impl RusterView {
         active: bool,
         cx: &mut Context<Self>,
         action: impl Fn(&mut Self, &mut Context<Self>) + 'static,
-    ) -> impl IntoElement {
+    ) -> gpui::Stateful<gpui::Div> {
         let theme = self.theme();
         let icon_color = if active {
             theme.c_icon_active()
