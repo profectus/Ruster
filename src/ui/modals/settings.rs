@@ -95,16 +95,16 @@ impl RusterView {
 
         let show_fnbar_desc = if show_fnbar {
             match self.locale {
-                crate::i18n::Locale::En => "Bottom action buttons for View, Edit, Copy, Move, New Folder, Delete are visible",
-                crate::i18n::Locale::Cs => "Tlačítka dole pro otevření, úpravu, kopírování, novou složku apod. jsou zobrazena",
-                crate::i18n::Locale::De => "Aktionstasten für Kopieren, Neuer Ordner usw. sind sichtbar",
-                crate::i18n::Locale::Es => "Botones de acción para copiar, nueva carpeta, etc. están visibles",
-                crate::i18n::Locale::Fr => "Les boutons d'action en bas sont visibles",
-                crate::i18n::Locale::It => "I pulsanti di azione in basso sono visibili",
-                crate::i18n::Locale::Pl => "Przyciski akcji na dole są widoczne",
-                crate::i18n::Locale::Pt => "Botões de ação na parte inferior estão visíveis",
-                crate::i18n::Locale::Zh => "底部的查看、编辑、复制、新建文件夹等按钮已显示",
-                crate::i18n::Locale::Ja => "下部の表示、編集、コピー、新規フォルダ等のボタンを表示中",
+                crate::i18n::Locale::En => "Bottom shortcut bar is currently visible",
+                crate::i18n::Locale::Cs => "Spodní lišta klávesových zkratek je zobrazena",
+                crate::i18n::Locale::De => "Untere Funktionstastenleiste wird angezeigt",
+                crate::i18n::Locale::Es => "La barra inferior de atajos está visible",
+                crate::i18n::Locale::Fr => "La barre inférieure de raccourcis est affichée",
+                crate::i18n::Locale::It => "La barra inferiore scorciatoie è visibile",
+                crate::i18n::Locale::Pl => "Dolny pasek skrótów jest widoczny",
+                crate::i18n::Locale::Pt => "A barra inferior de atalhos está visível",
+                crate::i18n::Locale::Zh => "底部快捷键栏当前已显示",
+                crate::i18n::Locale::Ja => "下部ショートカットバーを表示中",
             }
         } else {
             match self.locale {
@@ -193,7 +193,7 @@ impl RusterView {
             .child(
                 div()
                     .id("modal-settings-card")
-                    .w(px(520.0))
+                    .w(px(540.0))
                     .max_h(px(650.0))
                     .bg(theme.modal_bg())
                     .rounded(px(10.0))
@@ -530,6 +530,7 @@ impl RusterView {
                                             .flex()
                                             .items_center()
                                             .justify_between()
+                                            .gap_3()
                                             .p_2p5()
                                             .bg(theme.modal_card_bg())
                                             .rounded(px(6.0))
@@ -544,6 +545,8 @@ impl RusterView {
                                             }))
                                             .child(
                                                 div()
+                                                    .flex_1()
+                                                    .min_w_0()
                                                     .flex()
                                                     .flex_col()
                                                     .gap_0p5()
@@ -552,17 +555,20 @@ impl RusterView {
                                                             .text_xs()
                                                             .font_weight(gpui::FontWeight::MEDIUM)
                                                             .text_color(theme.text_primary())
+                                                            .whitespace_normal()
                                                             .child(show_hidden_title),
                                                     )
                                                     .child(
                                                         div()
                                                             .text_xs()
                                                             .text_color(theme.text_secondary())
+                                                            .whitespace_normal()
                                                             .child(show_hidden_desc),
                                                     ),
                                             )
                                             .child(
                                                 div()
+                                                    .flex_shrink_0()
                                                     .w(px(38.0))
                                                     .h(px(20.0))
                                                     .rounded(px(10.0))
@@ -588,6 +594,7 @@ impl RusterView {
                                             .flex()
                                             .items_center()
                                             .justify_between()
+                                            .gap_3()
                                             .p_2p5()
                                             .bg(theme.modal_card_bg())
                                             .rounded(px(6.0))
@@ -600,6 +607,8 @@ impl RusterView {
                                             }))
                                             .child(
                                                 div()
+                                                    .flex_1()
+                                                    .min_w_0()
                                                     .flex()
                                                     .flex_col()
                                                     .gap_0p5()
@@ -608,17 +617,20 @@ impl RusterView {
                                                             .text_xs()
                                                             .font_weight(gpui::FontWeight::MEDIUM)
                                                             .text_color(theme.text_primary())
+                                                            .whitespace_normal()
                                                             .child(show_fnbar_title),
                                                     )
                                                     .child(
                                                         div()
                                                             .text_xs()
                                                             .text_color(theme.text_secondary())
+                                                            .whitespace_normal()
                                                             .child(show_fnbar_desc),
                                                     ),
                                             )
                                             .child(
                                                 div()
+                                                    .flex_shrink_0()
                                                     .w(px(38.0))
                                                     .h(px(20.0))
                                                     .rounded(px(10.0))
@@ -724,6 +736,7 @@ impl RusterView {
                                                 div()
                                                     .text_xs()
                                                     .text_color(theme.text_secondary())
+                                                    .whitespace_normal()
                                                     .child(exts_help),
                                             ),
                                     ),

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8] - 2026-10-28
+
+### Fixed
+- **Window Size Height Inflation on Launch**: Resolved a macOS titlebar height mismatch where saving `window.bounds()` (window frame including titlebar) caused the content area to expand by ~40px on every app restart. Switched to `window.viewport_size()`, ignored size updates in fullscreen mode, and clamped initial bounds to primary display dimensions.
+- **Settings Toggle Switch & Text Overflow**: Fixed long localized setting labels pushing and squeezing toggle switches into 20px circles. Added `flex_shrink_0()` to switch pills, `whitespace_normal()` and `min_w_0()` for multiline wrapping, and unified concise description texts across all supported languages.
+
 ## [0.3.4] - 2026-10-28
 
 ### Added

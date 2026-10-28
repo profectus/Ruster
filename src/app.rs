@@ -4472,16 +4472,18 @@ impl RusterView {
 
 impl Render for RusterView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let cur_size = window.bounds().size;
-        let cur_w: f32 = cur_size.width.into();
-        let cur_h: f32 = cur_size.height.into();
-        if cur_w >= 600.0 && cur_h >= 400.0 {
-            if (cur_w - self.window_width).abs() > 2.0 || (cur_h - self.window_height).abs() > 2.0 {
-                self.window_width = cur_w;
-                self.window_height = cur_h;
-                if self.last_window_size_saved.elapsed() > std::time::Duration::from_millis(400) {
-                    self.last_window_size_saved = std::time::Instant::now();
-                    self.persist_app_state();
+        if !window.is_fullscreen() {
+            let cur_size = window.viewport_size();
+            let cur_w: f32 = cur_size.width.into();
+            let cur_h: f32 = cur_size.height.into();
+            if cur_w >= 600.0 && cur_h >= 400.0 {
+                if (cur_w - self.window_width).abs() > 2.0 || (cur_h - self.window_height).abs() > 2.0 {
+                    self.window_width = cur_w;
+                    self.window_height = cur_h;
+                    if self.last_window_size_saved.elapsed() > std::time::Duration::from_millis(400) {
+                        self.last_window_size_saved = std::time::Instant::now();
+                        self.persist_app_state();
+                    }
                 }
             }
         }

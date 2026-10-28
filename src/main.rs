@@ -167,8 +167,17 @@ fn main() {
         let is_dark = state.theme.is_dark();
         set_macos_window_appearance(is_dark);
         install_app_menus(cx, state.locale);
-        let width = state.window_width.max(600.0);
-        let height = state.window_height.max(400.0);
+        let display = cx.primary_display();
+        let max_w = display
+            .as_ref()
+            .map(|d| (f32::from(d.bounds().size.width) - 40.0).max(600.0))
+            .unwrap_or(2560.0);
+        let max_h = display
+            .as_ref()
+            .map(|d| (f32::from(d.bounds().size.height) - 80.0).max(400.0))
+            .unwrap_or(1440.0);
+        let width = state.window_width.clamp(600.0, max_w);
+        let height = state.window_height.clamp(400.0, max_h);
         let bounds = Bounds::centered(None, size(px(width), px(height)), cx);
 
         cx.open_window(
