@@ -418,6 +418,43 @@ pub fn percent_encode_path(path: &str) -> String {
     encoded
 }
 
+/// Encodes a single Unicode character to its single-byte Windows-1250 (CP1250) representation.
+pub fn encode_cp1250_char(c: char) -> Option<u8> {
+    if (c as u32) < 0x80 {
+        return Some(c as u8);
+    }
+    for b in 0x80..=0xFF {
+        if decode_cp1250_byte(b) == c {
+            return Some(b);
+        }
+    }
+    None
+}
+
+/// Percent-encodes path using Windows-1250 byte mapping for non-ASCII characters.
+/// Necessary for legacy Windows IIS FTP servers that store files in ANSI/CP1250 rather than UTF-8.
+pub fn percent_encode_path_cp1250(path: &str) -> String {
+    let mut encoded = String::with_capacity(path.len() * 2);
+    for c in path.chars() {
+        match c {
+            '/' => encoded.push('/'),
+            'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' | '.' | '~' => {
+                encoded.push(c);
+            }
+            _ => {
+                if let Some(b) = encode_cp1250_char(c) {
+                    encoded.push_str(&format!("%{:02X}", b));
+                } else {
+                    for byte in c.to_string().as_bytes() {
+                        encoded.push_str(&format!("%{:02X}", byte));
+                    }
+                }
+            }
+        }
+    }
+    encoded
+}
+
 fn list_via_ftp_curl(
     protocol: Protocol,
     host: &str,
@@ -712,8 +749,12 @@ fn upload_to_remote_impl(
                 }
             });
 
+            let mut last_server_error: Option<String> = None;
             loop {
                 while let Ok((kind, msg)) = rx_log.try_recv() {
+                    if kind == crate::model::ServerLogKind::Error || msg.starts_with("< 5") || msg.starts_with("< 4") {
+                        last_server_error = Some(msg.clone());
+                    }
                     on_log(kind, msg);
                 }
 
@@ -721,13 +762,17 @@ fn upload_to_remote_impl(
                     Ok(Some(status)) => {
                         let _ = reader_thread.join();
                         while let Ok((kind, msg)) = rx_log.try_recv() {
+                            if kind == crate::model::ServerLogKind::Error || msg.starts_with("< 5") || msg.starts_with("< 4") {
+                                last_server_error = Some(msg.clone());
+                            }
                             on_log(kind, msg);
                         }
                         if status.success() {
                             on_progress(file_size, file_size);
                             return Ok(());
                         } else {
-                            return Err(format!("Curl upload selhal s kódem {}", status));
+                            let detail = last_server_error.as_deref().map(|s| format!(" ({})", s)).unwrap_or_default();
+                            return Err(format!("Curl upload selhal s kódem {}{}", status, detail));
                         }
                     }
                     Ok(None) => {
@@ -852,127 +897,172 @@ where
             } else {
                 format!("/{}", remote_source_path)
             };
-            let encoded_path = percent_encode_path(&clean_path);
-            let url = format!("{}://{}:{}{}", scheme, final_host, final_port, encoded_path);
             let pwd = password
                 .map(|s| s.to_string())
                 .filter(|s| !s.is_empty())
                 .or_else(|| read_password_from_keychain(final_host, username))
                 .unwrap_or_default();
 
-            let mut cmd = Command::new("/usr/bin/curl");
-            cmd.args([
-                "-v",
-                "--connect-timeout",
-                "15",
-                "--speed-limit",
-                "1",
-                "--speed-time",
-                "30",
-                "--disable-epsv",
-                "-Q",
-                "*OPTS UTF8 ON",
-            ]);
-            if final_proto == Protocol::FtpsExplicit {
-                cmd.args(["--ssl", "--insecure"]);
-            } else if final_proto == Protocol::FtpsImplicit {
-                cmd.args(["--ssl-reqd", "--insecure"]);
-            }
-            if !username.is_empty() {
-                if !pwd.is_empty() {
-                    cmd.args(["--user", &format!("{}:{}", username, pwd)]);
-                } else {
-                    cmd.args(["--user", username]);
+            let run_curl_download = |target_url: &str, on_prog: &mut F, on_lg: &mut L| -> Result<(), (std::process::ExitStatus, Option<String>)> {
+                let mut cmd = Command::new("/usr/bin/curl");
+                cmd.args([
+                    "-v",
+                    "--connect-timeout",
+                    "15",
+                    "--speed-limit",
+                    "1",
+                    "--speed-time",
+                    "30",
+                    "--disable-epsv",
+                    "-Q",
+                    "*OPTS UTF8 ON",
+                ]);
+                if final_proto == Protocol::FtpsExplicit {
+                    cmd.args(["--ssl", "--insecure"]);
+                } else if final_proto == Protocol::FtpsImplicit {
+                    cmd.args(["--ssl-reqd", "--insecure"]);
                 }
-            }
-            cmd.args(["-o", &local_target_path.to_string_lossy(), &url]);
-            cmd.stderr(std::process::Stdio::piped());
+                if !username.is_empty() {
+                    if !pwd.is_empty() {
+                        cmd.args(["--user", &format!("{}:{}", username, pwd)]);
+                    } else {
+                        cmd.args(["--user", username]);
+                    }
+                }
+                cmd.args(["-o", &local_target_path.to_string_lossy(), target_url]);
+                cmd.stderr(std::process::Stdio::piped());
 
-            let mut child = cmd.spawn().map_err(|e| e.to_string())?;
-            let stderr = child.stderr.take();
+                let mut child = cmd.spawn().map_err(|e| {
+                    on_lg(crate::model::ServerLogKind::Error, format!("Nepodařilo se spustit curl: {e}"));
+                    // Synthesize dummy exit failure
+                    (std::process::ExitStatus::default(), Some(e.to_string()))
+                })?;
+                let stderr = child.stderr.take();
 
-            let (tx_log, rx_log) = std::sync::mpsc::channel::<(crate::model::ServerLogKind, String, u64)>();
-            let reader_thread = std::thread::spawn(move || {
-                if let Some(stderr) = stderr {
-                    use std::io::BufRead;
-                    let reader = std::io::BufReader::new(stderr);
-                    for line in reader.lines().flatten() {
-                        let trimmed = line.trim();
-                        if trimmed.is_empty() { continue; }
+                let (tx_log, rx_log) = std::sync::mpsc::channel::<(crate::model::ServerLogKind, String, u64)>();
+                let reader_thread = std::thread::spawn(move || {
+                    if let Some(stderr) = stderr {
+                        use std::io::BufRead;
+                        let reader = std::io::BufReader::new(stderr);
+                        for line in reader.lines().flatten() {
+                            let trimmed = line.trim();
+                            if trimmed.is_empty() { continue; }
 
-                        let mut detected_size = 0u64;
-                        if trimmed.starts_with("< 150") || trimmed.starts_with("< 213") {
-                            if let Some(start_paren) = trimmed.rfind('(') {
-                                if let Some(end_bytes) = trimmed[start_paren + 1..].find(" byte") {
-                                    if let Ok(num) = trimmed[start_paren + 1..start_paren + 1 + end_bytes].trim().parse::<u64>() {
-                                        detected_size = num;
+                            let mut detected_size = 0u64;
+                            if trimmed.starts_with("< 150") || trimmed.starts_with("< 213") {
+                                if let Some(start_paren) = trimmed.rfind('(') {
+                                    if let Some(end_bytes) = trimmed[start_paren + 1..].find(" byte") {
+                                        if let Ok(num) = trimmed[start_paren + 1..start_paren + 1 + end_bytes].trim().parse::<u64>() {
+                                            detected_size = num;
+                                        }
                                     }
-                                }
-                            } else if trimmed.starts_with("< 213") {
-                                if let Some(size_str) = trimmed.split_whitespace().nth(1) {
-                                    if let Ok(num) = size_str.parse::<u64>() {
-                                        detected_size = num;
+                                } else if trimmed.starts_with("< 213") {
+                                    if let Some(size_str) = trimmed.split_whitespace().nth(1) {
+                                        if let Ok(num) = size_str.parse::<u64>() {
+                                            detected_size = num;
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        let (kind, msg) = if trimmed.starts_with("> PASS ") || trimmed == "> PASS" {
-                            (crate::model::ServerLogKind::Command, "> PASS *****".to_string())
-                        } else if trimmed.starts_with("> ") {
-                            (crate::model::ServerLogKind::Command, trimmed.to_string())
-                        } else if trimmed.starts_with("< ") {
-                            let k = if trimmed.starts_with("< 5") || trimmed.starts_with("< 4") {
-                                crate::model::ServerLogKind::Error
+                            let (kind, msg) = if trimmed.starts_with("> PASS ") || trimmed == "> PASS" {
+                                (crate::model::ServerLogKind::Command, "> PASS *****".to_string())
+                            } else if trimmed.starts_with("> ") {
+                                (crate::model::ServerLogKind::Command, trimmed.to_string())
+                            } else if trimmed.starts_with("< ") {
+                                let k = if trimmed.starts_with("< 5") || trimmed.starts_with("< 4") {
+                                    crate::model::ServerLogKind::Error
+                                } else {
+                                    crate::model::ServerLogKind::Response
+                                };
+                                (k, trimmed.to_string())
                             } else {
-                                crate::model::ServerLogKind::Response
+                                (crate::model::ServerLogKind::Status, trimmed.to_string())
                             };
-                            (k, trimmed.to_string())
-                        } else {
-                            (crate::model::ServerLogKind::Status, trimmed.to_string())
-                        };
 
-                        let _ = tx_log.send((kind, msg, detected_size));
+                            let _ = tx_log.send((kind, msg, detected_size));
+                        }
                     }
-                }
-            });
+                });
 
-            let mut detected_total = expected_size;
-            loop {
-                while let Ok((kind, msg, sz)) = rx_log.try_recv() {
-                    if sz > 0 {
-                        detected_total = sz;
+                let mut detected_total = expected_size;
+                let mut last_server_error: Option<String> = None;
+                loop {
+                    while let Ok((kind, msg, sz)) = rx_log.try_recv() {
+                        if sz > 0 {
+                            detected_total = sz;
+                        }
+                        if kind == crate::model::ServerLogKind::Error || msg.starts_with("< 5") || msg.starts_with("< 4") {
+                            last_server_error = Some(msg.clone());
+                        }
+                        on_lg(kind, msg);
                     }
-                    on_log(kind, msg);
-                }
 
-                let cur = std::fs::metadata(local_target_path).map(|m| m.len()).unwrap_or(0);
-                if cur > 0 || detected_total > 0 {
-                    on_progress(cur, detected_total);
-                }
+                    let cur = std::fs::metadata(local_target_path).map(|m| m.len()).unwrap_or(0);
+                    if cur > 0 || detected_total > 0 {
+                        on_prog(cur, detected_total);
+                    }
 
-                match child.try_wait() {
-                    Ok(Some(status)) => {
-                        let _ = reader_thread.join();
-                        while let Ok((kind, msg, sz)) = rx_log.try_recv() {
-                            if sz > 0 {
-                                detected_total = sz;
+                    match child.try_wait() {
+                        Ok(Some(status)) => {
+                            let _ = reader_thread.join();
+                            while let Ok((kind, msg, sz)) = rx_log.try_recv() {
+                                if sz > 0 {
+                                    detected_total = sz;
+                                }
+                                if kind == crate::model::ServerLogKind::Error || msg.starts_with("< 5") || msg.starts_with("< 4") {
+                                    last_server_error = Some(msg.clone());
+                                }
+                                on_lg(kind, msg);
                             }
-                            on_log(kind, msg);
+                            if status.success() {
+                                let final_len = std::fs::metadata(local_target_path).map(|m| m.len()).unwrap_or(0);
+                                let total = if detected_total > 0 { detected_total.max(final_len) } else { final_len };
+                                on_prog(total, total);
+                                return Ok(());
+                            } else {
+                                return Err((status, last_server_error));
+                            }
                         }
-                        if status.success() {
-                            let final_len = std::fs::metadata(local_target_path).map(|m| m.len()).unwrap_or(0);
-                            let total = if detected_total > 0 { detected_total.max(final_len) } else { final_len };
-                            on_progress(total, total);
+                        Ok(None) => {
+                            std::thread::sleep(std::time::Duration::from_millis(60));
+                        }
+                        Err(e) => {
+                            return Err((std::process::ExitStatus::default(), Some(e.to_string())));
+                        }
+                    }
+                }
+            };
+
+            let encoded_path = percent_encode_path(&clean_path);
+            let url = format!("{}://{}:{}{}", scheme, final_host, final_port, encoded_path);
+
+            match run_curl_download(&url, &mut on_progress, &mut on_log) {
+                Ok(()) => Ok(()),
+                Err((status, last_server_error)) => {
+                    let code = status.code().unwrap_or(-1);
+                    // If file not found (code 78) and path contains non-ASCII characters,
+                    // automatically retry using Windows-1250 (CP1250) byte encoding.
+                    if code == 78 && clean_path.chars().any(|c| (c as u32) >= 0x80) {
+                        on_log(
+                            crate::model::ServerLogKind::Status,
+                            "Soubor nebyl nalezen v UTF-8 kódování, automaticky opakuji stažení s kódováním Windows-1250 (CP1250)...".to_string(),
+                        );
+                        let cp1250_path = percent_encode_path_cp1250(&clean_path);
+                        let url_cp1250 = format!("{}://{}:{}{}", scheme, final_host, final_port, cp1250_path);
+                        if let Ok(()) = run_curl_download(&url_cp1250, &mut on_progress, &mut on_log) {
                             return Ok(());
-                        } else {
-                            return Err(format!("Curl download selhal s kódem {}", status));
                         }
                     }
-                    Ok(None) => {
-                        std::thread::sleep(std::time::Duration::from_millis(60));
-                    }
-                    Err(e) => return Err(e.to_string()),
+
+                    let detail = if let Some(err) = &last_server_error {
+                        format!(" ({})", err)
+                    } else if code == 78 {
+                        " (soubor nebyl na serveru nalezen nebo server odmítl přístup k názvu)".to_string()
+                    } else {
+                        String::new()
+                    };
+                    Err(format!("Curl download selhal s kódem {}{}", status, detail))
                 }
             }
         }
@@ -1220,13 +1310,31 @@ pub fn parse_unix_ls_output(raw: &str, remote_dir: &str, show_hidden: bool) -> V
                 let owner = parts[2].to_string();
                 let size = parts[4].parse::<u64>().unwrap_or(0);
                 let mod_str = format_ftp_date(parts[5], parts[6], parts[7]);
-                let name = parts[8..].join(" ");
+                let name = if let Some(idx6) = line.find(parts[6]) {
+                    if let Some(idx7) = line[idx6 + parts[6].len()..].find(parts[7]) {
+                        let actual = idx6 + parts[6].len() + idx7 + parts[7].len();
+                        line[actual..].trim_start().to_string()
+                    } else {
+                        parts[8..].join(" ")
+                    }
+                } else {
+                    parts[8..].join(" ")
+                };
                 (owner, size, mod_str, name)
             } else if parts.len() >= 8 {
                 let owner = parts[2].to_string();
                 let size = parts[3].parse::<u64>().unwrap_or(0);
                 let mod_str = format_ftp_date(parts[4], parts[5], parts[6]);
-                let name = parts[7..].join(" ");
+                let name = if let Some(idx5) = line.find(parts[5]) {
+                    if let Some(idx6) = line[idx5 + parts[5].len()..].find(parts[6]) {
+                        let actual = idx5 + parts[5].len() + idx6 + parts[6].len();
+                        line[actual..].trim_start().to_string()
+                    } else {
+                        parts[7..].join(" ")
+                    }
+                } else {
+                    parts[7..].join(" ")
+                };
                 (owner, size, mod_str, name)
             } else {
                 continue;
@@ -1287,7 +1395,11 @@ pub fn parse_unix_ls_output(raw: &str, remote_dir: &str, show_hidden: bool) -> V
                 } else {
                     parts[..dir_pos].join(" ")
                 };
-                let raw_name = parts[dir_pos + 1..].join(" ");
+                let raw_name = if let Some(idx) = line.find(parts[dir_pos]) {
+                    line[idx + parts[dir_pos].len()..].trim_start().to_string()
+                } else {
+                    parts[dir_pos + 1..].join(" ")
+                };
                 let name = raw_name.trim_end_matches(['/', '\\']).to_string();
 
                 if name == "." || name == ".." {
@@ -1333,7 +1445,16 @@ pub fn parse_unix_ls_output(raw: &str, remote_dir: &str, show_hidden: bool) -> V
                 } else {
                     parts[..pos].join(" ")
                 };
-                let raw_name = parts[pos + 1..].join(" ");
+                let raw_name = if let Some(idx_date) = line.find(parts[0]) {
+                    if let Some(idx_size) = line[idx_date + parts[0].len()..].find(parts[pos]) {
+                        let actual = idx_date + parts[0].len() + idx_size + parts[pos].len();
+                        line[actual..].trim_start().to_string()
+                    } else {
+                        parts[pos + 1..].join(" ")
+                    }
+                } else {
+                    parts[pos + 1..].join(" ")
+                };
                 let name = raw_name.trim_end_matches(['/', '\\']).to_string();
 
                 if name == "." || name == ".." {
@@ -1699,5 +1820,27 @@ mod tests {
     fn test_decode_iso8859_2() {
         let iso_bytes = [0xB9, 0xBB, 0xBE, 0x20, 0xA9, 0xAB, 0xAE];
         assert_eq!(decode_remote_listing(&iso_bytes), "šťž ŠŤŽ");
+    }
+
+    #[test]
+    fn test_percent_encode_cp1250() {
+        // En-dash \u{2013} in CP1250 is 0x96 -> %96
+        let path = "/test/02 Gravitacni pole – sila.docx";
+        let encoded = percent_encode_path_cp1250(path);
+        assert_eq!(encoded, "/test/02%20Gravitacni%20pole%20%96%20sila.docx");
+    }
+
+    #[test]
+    fn test_parse_listing_preserves_multiple_spaces() {
+        let dos_listing = "06-26-24  11:52PM               188756 01  Pojmy ze zakladniho kurzu Fyziky.pdf\r\n\
+                           04-20-22  03:00PM       <DIR>          folder   with   spaces\r\n";
+        let entries = parse_unix_ls_output(dos_listing, "/dir", false);
+        assert_eq!(entries.len(), 3); // ".." + 2 entries
+        assert_eq!(entries[1].name, "01  Pojmy ze zakladniho kurzu Fyziky.pdf");
+        assert_eq!(entries[2].name, "folder   with   spaces");
+
+        let unix_listing = "drwxr-xr-x 2 filip staff 4096 Oct 28 11:32 01  Pojmy  test.pdf\r\n";
+        let entries_unix = parse_unix_ls_output(unix_listing, "/dir", false);
+        assert_eq!(entries_unix[1].name, "01  Pojmy  test.pdf");
     }
 }

@@ -384,7 +384,7 @@ fn render_progress_bar_cell(
                     if is_dark { 0x7f1d1d } else { 0xfca5a5 }
                 } else if is_completed {
                     if is_dark { 0x15803d } else { 0x86efac }
-                } else if is_running {
+                } else if is_running || pct > 0.0 {
                     if is_dark { 0x2563eb } else { 0x93c5fd }
                 } else {
                     if is_dark { 0x2a2a30 } else { 0xe4e4e7 }
@@ -671,6 +671,8 @@ impl RusterView {
                     format!("{:.0}% • {}/{}", batch_pct, completed_count, total_file_count)
                 };
 
+                let is_batch_active = items.iter().any(|i| i.status == TransferStatus::Transferring || i.status == TransferStatus::Queued);
+
                 div()
                     .flex()
                     .flex_col()
@@ -744,7 +746,7 @@ impl RusterView {
                             .child(render_progress_bar_cell(
                                 batch_pct,
                                 batch_progress_text,
-                                active_speed > 0.05,
+                                is_batch_active,
                                 batch_pct >= 100.0,
                                 false,
                                 &theme,

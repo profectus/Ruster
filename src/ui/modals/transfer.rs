@@ -393,14 +393,13 @@ impl RusterView {
                             .border_color(if is_dark { rgb(0x7f1d1d) } else { rgb(0xfecaca) })
                             .child(
                                 div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
+                                    .w_full()
                                     .text_xs()
                                     .child(
                                         div()
                                             .font_weight(gpui::FontWeight::SEMIBOLD)
                                             .text_color(theme.text_primary())
+                                            .whitespace_normal()
                                             .child(format!("Soubor: {}", prompt.filename)),
                                     ),
                             )
@@ -428,9 +427,11 @@ impl RusterView {
                             })
                             .child(
                                 div()
+                                    .w_full()
                                     .text_xs()
                                     .font_weight(gpui::FontWeight::MEDIUM)
                                     .text_color(if is_dark { rgb(0xfca5a5) } else { rgb(0xb91c1c) })
+                                    .whitespace_normal()
                                     .child(format!("Chyba: {}", prompt.error)),
                             ),
                     )

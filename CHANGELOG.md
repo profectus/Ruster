@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] - 2026-10-28
+
+### Added
+- **Automatic Windows-1250 (CP1250) Fallback**: When downloading files from legacy Windows IIS FTP servers that store filenames in ANSI/CP1250 instead of UTF-8, Ruster now automatically recovers and retries with CP1250 byte percent-encoding if UTF-8 fails with error 78.
+- **Server Error Details in Dialog**: Transfer error modals now capture and display exact error responses from the remote server (e.g. `550 Access denied`) instead of generic exit codes.
+
+### Fixed
+- **Multiple Consecutive Spaces in FTP Listings**: Fixed directory parser collapsing consecutive spaces into a single space, resolving "File not found" (error 78) download failures on files with double spaces.
+- **Smooth Batch Progress Bar**: Fixed progress bar resetting and turning dark gray between files; progress bar remains active and smoothly increments across the entire batch.
+- **Modal Filename Wrapping**: Prevented long filenames and error descriptions from overflowing the transfer error dialog by enabling multiline wrapping.
+- **Parallel Connections Respect Settings**: Ensured transfers respect both site-specific and global concurrent connection settings for true parallel downloads and uploads.
+
 ## [0.3.3] - 2026-10-28
 
 ### Added

@@ -1840,7 +1840,7 @@ impl RusterView {
 
         let bg_tasks = tasks.clone();
         let max_workers = if let Some(session) = self.sessions.get(self.active_session_idx) {
-            session.max_connections.clamp(1, 10)
+            session.max_connections.max(self.max_concurrent_transfers).clamp(1, 10)
         } else {
             self.max_concurrent_transfers.clamp(1, 10)
         };
@@ -2287,6 +2287,7 @@ impl RusterView {
                                     if let Some(t) = &mut view.active_transfer {
                                         t.speed_mbps = speed_mbps;
                                         t.eta_seconds = eta_seconds;
+                                        t.file_bytes_transferred = bytes_transferred;
                                     }
                                     if let Some(q) = view.transfer_queue.iter_mut().find(|q| q.id == queue_id) {
                                         q.transferred_bytes = bytes_transferred;
@@ -2300,11 +2301,15 @@ impl RusterView {
                                 TransferProgressUpdate::ItemDone { queue_id, size_bytes } => {
                                     if let Some(q) = view.transfer_queue.iter_mut().find(|q| q.id == queue_id) {
                                         q.status = TransferStatus::Completed;
-                                        if q.transferred_bytes > 0 && q.size_bytes == 0 {
-                                            q.size_bytes = q.transferred_bytes;
+                                        let final_sz = if q.size_bytes > 0 {
+                                            q.size_bytes
+                                        } else if size_bytes > 0 {
+                                            size_bytes
                                         } else {
-                                            q.transferred_bytes = q.size_bytes;
-                                        }
+                                            q.transferred_bytes
+                                        };
+                                        q.size_bytes = final_sz;
+                                        q.transferred_bytes = final_sz;
                                     }
                                     check_and_mark_completed_parents(&mut view.transfer_queue);
                                     if let Some(t) = &mut view.active_transfer {
