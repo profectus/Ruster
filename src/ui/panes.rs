@@ -2143,7 +2143,7 @@ impl RusterView {
                             } else {
                                 if let Some(s) = this.sessions.get(this.active_session_idx) {
                                     if let Some(entry) = s.entries.get(idx).cloned() {
-                                        this.open_remote_file_for_editing(entry, cx);
+                                        this.open_remote_file_for_editing(entry, None, cx);
                                     }
                                 }
                             }

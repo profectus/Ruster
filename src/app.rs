@@ -33,7 +33,7 @@ use crate::{
     CheckForUpdates, CopySelected, DeleteModal, EditSelected, GoToFolderModal, MoveSelected,
     NewFolderModal, OpenSelected, OpenSiteManager, PermissionsModal, RefreshPanes, RenameModal,
     RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal, ToggleDualPane,
-    ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree, ToggleTheme,
+    ToggleFunctionBar, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree, ToggleTheme,
     ToggleTransferQueue,
 };
 
@@ -120,6 +120,7 @@ pub struct RusterView {
     pub(crate) show_local_tree: bool,
     pub(crate) show_remote_tree: bool,
     pub(crate) show_hidden: bool,
+    pub(crate) show_function_bar: bool,
     pub(crate) show_queue: bool,
     pub(crate) show_local_filter: bool,
     pub(crate) local_filter_query: String,
@@ -512,6 +513,7 @@ impl RusterView {
             show_local_tree: false,
             show_remote_tree: false,
             show_hidden,
+            show_function_bar: saved_state.show_function_bar,
             show_queue: false,
             show_local_filter: false,
             local_filter_query: String::new(),
@@ -1007,6 +1009,7 @@ impl RusterView {
         let _ = save_app_state(
             self.show_local_pane,
             self.show_hidden,
+            self.show_function_bar,
             &self.local_dir,
             &self.right_dir,
             self.max_concurrent_transfers,
@@ -1525,7 +1528,45 @@ impl RusterView {
                         if entry.is_dir || entry.is_symlink {
                             self.navigate_remote(entry.path);
                         } else {
-                            self.open_remote_file_for_editing(entry, cx);
+                            self.open_remote_file_for_editing(entry, None, cx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn open_selected_item_with_app(&mut self, cx: &mut Context<Self>) {
+        let app_path = match Self::pick_application_prompt() {
+            Some(p) => p,
+            None => return,
+        };
+
+        match self.active_pane {
+            ActivePane::Local => {
+                if let Some(entry) = self.local_entries.get(self.local_selected).cloned() {
+                    let p = PathBuf::from(&entry.path);
+                    let _ = std::process::Command::new("open")
+                        .arg("-a")
+                        .arg(&app_path)
+                        .arg(&p)
+                        .spawn();
+                }
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    if let Some(entry) = self.right_entries.get(self.right_selected).cloned() {
+                        let p = PathBuf::from(&entry.path);
+                        let _ = std::process::Command::new("open")
+                            .arg("-a")
+                            .arg(&app_path)
+                            .arg(&p)
+                            .spawn();
+                    }
+                } else if let Some(s) = self.sessions.get(self.active_session_idx) {
+                    if let Some(entry) = s.entries.get(s.selected_index).cloned() {
+                        if !entry.is_dir {
+                            self.open_remote_file_for_editing(entry, Some(app_path), cx);
                         }
                     }
                 }
@@ -3477,9 +3518,9 @@ impl RusterView {
         is_editable_file(filename, &self.editable_extensions)
     }
 
-    pub(crate) fn open_remote_file_for_editing(&mut self, entry: FileEntry, cx: &mut Context<Self>) {
+    pub(crate) fn open_remote_file_for_editing(&mut self, entry: FileEntry, custom_app: Option<PathBuf>, cx: &mut Context<Self>) {
         let Some(session) = self.sessions.get(self.active_session_idx) else { return; };
-        if !self.is_editable_remote_file(&entry.name) {
+        if custom_app.is_none() && !self.is_editable_remote_file(&entry.name) {
             self.log_server(
                 ServerLogKind::Response,
                 format!("Soubor '{}' nemá povolenou příponu pro přímou editaci (Nastavení -> Editace souborů).", entry.name),
@@ -3502,12 +3543,21 @@ impl RusterView {
             .map(|w| w.local_path.clone());
 
         if let Some(existing_path) = existing_watched_path {
-            self.log_server(
-                ServerLogKind::Response,
-                format!("[Remote Edit] Otevírám lokální kopii '{}' v editoru...", entry.name),
-            );
-            cx.open_with_system(&existing_path);
-            let _ = std::process::Command::new("open").arg(&existing_path).spawn();
+            if let Some(ref app) = custom_app {
+                let app_name = app.file_name().and_then(|s| s.to_str()).unwrap_or("aplikaci");
+                self.log_server(
+                    ServerLogKind::Response,
+                    format!("[Remote Edit] Otevírám lokální kopii '{}' v '{}'...", entry.name, app_name),
+                );
+                let _ = std::process::Command::new("open").arg("-a").arg(app).arg(&existing_path).spawn();
+            } else {
+                self.log_server(
+                    ServerLogKind::Response,
+                    format!("[Remote Edit] Otevírám lokální kopii '{}' v editoru...", entry.name),
+                );
+                cx.open_with_system(&existing_path);
+                let _ = std::process::Command::new("open").arg(&existing_path).spawn();
+            }
             return;
         }
 
@@ -3568,6 +3618,7 @@ impl RusterView {
             }
         });
 
+        let app_to_open = custom_app;
         cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
             let mut cx = cx.clone();
             async move {
@@ -3576,15 +3627,25 @@ impl RusterView {
                         Ok(Ok(watched)) => {
                             let local_path = watched.local_path.clone();
                             let fname = watched.filename.clone();
+                            let app_ref = app_to_open.clone();
                             let _ = this.update(&mut cx, |view, cx| {
                                 view.watched_remote_files.retain(|w| w.local_path != local_path);
                                 view.watched_remote_files.push(watched);
-                                view.log_server(
-                                    ServerLogKind::Response,
-                                    format!("[Remote Edit] '{}' byl stažen a otevřen v editoru. Úpravy se automaticky nahrají zpět na server.", fname),
-                                );
-                                cx.open_with_system(&local_path);
-                                let _ = std::process::Command::new("open").arg(&local_path).spawn();
+                                if let Some(ref app) = app_ref {
+                                    let app_name = app.file_name().and_then(|s| s.to_str()).unwrap_or("vybrané aplikaci");
+                                    view.log_server(
+                                        ServerLogKind::Response,
+                                        format!("[Remote Edit] '{}' byl stažen a otevřen v '{}'. Úpravy se automaticky nahrají zpět na server.", fname, app_name),
+                                    );
+                                    let _ = std::process::Command::new("open").arg("-a").arg(app).arg(&local_path).spawn();
+                                } else {
+                                    view.log_server(
+                                        ServerLogKind::Response,
+                                        format!("[Remote Edit] '{}' byl stažen a otevřen v editoru. Úpravy se automaticky nahrají zpět na server.", fname),
+                                    );
+                                    cx.open_with_system(&local_path);
+                                    let _ = std::process::Command::new("open").arg(&local_path).spawn();
+                                }
                                 cx.notify();
                             });
                             break;
@@ -3607,6 +3668,16 @@ impl RusterView {
                 }
             }
         }).detach();
+    }
+
+    #[cfg(target_os = "macos")]
+    pub(crate) fn pick_application_prompt() -> Option<PathBuf> {
+        pick_application_prompt_macos()
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    pub(crate) fn pick_application_prompt() -> Option<PathBuf> {
+        None
     }
 
     pub(crate) fn start_remote_edit_watcher(cx: &mut Context<Self>) {
@@ -4519,6 +4590,12 @@ impl Render for RusterView {
                 this.show_queue = !this.show_queue;
                 cx.notify();
             }))
+            .on_action(cx.listener(|this, _: &ToggleFunctionBar, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.show_function_bar = !this.show_function_bar;
+                this.persist_app_state();
+                cx.notify();
+            }))
             .on_action(cx.listener(|this, _: &ToggleQuickFilter, _, cx| {
                 if this.active_modal != ActiveModal::None { return; }
                 let should_show = !(this.show_local_filter && this.show_remote_filter);
@@ -4683,7 +4760,9 @@ impl Render for RusterView {
                     .child(self.render_transfer_queue_panel(cx))
             })
             // 5. Bottom Function Bar (Total Commander F3..F8 buttons)
-            .child(self.render_bottom_function_bar(cx))
+            .when(self.show_function_bar, |el| {
+                el.child(self.render_bottom_function_bar(cx))
+            })
             // 5. Connection Dropdown Popover
             .when(self.session_dropdown_open, |el| {
                 el.child(self.render_session_dropdown_popover(cx))
@@ -4751,6 +4830,72 @@ impl Render for RusterView {
 impl Drop for RusterView {
     fn drop(&mut self) {
         self.persist_app_state();
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[allow(unexpected_cfgs)]
+fn pick_application_prompt_macos() -> Option<PathBuf> {
+    use objc::{class, msg_send, sel, sel_impl};
+    use std::ffi::CStr;
+
+    unsafe {
+        let panel: *mut objc::runtime::Object = msg_send![class!(NSOpenPanel), openPanel];
+        if panel.is_null() {
+            return None;
+        }
+        let _: () = msg_send![panel, setCanChooseFiles: 1usize];
+        let _: () = msg_send![panel, setCanChooseDirectories: 0usize];
+        let _: () = msg_send![panel, setAllowsMultipleSelection: 0usize];
+        let _: () = msg_send![panel, setResolvesAliases: 1usize];
+        let _: () = msg_send![panel, setTreatsFilePackagesAsDirectories: 0usize];
+
+        let apps_path: *mut objc::runtime::Object = msg_send![
+            class!(NSString),
+            stringWithUTF8String: b"/Applications\0".as_ptr()
+        ];
+        if !apps_path.is_null() {
+            let apps_url: *mut objc::runtime::Object = msg_send![
+                class!(NSURL),
+                fileURLWithPath: apps_path
+            ];
+            if !apps_url.is_null() {
+                let _: () = msg_send![panel, setDirectoryURL: apps_url];
+            }
+        }
+
+        let app_ext: *mut objc::runtime::Object = msg_send![
+            class!(NSString),
+            stringWithUTF8String: b"app\0".as_ptr()
+        ];
+        if !app_ext.is_null() {
+            let types_array: *mut objc::runtime::Object = msg_send![
+                class!(NSArray),
+                arrayWithObject: app_ext
+            ];
+            if !types_array.is_null() {
+                let _: () = msg_send![panel, setAllowedFileTypes: types_array];
+            }
+        }
+
+        let res: isize = msg_send![panel, runModal];
+        if res == 1 {
+            let url: *mut objc::runtime::Object = msg_send![panel, URL];
+            if !url.is_null() {
+                let path: *mut objc::runtime::Object = msg_send![url, path];
+                if !path.is_null() {
+                    let utf8: *const libc::c_char = msg_send![path, UTF8String];
+                    if !utf8.is_null() {
+                        let cstr = CStr::from_ptr(utf8);
+                        let s = cstr.to_string_lossy().into_owned();
+                        if !s.is_empty() {
+                            return Some(PathBuf::from(s));
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 }
 

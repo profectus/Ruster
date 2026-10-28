@@ -10,6 +10,7 @@ impl RusterView {
         let t = self.i18n();
         let theme = self.theme();
         let show_hidden = self.show_hidden;
+        let show_fnbar = self.show_function_bar;
         let is_dark = theme.is_dark();
 
         let header_title = match self.locale {
@@ -76,6 +77,47 @@ impl RusterView {
                 crate::i18n::Locale::Pt => "Arquivos ocultos estão ocultos",
                 crate::i18n::Locale::Zh => "隐藏文件当前已隐藏",
                 crate::i18n::Locale::Ja => "隠しファイルは非表示です",
+            }
+        };
+
+        let show_fnbar_title = match self.locale {
+            crate::i18n::Locale::En => "Bottom shortcut bar (F3–F8)",
+            crate::i18n::Locale::Cs => "Spodní lišta klávesových zkratek (F3–F8)",
+            crate::i18n::Locale::De => "Untere Funktionstastenleiste (F3–F8)",
+            crate::i18n::Locale::Es => "Barra inferior de atajos (F3–F8)",
+            crate::i18n::Locale::Fr => "Barre inférieure de raccourcis (F3–F8)",
+            crate::i18n::Locale::It => "Barra inferiore scorciatoie (F3–F8)",
+            crate::i18n::Locale::Pl => "Dolny pasek skrótów klawiszowych (F3–F8)",
+            crate::i18n::Locale::Pt => "Barra inferior de atalhos (F3–F8)",
+            crate::i18n::Locale::Zh => "底部快捷键栏 (F3–F8)",
+            crate::i18n::Locale::Ja => "下部ショートカットバー (F3–F8)",
+        };
+
+        let show_fnbar_desc = if show_fnbar {
+            match self.locale {
+                crate::i18n::Locale::En => "Bottom action buttons for View, Edit, Copy, Move, New Folder, Delete are visible",
+                crate::i18n::Locale::Cs => "Tlačítka dole pro otevření, úpravu, kopírování, novou složku apod. jsou zobrazena",
+                crate::i18n::Locale::De => "Aktionstasten für Kopieren, Neuer Ordner usw. sind sichtbar",
+                crate::i18n::Locale::Es => "Botones de acción para copiar, nueva carpeta, etc. están visibles",
+                crate::i18n::Locale::Fr => "Les boutons d'action en bas sont visibles",
+                crate::i18n::Locale::It => "I pulsanti di azione in basso sono visibili",
+                crate::i18n::Locale::Pl => "Przyciski akcji na dole są widoczne",
+                crate::i18n::Locale::Pt => "Botões de ação na parte inferior estão visíveis",
+                crate::i18n::Locale::Zh => "底部的查看、编辑、复制、新建文件夹等按钮已显示",
+                crate::i18n::Locale::Ja => "下部の表示、編集、コピー、新規フォルダ等のボタンを表示中",
+            }
+        } else {
+            match self.locale {
+                crate::i18n::Locale::En => "Bottom shortcut bar is hidden",
+                crate::i18n::Locale::Cs => "Spodní lišta klávesových zkratek je skryta",
+                crate::i18n::Locale::De => "Untere Funktionstastenleiste ist ausgeblendet",
+                crate::i18n::Locale::Es => "La barra inferior de atajos está oculta",
+                crate::i18n::Locale::Fr => "La barre inférieure de raccourcis est masquée",
+                crate::i18n::Locale::It => "La barra inferiore scorciatoie è nascosta",
+                crate::i18n::Locale::Pl => "Dolny pasek skrótów jest ukryty",
+                crate::i18n::Locale::Pt => "A barra inferior de atalhos está oculta",
+                crate::i18n::Locale::Zh => "底部快捷键栏已隐藏",
+                crate::i18n::Locale::Ja => "下部ショートカットバーは非表示です",
             }
         };
 
@@ -538,23 +580,11 @@ impl RusterView {
                                                             .bg(rgb(0xffffff)),
                                                     ),
                                             ),
-                                    ),
-                            )
-                            // Section: Transfers & Concurrent Connections
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_2()
-                                    .child(
-                                        div()
-                                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                                            .text_xs()
-                                            .text_color(theme.text_secondary())
-                                            .child(t.transfers_section_title()),
                                     )
                                     .child(
                                         div()
+                                            .id("btn-toggle-show-fnbar-settings")
+                                            .cursor_pointer()
                                             .flex()
                                             .items_center()
                                             .justify_between()
@@ -563,6 +593,11 @@ impl RusterView {
                                             .rounded(px(6.0))
                                             .border_1()
                                             .border_color(theme.border())
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.show_function_bar = !this.show_function_bar;
+                                                this.persist_app_state();
+                                                cx.notify();
+                                            }))
                                             .child(
                                                 div()
                                                     .flex()
@@ -573,80 +608,32 @@ impl RusterView {
                                                             .text_xs()
                                                             .font_weight(gpui::FontWeight::MEDIUM)
                                                             .text_color(theme.text_primary())
-                                                            .child(t.label_max_connections()),
+                                                            .child(show_fnbar_title),
                                                     )
                                                     .child(
                                                         div()
                                                             .text_xs()
                                                             .text_color(theme.text_secondary())
-                                                            .child(t.max_concurrent_desc()),
+                                                            .child(show_fnbar_desc),
                                                     ),
                                             )
                                             .child(
                                                 div()
+                                                    .w(px(38.0))
+                                                    .h(px(20.0))
+                                                    .rounded(px(10.0))
+                                                    .bg(if show_fnbar { rgb(0x2563eb) } else if is_dark { rgb(0x3f3f46) } else { rgb(0xcbd5e1) })
+                                                    .p(px(2.0))
                                                     .flex()
                                                     .items_center()
-                                                    .gap_2()
+                                                    .when(show_fnbar, |el| el.justify_end())
+                                                    .when(!show_fnbar, |el| el.justify_start())
                                                     .child(
                                                         div()
-                                                            .id("settings-conn-minus")
-                                                            .cursor_pointer()
-                                                            .w(px(24.0))
-                                                            .h(px(24.0))
-                                                            .rounded(px(4.0))
-                                                            .bg(theme.button_bg())
-                                                            .border_1()
-                                                            .border_color(theme.border())
-                                                            .flex()
-                                                            .items_center()
-                                                            .justify_center()
-                                                            .text_xs()
-                                                            .font_weight(gpui::FontWeight::BOLD)
-                                                            .text_color(theme.text_primary())
-                                                            .hover(|s| s.bg(theme.button_hover_bg()))
-                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                if this.max_concurrent_transfers > 1 {
-                                                                    this.max_concurrent_transfers -= 1;
-                                                                    this.persist_app_state();
-                                                                    cx.notify();
-                                                                }
-                                                            }))
-                                                            .child("-"),
-                                                    )
-                                                    .child(
-                                                        div()
-                                                            .w(px(32.0))
-                                                            .text_center()
-                                                            .font_weight(gpui::FontWeight::BOLD)
-                                                            .text_sm()
-                                                            .text_color(theme.text_primary())
-                                                            .child(format!("{}", self.max_concurrent_transfers.clamp(1, 10))),
-                                                    )
-                                                    .child(
-                                                        div()
-                                                            .id("settings-conn-plus")
-                                                            .cursor_pointer()
-                                                            .w(px(24.0))
-                                                            .h(px(24.0))
-                                                            .rounded(px(4.0))
-                                                            .bg(theme.button_bg())
-                                                            .border_1()
-                                                            .border_color(theme.border())
-                                                            .flex()
-                                                            .items_center()
-                                                            .justify_center()
-                                                            .text_xs()
-                                                            .font_weight(gpui::FontWeight::BOLD)
-                                                            .text_color(theme.text_primary())
-                                                            .hover(|s| s.bg(theme.button_hover_bg()))
-                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                if this.max_concurrent_transfers < 10 {
-                                                                    this.max_concurrent_transfers += 1;
-                                                                    this.persist_app_state();
-                                                                    cx.notify();
-                                                                }
-                                                            }))
-                                                            .child("+"),
+                                                            .w(px(16.0))
+                                                            .h(px(16.0))
+                                                            .rounded(px(8.0))
+                                                            .bg(rgb(0xffffff)),
                                                     ),
                                             ),
                                     ),

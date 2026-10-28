@@ -102,6 +102,7 @@ actions!(
         ToggleRemoteTree,
         ToggleHiddenFiles,
         ToggleTransferQueue,
+        ToggleFunctionBar,
         ToggleQuickFilter,
         RefreshPanes,
         SwitchLanguage,

@@ -9,7 +9,7 @@ use crate::{
     CheckForUpdates, CopySelected, DeleteModal, EditSelected, GoToFolderModal, MoveSelected,
     NewFolderModal, OpenSelected, OpenSiteManager, PermissionsModal, Quit, RefreshPanes,
     RenameModal, RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal,
-    ToggleDualPane, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree,
+    ToggleDualPane, ToggleFunctionBar, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree,
     ToggleTheme, ToggleTransferQueue,
 };
 
@@ -129,6 +129,18 @@ impl RusterView {
         let x = menu.position.x.min(px(1040.0));
         let y = menu.position.y.min(px(580.0));
         let is_local = menu.pane == ActivePane::Local;
+        let is_dir = match menu.pane {
+            ActivePane::Local => self.local_entries.get(self.local_selected).map(|e| e.is_dir).unwrap_or(false),
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    self.right_entries.get(self.right_selected).map(|e| e.is_dir).unwrap_or(false)
+                } else if let Some(s) = self.sessions.get(self.active_session_idx) {
+                    s.entries.get(s.selected_index).map(|e| e.is_dir).unwrap_or(false)
+                } else {
+                    false
+                }
+            }
+        };
 
         div()
             .absolute()
@@ -150,10 +162,15 @@ impl RusterView {
                 this.open_selected_item(cx);
                 cx.notify();
             }))
-            .when(!is_local, |el| {
-                el.child(self.render_ctx_item("ctx-edit-remote", "Upravit v editoru (Auto-Upload)", cx, |this, cx| {
+            .when(!is_dir, |el| {
+                el.child(self.render_ctx_item("ctx-edit-in-editor", t.act_edit_in_editor(), cx, |this, cx| {
                     this.context_menu = None;
                     this.open_selected_item(cx);
+                    cx.notify();
+                }))
+                .child(self.render_ctx_item("ctx-open-with", t.act_open_in_app(), cx, |this, cx| {
+                    this.context_menu = None;
+                    this.open_selected_item_with_app(cx);
                     cx.notify();
                 }))
             })
@@ -274,6 +291,7 @@ pub fn install_app_menus(cx: &mut App, locale: Locale) {
                 MenuItem::separator(),
                 MenuItem::action(t.menu_toggle_hidden(), ToggleHiddenFiles),
                 MenuItem::action(t.menu_toggle_queue(), ToggleTransferQueue),
+                MenuItem::action(t.menu_toggle_function_bar(), ToggleFunctionBar),
                 MenuItem::action(t.menu_quick_filter(), ToggleQuickFilter),
                 MenuItem::separator(),
                 MenuItem::action(t.menu_toggle_theme(), ToggleTheme),

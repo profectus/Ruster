@@ -280,6 +280,21 @@ impl I18n {
         }
     }
 
+    pub fn menu_toggle_function_bar(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Show Bottom Shortcut Bar",
+            Locale::Cs => "Zobrazit spodní lištu zkratek",
+            Locale::De => "Untere Funktionsleiste anzeigen",
+            Locale::Es => "Mostrar barra inferior de atajos",
+            Locale::Fr => "Afficher la barre inférieure de raccourcis",
+            Locale::It => "Mostra barra inferiore scorciatoie",
+            Locale::Pl => "Pokaż dolny pasek skrótów",
+            Locale::Pt => "Mostrar barra inferior de atalhos",
+            Locale::Zh => "显示底部快捷键栏",
+            Locale::Ja => "下部ショートカットバーを表示",
+        }
+    }
+
     pub fn menu_toggle_queue(&self) -> &'static str {
         match self.locale {
             Locale::En => "Show Transfer Queue",
@@ -490,6 +505,36 @@ impl I18n {
             Locale::Pt => "Editar",
             Locale::Zh => "编辑",
             Locale::Ja => "編集",
+        }
+    }
+
+    pub fn act_edit_in_editor(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Edit in Editor",
+            Locale::Cs => "Upravit v editoru",
+            Locale::De => "Im Editor bearbeiten",
+            Locale::Es => "Editar en el editor",
+            Locale::Fr => "Modifier dans l'éditeur",
+            Locale::It => "Modifica nell'editor",
+            Locale::Pl => "Edytuj w edytorze",
+            Locale::Pt => "Editar no editor",
+            Locale::Zh => "在编辑器中编辑",
+            Locale::Ja => "エディタで編集",
+        }
+    }
+
+    pub fn act_open_in_app(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Open in Application...",
+            Locale::Cs => "Otevřít v aplikaci...",
+            Locale::De => "Mit Anwendung öffnen...",
+            Locale::Es => "Abrir con la aplicación...",
+            Locale::Fr => "Ouvrir avec l'application...",
+            Locale::It => "Apri con l'applicazione...",
+            Locale::Pl => "Otwórz w aplikacji...",
+            Locale::Pt => "Abrir no aplicativo...",
+            Locale::Zh => "用其他应用打开...",
+            Locale::Ja => "アプリケーションで開く...",
         }
     }
 

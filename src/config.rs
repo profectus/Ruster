@@ -9,6 +9,7 @@ use std::process::Command;
 pub struct AppState {
     pub show_local_pane: bool,
     pub show_hidden: bool,
+    pub show_function_bar: bool,
     pub local_dir: PathBuf,
     pub right_dir: PathBuf,
     pub max_concurrent_transfers: usize,
@@ -54,6 +55,7 @@ pub fn load_app_state() -> AppState {
     let default_right = initial_right_dir();
     let mut show_local_pane = true;
     let mut show_hidden = false;
+    let mut show_function_bar = true;
     let mut local_dir = default_local.clone();
     let mut right_dir = default_right.clone();
     let mut max_concurrent_transfers = 2usize;
@@ -80,6 +82,11 @@ pub fn load_app_state() -> AppState {
                     "show_hidden" => {
                         if let Ok(b) = v.trim().parse::<bool>() {
                             show_hidden = b;
+                        }
+                    }
+                    "show_function_bar" => {
+                        if let Ok(b) = v.trim().parse::<bool>() {
+                            show_function_bar = b;
                         }
                     }
                     "local_dir" => {
@@ -139,6 +146,7 @@ pub fn load_app_state() -> AppState {
     AppState {
         show_local_pane,
         show_hidden,
+        show_function_bar,
         local_dir,
         right_dir,
         max_concurrent_transfers,
@@ -154,6 +162,7 @@ pub fn load_app_state() -> AppState {
 pub fn save_app_state(
     show_local_pane: bool,
     show_hidden: bool,
+    show_function_bar: bool,
     local_dir: &std::path::Path,
     right_dir: &std::path::Path,
     max_concurrent_transfers: usize,
@@ -167,9 +176,10 @@ pub fn save_app_state(
     let dir = config_dir();
     fs::create_dir_all(&dir)?;
     let content = format!(
-        "show_local_pane={}\nshow_hidden={}\nlocal_dir={}\nright_dir={}\nmax_concurrent_transfers={}\neditable_extensions={}\nwindow_width={}\nwindow_height={}\nqueue_panel_height={}\ntheme={}\nlocale={}\n",
+        "show_local_pane={}\nshow_hidden={}\nshow_function_bar={}\nlocal_dir={}\nright_dir={}\nmax_concurrent_transfers={}\neditable_extensions={}\nwindow_width={}\nwindow_height={}\nqueue_panel_height={}\ntheme={}\nlocale={}\n",
         show_local_pane,
         show_hidden,
+        show_function_bar,
         local_dir.to_string_lossy(),
         right_dir.to_string_lossy(),
         max_concurrent_transfers,
