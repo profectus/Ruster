@@ -8,12 +8,14 @@ use std::process::Command;
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub show_local_pane: bool,
+    pub show_hidden: bool,
     pub local_dir: PathBuf,
     pub right_dir: PathBuf,
     pub max_concurrent_transfers: usize,
     pub editable_extensions: String,
     pub window_width: f32,
     pub window_height: f32,
+    pub queue_panel_height: f32,
     pub theme: crate::theme::ThemeMode,
     pub locale: crate::i18n::Locale,
 }
@@ -51,12 +53,14 @@ pub fn load_app_state() -> AppState {
     let default_local = initial_local_dir();
     let default_right = initial_right_dir();
     let mut show_local_pane = true;
+    let mut show_hidden = false;
     let mut local_dir = default_local.clone();
     let mut right_dir = default_right.clone();
     let mut max_concurrent_transfers = 2usize;
     let mut editable_extensions = default_editable_extensions();
     let mut window_width = 1280.0f32;
     let mut window_height = 800.0f32;
+    let mut queue_panel_height = 140.0f32;
     let mut theme = crate::theme::ThemeMode::Light;
     let mut locale = crate::i18n::Locale::En;
 
@@ -71,6 +75,11 @@ pub fn load_app_state() -> AppState {
                     "show_local_pane" => {
                         if let Ok(b) = v.trim().parse::<bool>() {
                             show_local_pane = b;
+                        }
+                    }
+                    "show_hidden" => {
+                        if let Ok(b) = v.trim().parse::<bool>() {
+                            show_hidden = b;
                         }
                     }
                     "local_dir" => {
@@ -110,6 +119,11 @@ pub fn load_app_state() -> AppState {
                             }
                         }
                     }
+                    "queue_panel_height" => {
+                        if let Ok(h) = v.trim().parse::<f32>() {
+                            queue_panel_height = h.clamp(60.0, 800.0);
+                        }
+                    }
                     "theme" => {
                         theme = crate::theme::ThemeMode::from_str(v.trim());
                     }
@@ -124,12 +138,14 @@ pub fn load_app_state() -> AppState {
 
     AppState {
         show_local_pane,
+        show_hidden,
         local_dir,
         right_dir,
         max_concurrent_transfers,
         editable_extensions,
         window_width,
         window_height,
+        queue_panel_height,
         theme,
         locale,
     }
@@ -137,26 +153,30 @@ pub fn load_app_state() -> AppState {
 
 pub fn save_app_state(
     show_local_pane: bool,
+    show_hidden: bool,
     local_dir: &std::path::Path,
     right_dir: &std::path::Path,
     max_concurrent_transfers: usize,
     editable_extensions: &str,
     window_width: f32,
     window_height: f32,
+    queue_panel_height: f32,
     theme: crate::theme::ThemeMode,
     locale: crate::i18n::Locale,
 ) -> std::io::Result<()> {
     let dir = config_dir();
     fs::create_dir_all(&dir)?;
     let content = format!(
-        "show_local_pane={}\nlocal_dir={}\nright_dir={}\nmax_concurrent_transfers={}\neditable_extensions={}\nwindow_width={}\nwindow_height={}\ntheme={}\nlocale={}\n",
+        "show_local_pane={}\nshow_hidden={}\nlocal_dir={}\nright_dir={}\nmax_concurrent_transfers={}\neditable_extensions={}\nwindow_width={}\nwindow_height={}\nqueue_panel_height={}\ntheme={}\nlocale={}\n",
         show_local_pane,
+        show_hidden,
         local_dir.to_string_lossy(),
         right_dir.to_string_lossy(),
         max_concurrent_transfers,
         editable_extensions,
         window_width.max(600.0),
         window_height.max(400.0),
+        queue_panel_height.clamp(60.0, 800.0),
         theme.as_str(),
         locale.as_code(),
     );

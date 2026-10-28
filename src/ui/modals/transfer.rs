@@ -281,6 +281,29 @@ impl RusterView {
                                 div()
                                     .flex()
                                     .gap_2()
+                                    .when(!is_completed, |el| {
+                                        el.child(
+                                            div()
+                                                .cursor_pointer()
+                                                .px_3()
+                                                .py_1p5()
+                                                .rounded(px(6.0))
+                                                .bg(if theme.is_dark() { rgb(0x451a1a) } else { rgb(0xfee2e2) })
+                                                .border_1()
+                                                .border_color(if theme.is_dark() { rgb(0x7f1d1d) } else { rgb(0xfca5a5) })
+                                                .text_xs()
+                                                .font_weight(gpui::FontWeight::MEDIUM)
+                                                .text_color(if theme.is_dark() { rgb(0xfca5a5) } else { rgb(0xb91c1c) })
+                                                .hover(|s| s.bg(if theme.is_dark() { rgb(0x5a2323) } else { rgb(0xfecaca) }))
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    cx.listener(|this, _, _, cx| {
+                                                        this.cancel_all_transfers(cx);
+                                                    }),
+                                                )
+                                                .child("Zrušit přenos"),
+                                        )
+                                    })
                                     .child(
                                         div()
                                             .cursor_pointer()

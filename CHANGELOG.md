@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-10-28
+
+### Added
+- **Vertically Resizable Transfer Queue**: The bottom transfer queue panel can now be resized vertically by dragging its top border handle, resets to default on double-click, and remembers its height across app restarts.
+- **FTP UTF-8 & Czech Character Encoding Support**: Added automatic UTF-8 negotiation (`OPTS UTF8 ON`) and encoding fallback (Windows-1250, ISO-8859-2) for FTP listings so Czech accented characters display properly.
+- **Persistent Show Hidden Files**: Toggling hidden files (`Cmd+Shift+.` or in Settings) now persists to configuration across app restarts.
+
+### Changed
+- **Immediate Settings Auto-Save & Streamlined UI**: Removed the redundant "Uložit a zavřít" (Save & Close) footer button from Settings modal since all configuration changes save immediately to disk.
+- **Centralized Search Action**: Removed redundant search icons from individual pane headers in favor of the primary search action in the main toolbar.
+
+### Fixed
+- **Queue Cleanup on Cancel**: Canceling transfers from the queue, progress bar, or error dialog now immediately stops worker threads and empties the transfer queue cleanly.
+- **Removed Broken File List Scrollbar**: Cleaned up the non-functional scrollbars from file listing panels.
+
 ## [0.3.2] - 2026-10-28
 
 ### Added

@@ -1,7 +1,6 @@
 use gpui::{
-    div, prelude::*, px, rgb, rgba, uniform_list, AnyElement, App, Bounds, Context, IntoElement,
-    MouseButton, MouseDownEvent, Pixels, Point, ScrollStrategy, UniformListDecoration,
-    UniformListScrollHandle, Window,
+    div, prelude::*, px, rgb, rgba, uniform_list, Context, IntoElement,
+    MouseButton, MouseDownEvent,
 };
 use std::ops::Range;
 use std::path::PathBuf;
@@ -9,74 +8,6 @@ use crate::app::{ContextMenuState, DraggedFileItem, RusterView, ResizeColumnStat
 use crate::icons::{get_file_icon, render_icon};
 use crate::model::{sort_entries, ActiveModal, ActivePane, FileEntry, SortColumn};
 use crate::ui::helpers::FileTooltip;
-
-#[derive(Clone)]
-pub struct ListScrollbar {
-    pub scroll_handle: UniformListScrollHandle,
-}
-
-impl UniformListDecoration for ListScrollbar {
-    fn compute(
-        &self,
-        _visible_range: Range<usize>,
-        bounds: Bounds<Pixels>,
-        scroll_offset: Point<Pixels>,
-        item_height: Pixels,
-        item_count: usize,
-        _window: &mut Window,
-        _cx: &mut App,
-    ) -> AnyElement {
-        let list_height = bounds.size.height;
-        let content_height = item_height * item_count;
-
-        if content_height <= list_height || list_height <= px(20.0) {
-            return div().into_any_element();
-        }
-
-        let max_scroll = content_height - list_height;
-        let current_scroll = (-scroll_offset.y).clamp(px(0.0), max_scroll);
-        let ratio = current_scroll / max_scroll;
-
-        let thumb_height = (list_height * (list_height / content_height))
-            .clamp(px(24.0), list_height - px(10.0));
-        let track_space = list_height - thumb_height - px(4.0);
-        let thumb_top = px(2.0) + track_space * ratio;
-
-        let handle = self.scroll_handle.clone();
-        let list_top = bounds.origin.y;
-
-        div()
-            .id("list-scrollbar-track")
-            .absolute()
-            .top_0()
-            .right_0()
-            .bottom_0()
-            .w(px(10.0))
-            .on_mouse_down(
-                MouseButton::Left,
-                move |event: &MouseDownEvent, _window, cx| {
-                    cx.stop_propagation();
-                    let click_y = event.position.y - list_top;
-                    let target_ratio = (click_y / list_height).clamp(0.0, 1.0);
-                    let target_ix = (item_count as f32 * target_ratio) as usize;
-                    handle.scroll_to_item(target_ix.min(item_count.saturating_sub(1)), ScrollStrategy::Top);
-                },
-            )
-            .child(
-                div()
-                    .id("list-scrollbar-thumb")
-                    .absolute()
-                    .top(thumb_top)
-                    .right(px(2.5))
-                    .w(px(5.0))
-                    .h(thumb_height)
-                    .rounded(px(2.5))
-                    .bg(rgba(0x00000030))
-                    .hover(|s| s.bg(rgba(0x00000060))),
-            )
-            .into_any_element()
-    }
-}
 
 impl RusterView {
     pub fn render_local_pane(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -280,54 +211,6 @@ impl RusterView {
                             .gap_1()
                             .child(
                                 div()
-                                    .id("local-filter-btn")
-                                    .cursor_pointer()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(22.0))
-                                    .h(px(22.0))
-                                    .rounded(px(4.0))
-                                    .bg(if self.show_local_filter {
-                                        theme.button_active_bg()
-                                    } else {
-                                        theme.button_secondary_bg()
-                                    })
-                                    .border_1()
-                                    .border_color(if self.show_local_filter {
-                                        theme.button_active_border()
-                                    } else {
-                                        theme.border()
-                                    })
-                                    .hover(|s| s.bg(theme.button_hover_bg()))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(|this, _, _, cx| {
-                                            this.active_pane = ActivePane::Local;
-                                            let should_show = !(this.show_local_filter && this.show_remote_filter);
-                                            this.show_local_filter = should_show;
-                                            this.show_remote_filter = should_show;
-                                            if !should_show {
-                                                this.local_filter_query.clear();
-                                                this.remote_filter_query.clear();
-                                            }
-                                            this.ensure_local_selection();
-                                            this.ensure_remote_selection();
-                                            cx.notify();
-                                        }),
-                                    )
-                                    .child(render_icon(
-                                        "icons/search.svg",
-                                        13.0,
-                                        if self.show_local_filter {
-                                            theme.c_icon_active()
-                                        } else {
-                                            theme.c_icon_dark()
-                                        },
-                                    )),
-                            )
-                            .child(
-                                div()
                                     .id("local-up")
                                     .cursor_pointer()
                                     .flex()
@@ -518,9 +401,6 @@ impl RusterView {
                                             }),
                                         )
                                         .track_scroll(self.local_scroll.clone())
-                                        .with_decoration(ListScrollbar {
-                                            scroll_handle: self.local_scroll.clone(),
-                                        })
                                         .size_full(),
                                     ),
                             ),
@@ -752,54 +632,6 @@ impl RusterView {
                             .gap_1()
                             .child(
                                 div()
-                                    .id("right-local-filter-btn")
-                                    .cursor_pointer()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(22.0))
-                                    .h(px(22.0))
-                                    .rounded(px(4.0))
-                                    .bg(if self.show_remote_filter {
-                                        theme.button_active_bg()
-                                    } else {
-                                        theme.button_secondary_bg()
-                                    })
-                                    .border_1()
-                                    .border_color(if self.show_remote_filter {
-                                        theme.button_active_border()
-                                    } else {
-                                        theme.border()
-                                    })
-                                    .hover(|s| s.bg(theme.button_hover_bg()))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(|this, _, _, cx| {
-                                            this.active_pane = ActivePane::Remote;
-                                            let should_show = !(this.show_local_filter && this.show_remote_filter);
-                                            this.show_local_filter = should_show;
-                                            this.show_remote_filter = should_show;
-                                            if !should_show {
-                                                this.local_filter_query.clear();
-                                                this.remote_filter_query.clear();
-                                            }
-                                            this.ensure_local_selection();
-                                            this.ensure_remote_selection();
-                                            cx.notify();
-                                        }),
-                                    )
-                                    .child(render_icon(
-                                        "icons/search.svg",
-                                        13.0,
-                                        if self.show_remote_filter {
-                                            theme.c_icon_active()
-                                        } else {
-                                            theme.c_icon_dark()
-                                        },
-                                    )),
-                            )
-                            .child(
-                                div()
                                     .id("right-local-up")
                                     .cursor_pointer()
                                     .flex()
@@ -990,9 +822,6 @@ impl RusterView {
                                             }),
                                         )
                                         .track_scroll(self.remote_scroll.clone())
-                                        .with_decoration(ListScrollbar {
-                                            scroll_handle: self.remote_scroll.clone(),
-                                        })
                                         .size_full(),
                                     ),
                             ),
@@ -1243,54 +1072,6 @@ impl RusterView {
                             .gap_1()
                             .child(
                                 div()
-                                    .id("remote-filter-btn")
-                                    .cursor_pointer()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(22.0))
-                                    .h(px(22.0))
-                                    .rounded(px(4.0))
-                                    .bg(if self.show_remote_filter {
-                                        theme.button_active_bg()
-                                    } else {
-                                        theme.button_secondary_bg()
-                                    })
-                                    .border_1()
-                                    .border_color(if self.show_remote_filter {
-                                        theme.button_active_border()
-                                    } else {
-                                        theme.border()
-                                    })
-                                    .hover(|s| s.bg(theme.button_hover_bg()))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(|this, _, _, cx| {
-                                            this.active_pane = ActivePane::Remote;
-                                            let should_show = !(this.show_local_filter && this.show_remote_filter);
-                                            this.show_local_filter = should_show;
-                                            this.show_remote_filter = should_show;
-                                            if !should_show {
-                                                this.local_filter_query.clear();
-                                                this.remote_filter_query.clear();
-                                            }
-                                            this.ensure_local_selection();
-                                            this.ensure_remote_selection();
-                                            cx.notify();
-                                        }),
-                                    )
-                                    .child(render_icon(
-                                        "icons/search.svg",
-                                        13.0,
-                                        if self.show_remote_filter {
-                                            theme.c_icon_active()
-                                        } else {
-                                            theme.c_icon_dark()
-                                        },
-                                    )),
-                            )
-                            .child(
-                                div()
                                     .id("rem-root")
                                     .cursor_pointer()
                                     .px_1p5()
@@ -1468,9 +1249,6 @@ impl RusterView {
                                             }),
                                         )
                                         .track_scroll(self.remote_scroll.clone())
-                                        .with_decoration(ListScrollbar {
-                                            scroll_handle: self.remote_scroll.clone(),
-                                        })
                                         .size_full(),
                                     ),
                             ),

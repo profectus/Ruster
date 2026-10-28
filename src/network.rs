@@ -96,7 +96,10 @@ fn list_via_ssh(
         format!("{}@{}", username, host)
     };
     let escaped_path = remote_path.replace('\'', "'\\''");
-    let remote_cmd = format!("LC_ALL=C ls -la '{}'", escaped_path);
+    let remote_cmd = format!(
+        "LC_ALL=C.UTF-8 ls -la '{}' 2>/dev/null || LC_ALL=en_US.UTF-8 ls -la '{}' 2>/dev/null || LC_ALL=C ls -la '{}'",
+        escaped_path, escaped_path, escaped_path
+    );
 
     let output = Command::new("/usr/bin/ssh")
         .args([
@@ -123,8 +126,280 @@ fn list_via_ssh(
         });
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = decode_remote_listing(&output.stdout);
     Ok(parse_unix_ls_output(&stdout, remote_path, show_hidden))
+}
+
+/// Maps a Windows-1250 byte (> 0x7F) to its Unicode char.
+pub fn decode_cp1250_byte(b: u8) -> char {
+    match b {
+        0x80 => '€',
+        0x82 => '‚',
+        0x84 => '„',
+        0x85 => '…',
+        0x86 => '†',
+        0x87 => '‡',
+        0x89 => '‰',
+        0x8A => 'Š',
+        0x8B => '‹',
+        0x8C => 'Ś',
+        0x8D => 'Ť',
+        0x8E => 'Ž',
+        0x8F => 'Ź',
+        0x91 => '‘',
+        0x92 => '’',
+        0x93 => '“',
+        0x94 => '”',
+        0x95 => '•',
+        0x96 => '–',
+        0x97 => '—',
+        0x99 => '™',
+        0x9A => 'š',
+        0x9B => '›',
+        0x9C => 'ś',
+        0x9D => 'ť',
+        0x9E => 'ž',
+        0x9F => 'ź',
+        0xA0 => '\u{00A0}',
+        0xA1 => 'ˇ',
+        0xA2 => '˘',
+        0xA3 => 'Ł',
+        0xA4 => '¤',
+        0xA5 => 'Ą',
+        0xA6 => '¦',
+        0xA7 => '§',
+        0xA8 => '¨',
+        0xA9 => '©',
+        0xAA => 'Ş',
+        0xAB => '«',
+        0xAC => '¬',
+        0xAD => '\u{00AD}',
+        0xAE => '®',
+        0xAF => 'Ż',
+        0xB0 => '°',
+        0xB1 => '±',
+        0xB2 => '˛',
+        0xB3 => 'ł',
+        0xB4 => '´',
+        0xB5 => 'µ',
+        0xB6 => '¶',
+        0xB7 => '·',
+        0xB8 => '¸',
+        0xB9 => 'ą',
+        0xBA => 'ş',
+        0xBB => '»',
+        0xBC => 'Ľ',
+        0xBD => '˝',
+        0xBE => 'ľ',
+        0xBF => 'ż',
+        0xC0 => 'Ŕ',
+        0xC1 => 'Á',
+        0xC2 => 'Â',
+        0xC3 => 'Ă',
+        0xC4 => 'Ä',
+        0xC5 => 'Ĺ',
+        0xC6 => 'Ć',
+        0xC7 => 'Ç',
+        0xC8 => 'Č',
+        0xC9 => 'É',
+        0xCA => 'Ę',
+        0xCB => 'Ë',
+        0xCC => 'Ě',
+        0xCD => 'Í',
+        0xCE => 'Î',
+        0xCF => 'Ď',
+        0xD0 => 'Đ',
+        0xD1 => 'Ń',
+        0xD2 => 'Ň',
+        0xD3 => 'Ó',
+        0xD4 => 'Ô',
+        0xD5 => 'Ő',
+        0xD6 => 'Ö',
+        0xD7 => '×',
+        0xD8 => 'Ř',
+        0xD9 => 'Ů',
+        0xDA => 'Ú',
+        0xDB => 'Ű',
+        0xDC => 'Ü',
+        0xDD => 'Ý',
+        0xDE => 'Ţ',
+        0xDF => 'ß',
+        0xE0 => 'ŕ',
+        0xE1 => 'á',
+        0xE2 => 'â',
+        0xE3 => 'ă',
+        0xE4 => 'ä',
+        0xE5 => 'ĺ',
+        0xE6 => 'ć',
+        0xE7 => 'ç',
+        0xE8 => 'č',
+        0xE9 => 'é',
+        0xEA => 'ę',
+        0xEB => 'ë',
+        0xEC => 'ě',
+        0xED => 'í',
+        0xEE => 'î',
+        0xEF => 'ď',
+        0xF0 => 'đ',
+        0xF1 => 'ń',
+        0xF2 => 'ň',
+        0xF3 => 'ó',
+        0xF4 => 'ô',
+        0xF5 => 'ő',
+        0xF6 => 'ö',
+        0xF7 => '÷',
+        0xF8 => 'ř',
+        0xF9 => 'ů',
+        0xFA => 'ú',
+        0xFB => 'ű',
+        0xFC => 'ü',
+        0xFD => 'ý',
+        0xFE => 'ţ',
+        0xFF => '˙',
+        _ => b as char,
+    }
+}
+
+/// Maps an ISO-8859-2 byte (> 0x7F) to its Unicode char.
+pub fn decode_iso8859_2_byte(b: u8) -> char {
+    match b {
+        0xA1 => 'Ą',
+        0xA2 => '˘',
+        0xA3 => 'Ł',
+        0xA4 => '¤',
+        0xA5 => 'Ľ',
+        0xA6 => 'Ś',
+        0xA7 => '§',
+        0xA8 => '¨',
+        0xA9 => 'Š',
+        0xAA => 'Ş',
+        0xAB => 'Ť',
+        0xAC => 'Ź',
+        0xAD => '\u{00AD}',
+        0xAE => 'Ž',
+        0xAF => 'Ż',
+        0xB0 => '°',
+        0xB1 => 'ą',
+        0xB2 => '˛',
+        0xB3 => 'ł',
+        0xB4 => '´',
+        0xB5 => 'ľ',
+        0xB6 => 'ś',
+        0xB7 => 'ˇ',
+        0xB8 => '¸',
+        0xB9 => 'š',
+        0xBA => 'ş',
+        0xBB => 'ť',
+        0xBC => 'ź',
+        0xBD => '˝',
+        0xBE => 'ž',
+        0xBF => 'ż',
+        0xC0 => 'Ŕ',
+        0xC1 => 'Á',
+        0xC2 => 'Â',
+        0xC3 => 'Ă',
+        0xC4 => 'Ä',
+        0xC5 => 'Ĺ',
+        0xC6 => 'Ć',
+        0xC7 => 'Ç',
+        0xC8 => 'Č',
+        0xC9 => 'É',
+        0xCA => 'Ę',
+        0xCB => 'Ë',
+        0xCC => 'Ě',
+        0xCD => 'Í',
+        0xCE => 'Î',
+        0xCF => 'Ď',
+        0xD0 => 'Đ',
+        0xD1 => 'Ń',
+        0xD2 => 'Ň',
+        0xD3 => 'Ó',
+        0xD4 => 'Ô',
+        0xD5 => 'Ő',
+        0xD6 => 'Ö',
+        0xD7 => '×',
+        0xD8 => 'Ř',
+        0xD9 => 'Ů',
+        0xDA => 'Ú',
+        0xDB => 'Ű',
+        0xDC => 'Ü',
+        0xDD => 'Ý',
+        0xDE => 'Ţ',
+        0xDF => 'ß',
+        0xE0 => 'ŕ',
+        0xE1 => 'á',
+        0xE2 => 'â',
+        0xE3 => 'ă',
+        0xE4 => 'ä',
+        0xE5 => 'ĺ',
+        0xE6 => 'ć',
+        0xE7 => 'ç',
+        0xE8 => 'č',
+        0xE9 => 'é',
+        0xEA => 'ę',
+        0xEB => 'ë',
+        0xEC => 'ě',
+        0xED => 'í',
+        0xEE => 'î',
+        0xEF => 'ď',
+        0xF0 => 'đ',
+        0xF1 => 'ń',
+        0xF2 => 'ň',
+        0xF3 => 'ó',
+        0xF4 => 'ô',
+        0xF5 => 'ő',
+        0xF6 => 'ö',
+        0xF7 => '÷',
+        0xF8 => 'ř',
+        0xF9 => 'ů',
+        0xFA => 'ú',
+        0xFB => 'ű',
+        0xFC => 'ü',
+        0xFD => 'ý',
+        0xFE => 'ţ',
+        0xFF => '˙',
+        _ => b as char,
+    }
+}
+
+/// Intelligently decodes raw bytes from FTP / SSH directory listings.
+/// Supports native UTF-8 and falls back to Windows-1250 (CP1250) or ISO-8859-2 (Latin-2)
+/// so Czech and Central European characters (ě, š, č, ř, ž, ý, á, í, é, ů, ú, ď, ť, ň)
+/// are always correctly decoded instead of turning into replacement characters ().
+pub fn decode_remote_listing(bytes: &[u8]) -> String {
+    // 1. If valid UTF-8, use directly
+    if let Ok(s) = std::str::from_utf8(bytes) {
+        return s.to_string();
+    }
+
+    // 2. Not valid UTF-8: detect between Windows-1250 and ISO-8859-2
+    let mut has_cp1250_specific = false;
+    let mut iso_specific_count = 0;
+
+    for &b in bytes {
+        if matches!(b, 0x8A | 0x8D | 0x8E | 0x9A | 0x9D | 0x9E) {
+            // Š, Ť, Ž, š, ť, ž in Windows-1250
+            has_cp1250_specific = true;
+            break;
+        } else if matches!(b, 0xA9 | 0xAB | 0xAE | 0xB9 | 0xBB | 0xBE) {
+            // Š, Ť, Ž, š, ť, ž in ISO-8859-2
+            iso_specific_count += 1;
+        }
+    }
+
+    let use_iso = !has_cp1250_specific && iso_specific_count > 0;
+
+    let mut decoded = String::with_capacity(bytes.len() * 3 / 2);
+    for &b in bytes {
+        if b < 0x80 {
+            decoded.push(b as char);
+        } else if use_iso {
+            decoded.push(decode_iso8859_2_byte(b));
+        } else {
+            decoded.push(decode_cp1250_byte(b));
+        }
+    }
+    decoded
 }
 
 pub fn percent_encode_path(path: &str) -> String {
@@ -190,6 +465,8 @@ fn list_via_ftp_curl(
         "--max-time",
         "25",
         "--disable-epsv",
+        "-Q",
+        "*OPTS UTF8 ON",
     ]);
 
     if protocol == Protocol::FtpsExplicit {
@@ -241,7 +518,7 @@ fn list_via_ftp_curl(
         return Err(err_msg);
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stdout = decode_remote_listing(&output.stdout);
     Ok(parse_unix_ls_output(&stdout, &target_path, show_hidden))
 }
 
@@ -387,6 +664,8 @@ fn upload_to_remote_impl(
                 "30",
                 "--disable-epsv",
                 "--ftp-create-dirs",
+                "-Q",
+                "*OPTS UTF8 ON",
             ]);
             if final_proto == Protocol::FtpsExplicit {
                 cmd.args(["--ssl", "--insecure"]);
@@ -591,6 +870,8 @@ where
                 "--speed-time",
                 "30",
                 "--disable-epsv",
+                "-Q",
+                "*OPTS UTF8 ON",
             ]);
             if final_proto == Protocol::FtpsExplicit {
                 cmd.args(["--ssl", "--insecure"]);
@@ -1180,6 +1461,8 @@ fn run_remote_ftp_quote(
         "--max-time",
         "20",
         "--disable-epsv",
+        "-Q",
+        "*OPTS UTF8 ON",
     ]);
     if protocol == Protocol::FtpsExplicit {
         cmd.args(["--ssl", "--insecure"]);
@@ -1385,4 +1668,36 @@ pub fn calculate_remote_dir_size(
         }
     }
     Ok(total)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decode_utf8() {
+        let raw = "příliš žluťoučký kůň úpěl ďábelské ódy".as_bytes();
+        assert_eq!(decode_remote_listing(raw), "příliš žluťoučký kůň úpěl ďábelské ódy");
+    }
+
+    #[test]
+    fn test_decode_cp1250_czech() {
+        let cp1250_bytes = [
+            0x50, 0xF8, 0xED, 0x6C, 0x6F, 0x68, 0x61, 0x20, 0x2D, 0x20, 0x76, 0x79, 0xFA, 0xE8,
+            0x74, 0x6F, 0x76, 0xE1, 0x6E, 0xED, 0x2E, 0x70, 0x64, 0x66,
+        ];
+        assert_eq!(decode_remote_listing(&cp1250_bytes), "Příloha - vyúčtování.pdf");
+    }
+
+    #[test]
+    fn test_decode_cp1250_all_czech_chars() {
+        let cp1250_spec = [0x9A, 0x9D, 0x9E, 0x20, 0x8A, 0x8D, 0x8E];
+        assert_eq!(decode_remote_listing(&cp1250_spec), "šťž ŠŤŽ");
+    }
+
+    #[test]
+    fn test_decode_iso8859_2() {
+        let iso_bytes = [0xB9, 0xBB, 0xBE, 0x20, 0xA9, 0xAB, 0xAE];
+        assert_eq!(decode_remote_listing(&iso_bytes), "šťž ŠŤŽ");
+    }
 }

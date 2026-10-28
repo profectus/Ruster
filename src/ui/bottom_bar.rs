@@ -1,4 +1,4 @@
-use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
+use gpui::{div, prelude::*, px, rgb, rgba, Context, IntoElement, MouseButton, MouseDownEvent};
 use crate::app::RusterView;
 use crate::icons::{get_file_icon, render_icon};
 use crate::model::{format_bytes, ServerLogKind, TransferDirection, TransferQueueItem, TransferStatus};
@@ -89,6 +89,38 @@ impl RusterView {
             )
     }
 
+    pub fn render_queue_resize_handle(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme = self.theme();
+        let is_resizing = self.resizing_queue_panel.is_some();
+        div()
+            .id("queue-panel-resizer")
+            .cursor_row_resize()
+            .h(px(5.0))
+            .w_full()
+            .mt(px(-2.5))
+            .mb(px(-2.5))
+            .bg(if is_resizing { theme.border_focused() } else { rgba(0x00000000) })
+            .hover(|s| s.bg(theme.border_focused()))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                    cx.stop_propagation();
+                    if event.click_count == 2 {
+                        this.queue_panel_height = 140.0;
+                        this.resizing_queue_panel = None;
+                        this.persist_app_state();
+                        cx.notify();
+                        return;
+                    }
+                    this.resizing_queue_panel = Some(crate::app::ResizeQueuePanelState {
+                        start_mouse_y: f32::from(event.position.y),
+                        initial_height: this.queue_panel_height,
+                    });
+                    cx.notify();
+                }),
+            )
+    }
+
     pub fn render_transfer_queue_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = self.i18n();
         let theme = self.theme();
@@ -97,7 +129,7 @@ impl RusterView {
         div()
             .flex()
             .flex_col()
-            .h(px(140.0))
+            .h(px(self.queue_panel_height))
             .bg(theme.bottom_panel_bg())
             .border_t_1()
             .border_color(theme.border())
@@ -149,6 +181,35 @@ impl RusterView {
                             .flex()
                             .items_center()
                             .gap_1p5()
+                            // Cancel / clear transfer queue button
+                            .when(!self.transfer_queue.is_empty(), |el| {
+                                el.child(
+                                    div()
+                                        .id("btn-cancel-transfer-queue")
+                                        .cursor_pointer()
+                                        .flex()
+                                        .items_center()
+                                        .gap_1()
+                                        .px_2()
+                                        .h(px(18.0))
+                                        .rounded(px(3.0))
+                                        .bg(if theme.is_dark() { rgb(0x381212) } else { rgb(0xfee2e2) })
+                                        .border_1()
+                                        .border_color(if theme.is_dark() { rgb(0x7f1d1d) } else { rgb(0xfca5a5) })
+                                        .hover(|s| s.bg(if theme.is_dark() { rgb(0x4c1d1d) } else { rgb(0xfecaca) }))
+                                        .text_xs()
+                                        .font_weight(gpui::FontWeight::MEDIUM)
+                                        .text_color(if theme.is_dark() { rgb(0xfca5a5) } else { rgb(0xb91c1c) })
+                                        .on_mouse_down(
+                                            MouseButton::Left,
+                                            cx.listener(|this, _, _, cx| {
+                                                this.cancel_all_transfers(cx);
+                                            }),
+                                        )
+                                        .child(render_icon("icons/close.svg", 10.0, if theme.is_dark() { 0xfca5a5 } else { 0xb91c1c }))
+                                        .child(t.btn_abort_transfer()),
+                                )
+                            })
                             // Toggle transfer log button
                             .child(
                                 div()

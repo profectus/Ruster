@@ -104,6 +104,12 @@ pub struct ResizeColumnState {
     pub initial_permissions_w: f32,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct ResizeQueuePanelState {
+    pub start_mouse_y: f32,
+    pub initial_height: f32,
+}
+
 pub struct RusterView {
     pub(crate) focus_handle: FocusHandle,
     pub(crate) locale: Locale,
@@ -154,6 +160,8 @@ pub struct RusterView {
     pub(crate) col_modified_width: f32,
     pub(crate) col_permissions_width: f32,
     pub(crate) resizing_column: Option<ResizeColumnState>,
+    pub(crate) queue_panel_height: f32,
+    pub(crate) resizing_queue_panel: Option<ResizeQueuePanelState>,
 
     pub(crate) active_modal: ActiveModal,
     pub(crate) modal_input_text: String,
@@ -169,6 +177,7 @@ pub struct RusterView {
     pub(crate) site_is_connecting: bool,
     pub(crate) remote_error_banner: Option<String>,
     pub(crate) active_transfer: Option<ActiveTransferState>,
+    pub(crate) transfer_cancel_signal: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
 
     pub(crate) server_log: Vec<ServerLogEntry>,
     pub(crate) bottom_tab: BottomPanelTab,
@@ -456,7 +465,7 @@ impl RusterView {
         let local_dir = saved_state.local_dir;
         let right_dir = saved_state.right_dir;
         let show_local_pane = saved_state.show_local_pane;
-        let show_hidden = false;
+        let show_hidden = saved_state.show_hidden;
         let mut local_entries = read_local_directory(&local_dir, show_hidden);
         sort_entries(&mut local_entries, SortColumn::Name, true);
         let local_initial_idx = if local_entries.get(0).map(|e| e.name == "..").unwrap_or(false) && local_entries.len() > 1 { 1 } else { 0 };
@@ -540,6 +549,8 @@ impl RusterView {
             col_modified_width: 145.0,
             col_permissions_width: 85.0,
             resizing_column: None,
+            queue_panel_height: saved_state.queue_panel_height,
+            resizing_queue_panel: None,
 
             active_modal: ActiveModal::None,
             modal_input_text: String::new(),
@@ -555,6 +566,7 @@ impl RusterView {
             site_is_connecting: false,
             remote_error_banner: None,
             active_transfer: None,
+            transfer_cancel_signal: None,
 
             server_log: Vec::new(),
             bottom_tab: BottomPanelTab::Transfers,
@@ -988,12 +1000,14 @@ impl RusterView {
     pub(crate) fn persist_app_state(&self) {
         let _ = save_app_state(
             self.show_local_pane,
+            self.show_hidden,
             &self.local_dir,
             &self.right_dir,
             self.max_concurrent_transfers,
             &self.editable_extensions,
             self.window_width,
             self.window_height,
+            self.queue_panel_height,
             self.theme,
             self.locale,
         );
@@ -1819,6 +1833,11 @@ impl RusterView {
         cx.notify();
 
         let (tx, rx) = std::sync::mpsc::channel::<TransferProgressUpdate>();
+        let cancel_signal = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        self.transfer_cancel_signal = Some(std::sync::Arc::clone(&cancel_signal));
+        let cancel_signal_bg = std::sync::Arc::clone(&cancel_signal);
+        let cancel_signal_ui = std::sync::Arc::clone(&cancel_signal);
+
         let bg_tasks = tasks.clone();
         let max_workers = if let Some(session) = self.sessions.get(self.active_session_idx) {
             session.max_connections.clamp(1, 10)
@@ -1831,6 +1850,10 @@ impl RusterView {
             let mut disc_items = Vec::new();
             let mut next_disc_id = 1_000_000 + batch_id * 10000;
             for t in &bg_tasks {
+                if cancel_signal_bg.load(std::sync::atomic::Ordering::SeqCst) {
+                    let _ = tx.send(TransferProgressUpdate::AllFinished);
+                    return;
+                }
                 match &t.kind {
                     TransferKind::Download { protocol, host, port, username, password, remote_path, local_path, is_dir, .. } => {
                         if *is_dir {
@@ -2002,7 +2025,7 @@ impl RusterView {
             let pause_lock = std::sync::Arc::new(std::sync::Mutex::new(false));
             let pause_cvar = std::sync::Arc::new(std::sync::Condvar::new());
             let skip_all_errors = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-            let cancelled = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let cancelled = cancel_signal_bg;
             let mut worker_handles = Vec::new();
 
             for _ in 0..num_workers {
@@ -2236,6 +2259,11 @@ impl RusterView {
                     while let Ok(msg) = rx.try_recv() {
                         has_update = true;
                         let _ = this.update(&mut cx, |view, _| {
+                            if cancel_signal_ui.load(std::sync::atomic::Ordering::SeqCst) {
+                                view.transfer_queue.clear();
+                                view.active_transfer = None;
+                                return;
+                            }
                             match msg {
                                 TransferProgressUpdate::BatchInitialized { total_items, total_bytes } => {
                                     if let Some(t) = &mut view.active_transfer {
@@ -2332,12 +2360,18 @@ impl RusterView {
 
                     if finished {
                         let _ = this.update(&mut cx, |view, cx| {
-                            check_and_mark_completed_parents(&mut view.transfer_queue);
-                            if let Some(t) = &mut view.active_transfer {
-                                t.is_completed = true;
-                                t.file_bytes_transferred = t.file_bytes_total;
+                            view.transfer_cancel_signal = None;
+                            if cancel_signal_ui.load(std::sync::atomic::Ordering::SeqCst) {
+                                view.transfer_queue.clear();
+                                view.active_transfer = None;
+                            } else {
+                                check_and_mark_completed_parents(&mut view.transfer_queue);
+                                if let Some(t) = &mut view.active_transfer {
+                                    t.is_completed = true;
+                                    t.file_bytes_transferred = t.file_bytes_total;
+                                }
+                                view.transfer_queue.retain(|q| q.status != TransferStatus::Completed);
                             }
-                            view.transfer_queue.retain(|q| q.status != TransferStatus::Completed);
                             view.reload_local();
                             view.reload_right();
                             cx.notify();
@@ -2351,19 +2385,33 @@ impl RusterView {
         }).detach();
     }
 
+    pub(crate) fn cancel_all_transfers(&mut self, cx: &mut Context<Self>) {
+        if let Some(signal) = self.transfer_cancel_signal.take() {
+            signal.store(true, std::sync::atomic::Ordering::SeqCst);
+        }
+        if let Some(prompt) = self.transfer_error_prompt.take() {
+            let _ = prompt.resp_tx.send(TransferErrorAction::Cancel);
+        }
+        self.transfer_queue.clear();
+        self.active_transfer = None;
+        if self.active_modal == ActiveModal::TransferProgress || self.active_modal == ActiveModal::TransferError {
+            self.active_modal = ActiveModal::None;
+        }
+        self.reload_local();
+        self.reload_right();
+        cx.notify();
+    }
+
     pub(crate) fn handle_transfer_error_action(
         &mut self,
         action: TransferErrorAction,
         cx: &mut Context<Self>,
     ) {
+        if action == TransferErrorAction::Cancel {
+            self.cancel_all_transfers(cx);
+            return;
+        }
         if let Some(prompt) = self.transfer_error_prompt.take() {
-            if action == TransferErrorAction::Cancel {
-                for item in &mut self.transfer_queue {
-                    if item.status == TransferStatus::Queued || item.status == TransferStatus::Transferring {
-                        item.status = TransferStatus::Failed;
-                    }
-                }
-            }
             let _ = prompt.resp_tx.send(action);
         }
         self.active_modal = ActiveModal::None;
@@ -3700,7 +3748,9 @@ impl RusterView {
 
         if self.active_modal == ActiveModal::Settings {
             if key == "escape" {
+                self.settings_lang_dropdown_open = false;
                 self.settings_editing_exts = false;
+                self.persist_app_state();
                 self.active_modal = ActiveModal::None;
                 cx.notify();
                 return;
@@ -4313,10 +4363,26 @@ impl Render for RusterView {
                     }
                     cx.notify();
                 }
+                if let Some(state) = this.resizing_queue_panel {
+                    let current_y = f32::from(event.position.y);
+                    let delta = current_y - state.start_mouse_y;
+                    let max_h = (this.window_height - 180.0).max(120.0);
+                    this.queue_panel_height = (state.initial_height - delta).clamp(60.0, max_h);
+                    cx.notify();
+                }
             }))
             .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                let mut changed = false;
                 if this.resizing_column.is_some() {
                     this.resizing_column = None;
+                    changed = true;
+                }
+                if this.resizing_queue_panel.is_some() {
+                    this.resizing_queue_panel = None;
+                    this.persist_app_state();
+                    changed = true;
+                }
+                if changed {
                     cx.notify();
                 }
             }))
@@ -4354,6 +4420,7 @@ impl Render for RusterView {
                 if this.active_modal != ActiveModal::None { return; }
                 this.show_hidden = !this.show_hidden;
                 this.reload_local();
+                this.persist_app_state();
                 cx.notify();
             }))
             .on_action(cx.listener(|this, _: &ToggleTransferQueue, _, cx| {
@@ -4524,7 +4591,8 @@ impl Render for RusterView {
             )
             // 4. Transfer Queue & Server Console Dock (auto-shown on server activity/transfer, always on remote server)
             .when(!self.sessions.is_empty() || self.show_queue, |el| {
-                el.child(self.render_transfer_queue_panel(cx))
+                el.child(self.render_queue_resize_handle(cx))
+                    .child(self.render_transfer_queue_panel(cx))
             })
             // 5. Bottom Function Bar (Total Commander F3..F8 buttons)
             .child(self.render_bottom_function_bar(cx))

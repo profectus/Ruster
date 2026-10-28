@@ -25,19 +25,6 @@ impl RusterView {
             crate::i18n::Locale::Ja => "Ruster 設定",
         };
 
-        let btn_save_close = match self.locale {
-            crate::i18n::Locale::En => "Save & Close",
-            crate::i18n::Locale::Cs => "Uložit a zavřít",
-            crate::i18n::Locale::De => "Speichern & Schließen",
-            crate::i18n::Locale::Es => "Guardar y cerrar",
-            crate::i18n::Locale::Fr => "Enregistrer et fermer",
-            crate::i18n::Locale::It => "Salva e chiudi",
-            crate::i18n::Locale::Pl => "Zapisz i zamknij",
-            crate::i18n::Locale::Pt => "Salvar e fechar",
-            crate::i18n::Locale::Zh => "保存并关闭",
-            crate::i18n::Locale::Ja => "保存して閉じる",
-        };
-
         let files_section_title = match self.locale {
             crate::i18n::Locale::En => "FILES & VISIBILITY",
             crate::i18n::Locale::Cs => "ZOBRAZENÍ A SOUBORY",
@@ -157,6 +144,7 @@ impl RusterView {
             .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                 this.settings_lang_dropdown_open = false;
                 this.settings_editing_exts = false;
+                this.persist_app_state();
                 this.active_modal = ActiveModal::None;
                 cx.notify();
             }))
@@ -177,6 +165,7 @@ impl RusterView {
                         cx.stop_propagation();
                         if this.settings_editing_exts {
                             this.settings_editing_exts = false;
+                            this.persist_app_state();
                             cx.notify();
                         }
                     }))
@@ -221,6 +210,7 @@ impl RusterView {
                                     .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                         this.settings_lang_dropdown_open = false;
                                         this.settings_editing_exts = false;
+                                        this.persist_app_state();
                                         this.active_modal = ActiveModal::None;
                                         cx.notify();
                                     }))
@@ -507,6 +497,7 @@ impl RusterView {
                                                 this.show_hidden = !this.show_hidden;
                                                 this.reload_local();
                                                 this.reload_right();
+                                                this.persist_app_state();
                                                 cx.notify();
                                             }))
                                             .child(
@@ -688,6 +679,7 @@ impl RusterView {
                                                     .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                                         this.editable_extensions = crate::model::default_editable_extensions();
                                                         this.settings_cursor_pos = this.editable_extensions.chars().count();
+                                                        this.persist_app_state();
                                                         cx.notify();
                                                     }))
                                                     .child(reset_defaults_label),
@@ -825,44 +817,6 @@ impl RusterView {
                                                     .child(t.menu_check_for_updates()),
                                             ),
                                     ),
-                            ),
-                    )
-                    // Footer
-                    .child(
-                        div()
-                            .flex()
-                            .flex_shrink_0()
-                            .items_center()
-                            .justify_end()
-                            .gap_2()
-                            .px_4()
-                            .py_3()
-                            .rounded_b(px(10.0))
-                            .bg(theme.modal_header_bg())
-                            .border_t_1()
-                            .border_color(theme.border())
-                            .child(
-                                div()
-                                    .id("btn-save-settings")
-                                    .cursor_pointer()
-                                    .flex()
-                                    .items_center()
-                                    .gap_1p5()
-                                    .px_3()
-                                    .h(px(28.0))
-                                    .rounded(px(5.0))
-                                    .bg(rgb(0x2563eb))
-                                    .text_xs()
-                                    .font_weight(gpui::FontWeight::MEDIUM)
-                                    .text_color(rgb(0xffffff))
-                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                        this.settings_lang_dropdown_open = false;
-                                        this.settings_editing_exts = false;
-                                        this.persist_app_state();
-                                        this.active_modal = ActiveModal::None;
-                                        cx.notify();
-                                    }))
-                                    .child(btn_save_close),
                             ),
                     ),
             )
