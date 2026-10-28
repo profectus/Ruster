@@ -357,7 +357,7 @@ fn render_progress_bar_cell(
     let is_dark = theme.is_dark();
     div()
         .relative()
-        .w(px(150.0))
+        .w(px(200.0))
         .flex_shrink_0()
         .h(px(16.0))
         .rounded(px(3.0))

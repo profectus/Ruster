@@ -375,6 +375,7 @@ impl RusterView {
                                             this.context_menu = None;
                                             for e in &mut this.local_entries {
                                                 e.selected = false;
+                                                e.space_marked = false;
                                             }
                                             cx.notify();
                                         }),
@@ -796,6 +797,7 @@ impl RusterView {
                                             this.context_menu = None;
                                             for e in &mut this.right_entries {
                                                 e.selected = false;
+                                                e.space_marked = false;
                                             }
                                             cx.notify();
                                         }),
@@ -1222,6 +1224,7 @@ impl RusterView {
                                             if let Some(s) = this.sessions.get_mut(this.active_session_idx) {
                                                 for e in &mut s.entries {
                                                     e.selected = false;
+                                                    e.space_marked = false;
                                                 }
                                             }
                                             cx.notify();
@@ -1617,14 +1620,20 @@ impl RusterView {
                                 cx.open_with_system(&entry_path);
                             }
                         } else {
-                            for (i, e) in this.local_entries.iter_mut().enumerate() {
-                                if i == idx && e.name != ".." {
-                                    e.selected = true;
-                                } else {
-                                    e.selected = false;
+                            let is_already_marked = this.local_entries.get(idx).map(|e| e.is_any_selected()).unwrap_or(false);
+                            if is_already_marked {
+                                this.local_selected = idx;
+                            } else {
+                                for (i, e) in this.local_entries.iter_mut().enumerate() {
+                                    if i == idx && e.name != ".." {
+                                        e.selected = true;
+                                    } else {
+                                        e.selected = false;
+                                        e.space_marked = false;
+                                    }
                                 }
+                                this.local_selected = idx;
                             }
-                            this.local_selected = idx;
                         }
                         cx.notify();
                     },
@@ -1850,14 +1859,20 @@ impl RusterView {
                                 cx.open_with_system(&entry_path);
                             }
                         } else {
-                            for (i, e) in this.right_entries.iter_mut().enumerate() {
-                                if i == idx && e.name != ".." {
-                                    e.selected = true;
-                                } else {
-                                    e.selected = false;
+                            let is_already_marked = this.right_entries.get(idx).map(|e| e.is_any_selected()).unwrap_or(false);
+                            if is_already_marked {
+                                this.right_selected = idx;
+                            } else {
+                                for (i, e) in this.right_entries.iter_mut().enumerate() {
+                                    if i == idx && e.name != ".." {
+                                        e.selected = true;
+                                    } else {
+                                        e.selected = false;
+                                        e.space_marked = false;
+                                    }
                                 }
+                                this.right_selected = idx;
                             }
-                            this.right_selected = idx;
                         }
                         cx.notify();
                     },
@@ -2106,14 +2121,20 @@ impl RusterView {
                                 .sessions
                                 .get_mut(this.active_session_idx)
                             {
-                                for (i, e) in s.entries.iter_mut().enumerate() {
-                                    if i == idx && e.name != ".." {
-                                        e.selected = true;
-                                    } else {
-                                        e.selected = false;
+                                let is_already_marked = s.entries.get(idx).map(|e| e.is_any_selected()).unwrap_or(false);
+                                if is_already_marked {
+                                    s.selected_index = idx;
+                                } else {
+                                    for (i, e) in s.entries.iter_mut().enumerate() {
+                                        if i == idx && e.name != ".." {
+                                            e.selected = true;
+                                        } else {
+                                            e.selected = false;
+                                            e.space_marked = false;
+                                        }
                                     }
+                                    s.selected_index = idx;
                                 }
-                                s.selected_index = idx;
                             }
                         }
                         cx.notify();

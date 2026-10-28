@@ -4279,6 +4279,28 @@ impl RusterView {
                     self.remote_filter_query.clear();
                     self.ensure_local_selection();
                     self.ensure_remote_selection();
+                } else {
+                    match self.active_pane {
+                        ActivePane::Local => {
+                            for e in self.local_entries.iter_mut() {
+                                e.selected = false;
+                                e.space_marked = false;
+                            }
+                        }
+                        ActivePane::Remote => {
+                            if self.sessions.is_empty() {
+                                for e in self.right_entries.iter_mut() {
+                                    e.selected = false;
+                                    e.space_marked = false;
+                                }
+                            } else if let Some(s) = self.sessions.get_mut(self.active_session_idx) {
+                                for e in s.entries.iter_mut() {
+                                    e.selected = false;
+                                    e.space_marked = false;
+                                }
+                            }
+                        }
+                    }
                 }
                 cx.notify();
             }
