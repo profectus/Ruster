@@ -658,6 +658,21 @@ impl I18n {
         }
     }
 
+    pub fn act_open_in_terminal(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Open in Terminal",
+            Locale::Cs => "Otevřít v Terminálu",
+            Locale::De => "Im Terminal öffnen",
+            Locale::Es => "Abrir en Terminal",
+            Locale::Fr => "Ouvrir dans le Terminal",
+            Locale::It => "Apri nel Terminale",
+            Locale::Pl => "Otwórz w Terminalu",
+            Locale::Pt => "Abrir no Terminal",
+            Locale::Zh => "在终端中打开",
+            Locale::Ja => "ターミナルで開く",
+        }
+    }
+
     pub fn act_select_all(&self) -> &'static str {
         match self.locale {
             Locale::En => "Select All",
@@ -761,6 +776,96 @@ impl I18n {
             Locale::Pt => "Pasta",
             Locale::Zh => "文件夹",
             Locale::Ja => "フォルダ",
+        }
+    }
+
+    pub fn file_type_label(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "File",
+            Locale::Cs => "Soubor",
+            Locale::De => "Datei",
+            Locale::Es => "Archivo",
+            Locale::Fr => "Fichier",
+            Locale::It => "File",
+            Locale::Pl => "Plik",
+            Locale::Pt => "Arquivo",
+            Locale::Zh => "文件",
+            Locale::Ja => "ファイル",
+        }
+    }
+
+    pub fn symlink_type_label(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Symbolic Link",
+            Locale::Cs => "Symbolický odkaz",
+            Locale::De => "Symbolischer Link",
+            Locale::Es => "Enlace simbólico",
+            Locale::Fr => "Lien symbolique",
+            Locale::It => "Collegamento simbolico",
+            Locale::Pl => "Dowiązanie symboliczne",
+            Locale::Pt => "Link simbólico",
+            Locale::Zh => "符号链接",
+            Locale::Ja => "シンボリックリンク",
+        }
+    }
+
+    pub fn tooltip_type(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Type",
+            Locale::Cs => "Typ",
+            Locale::De => "Typ",
+            Locale::Es => "Tipo",
+            Locale::Fr => "Type",
+            Locale::It => "Tipo",
+            Locale::Pl => "Typ",
+            Locale::Pt => "Tipo",
+            Locale::Zh => "类型",
+            Locale::Ja => "種類",
+        }
+    }
+
+    pub fn tooltip_path(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Path",
+            Locale::Cs => "Cesta",
+            Locale::De => "Pfad",
+            Locale::Es => "Ruta",
+            Locale::Fr => "Chemin",
+            Locale::It => "Percorso",
+            Locale::Pl => "Ścieżka",
+            Locale::Pt => "Caminho",
+            Locale::Zh => "路径",
+            Locale::Ja => "パス",
+        }
+    }
+
+    pub fn tooltip_owner(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Owner",
+            Locale::Cs => "Vlastník",
+            Locale::De => "Eigentümer",
+            Locale::Es => "Propietario",
+            Locale::Fr => "Propriétaire",
+            Locale::It => "Proprietario",
+            Locale::Pl => "Właściciel",
+            Locale::Pt => "Proprietário",
+            Locale::Zh => "所有者",
+            Locale::Ja => "所有者",
+        }
+    }
+
+    pub fn tooltip_created(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Created",
+            Locale::Cs => "Vytvořeno",
+            Locale::De => "Erstellt",
+            Locale::Es => "Creado",
+            Locale::Fr => "Créé",
+            Locale::It => "Creato",
+            Locale::Pl => "Utworzono",
+            Locale::Pt => "Criado",
+            Locale::Zh => "创建时间",
+            Locale::Ja => "作成日",
         }
     }
 
@@ -2208,6 +2313,66 @@ impl I18n {
             Locale::Ja => "アップデートを確認中...",
         }
     }
+
+    pub fn favorites_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Favorite Locations",
+            Locale::Cs => "Oblíbené lokace",
+            Locale::De => "Favoriten",
+            Locale::Es => "Ubicaciones favoritas",
+            Locale::Fr => "Emplacements favoris",
+            Locale::It => "Posizioni preferite",
+            Locale::Pl => "Ulubione lokalizacje",
+            Locale::Pt => "Locais favoritos",
+            Locale::Zh => "常用位置",
+            Locale::Ja => "よく使う場所",
+        }
+    }
+
+    pub fn favorites_add_current(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Add current location",
+            Locale::Cs => "Přidat toto umístění do oblíbených",
+            Locale::De => "Aktuellen Ort zu Favoriten hinzufügen",
+            Locale::Es => "Añadir ubicación actual a favoritos",
+            Locale::Fr => "Ajouter l'emplacement actuel aux favoris",
+            Locale::It => "Aggiungi posizione corrente ai preferiti",
+            Locale::Pl => "Dodaj bieżącą lokalizację do ulubionych",
+            Locale::Pt => "Adicionar local atual aos favoritos",
+            Locale::Zh => "添加当前位置到常用位置",
+            Locale::Ja => "現在の場所をお気に入りに追加",
+        }
+    }
+
+    pub fn favorites_already_added(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Location is in favorites",
+            Locale::Cs => "Umístění je v oblíbených",
+            Locale::De => "Ort ist in den Favoriten",
+            Locale::Es => "La ubicación está en favoritos",
+            Locale::Fr => "L'emplacement est dans les favoris",
+            Locale::It => "La posizione è nei preferiti",
+            Locale::Pl => "Lokalizacja jest w ulubionych",
+            Locale::Pt => "O local está nos favoritos",
+            Locale::Zh => "当前位置已在常用位置中",
+            Locale::Ja => "現在の場所はお気に入りに登録済みです",
+        }
+    }
+
+    pub fn favorites_empty(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "No favorite locations yet",
+            Locale::Cs => "Žádné oblíbené lokace",
+            Locale::De => "Noch keine Favoriten",
+            Locale::Es => "Sin ubicaciones favoritas aún",
+            Locale::Fr => "Aucun emplacement favori",
+            Locale::It => "Nessuna posizione preferita",
+            Locale::Pl => "Brak ulubionych lokalizacji",
+            Locale::Pt => "Nenhum local favorito ainda",
+            Locale::Zh => "暂无常用位置",
+            Locale::Ja => "お気に入りはまだありません",
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2256,6 +2421,21 @@ mod tests {
             assert!(!t.btn_abort_transfer().is_empty());
             assert!(!t.btn_show_log().is_empty());
             assert!(!t.btn_hide_log().is_empty());
+
+            // Test favorites i18n
+            assert!(!t.favorites_title().is_empty());
+            assert!(!t.favorites_add_current().is_empty());
+            assert!(!t.favorites_already_added().is_empty());
+            assert!(!t.favorites_empty().is_empty());
+
+            // Test tooltip i18n
+            assert!(!t.file_type_label().is_empty());
+            assert!(!t.symlink_type_label().is_empty());
+            assert!(!t.tooltip_type().is_empty());
+            assert!(!t.tooltip_path().is_empty());
+            assert!(!t.tooltip_owner().is_empty());
+            assert!(!t.tooltip_created().is_empty());
+            assert!(!t.act_open_in_terminal().is_empty());
         }
     }
 }

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.9] - 2026-10-29
+
+### Added
+- **Favorite Locations Popover**: Added a star icon button to the pane navigation header (between Home and Drives) allowing quick navigation to bookmarked folders. Includes default bookmarks (Home and Downloads), current folder bookmarking with duplicate prevention, and one-click removal with persistence in `~/.config/ruster/favorites.conf`.
+- **Open in Terminal**: Added an "Open in Terminal" option to the context menu and application menu (shortcut `Cmd+Option+T`) for local panes and directories.
+- **Detailed File/Folder Hover Tooltips**: Enhanced file tooltips to display comprehensive item metadata including icon, type, exact byte size, octal and symbolic permissions, owner, creation date, modification date, and full path.
+
+### Fixed
+- **Tooltip Multiline Wrapping and Layout Stability**: Ensured long file names and paths wrap cleanly within a fixed-width container without overflowing or triggering full-window height inflation.
+- **Reveal in Finder for Right Local Pane**: Fixed "Reveal in Finder" context menu action when the right pane is operating in local mode.
+
 ## [0.3.8] - 2026-10-28
 
 ### Fixed

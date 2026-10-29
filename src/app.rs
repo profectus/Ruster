@@ -16,7 +16,7 @@ use crate::model::{
     apply_local_chmod, build_local_tree, calculate_local_dir_size, copy_local_item_with_progress,
     create_local_folder, default_saved_sites, delete_local_item, is_editable_file,
     move_local_item_with_progress, read_local_directory, rename_local_item, sort_entries,
-    ActiveModal, ActivePane, ActiveTransferState, BottomPanelTab, FileEntry, PaneFlash, Protocol,
+    ActiveModal, ActivePane, ActiveTransferState, BottomPanelTab, DateFormat, FileEntry, PaneFlash, Protocol,
     RemoteSession, SavedSiteProfile, ServerLogEntry, ServerLogKind, SiteEditField, SortColumn,
     SyncAction, SyncItem, SyncState,
     TransferDirection, TransferErrorAction, TransferErrorPromptState, TransferQueueItem, TransferStatus, TreeNode, WatchedRemoteFile,
@@ -31,7 +31,7 @@ use crate::network::{
 use crate::ui::menus::install_app_menus;
 use crate::{
     CheckForUpdates, CopySelected, DeleteModal, EditSelected, GoToFolderModal, MoveSelected,
-    NewFolderModal, OpenSelected, OpenSiteManager, PermissionsModal, RefreshPanes, RenameModal,
+    NewFolderModal, OpenInTerminal, OpenSelected, OpenSiteManager, PermissionsModal, RefreshPanes, RenameModal,
     RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal, ToggleDualPane,
     ToggleFunctionBar, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree, ToggleTheme,
     ToggleTransferQueue,
@@ -121,6 +121,8 @@ pub struct RusterView {
     pub(crate) show_remote_tree: bool,
     pub(crate) show_hidden: bool,
     pub(crate) show_function_bar: bool,
+    pub(crate) show_permissions: bool,
+    pub(crate) date_format: DateFormat,
     pub(crate) show_queue: bool,
     pub(crate) show_local_filter: bool,
     pub(crate) local_filter_query: String,
@@ -128,6 +130,8 @@ pub struct RusterView {
     pub(crate) remote_filter_query: String,
     pub(crate) session_dropdown_open: bool,
     pub(crate) context_menu: Option<ContextMenuState>,
+    pub(crate) favorite_paths: Vec<PathBuf>,
+    pub(crate) favorites_menu_pane: Option<ActivePane>,
 
     pub(crate) local_scroll: UniformListScrollHandle,
     pub(crate) remote_scroll: UniformListScrollHandle,
@@ -514,6 +518,8 @@ impl RusterView {
             show_remote_tree: false,
             show_hidden,
             show_function_bar: saved_state.show_function_bar,
+            show_permissions: saved_state.show_permissions,
+            date_format: saved_state.date_format,
             show_queue: false,
             show_local_filter: false,
             local_filter_query: String::new(),
@@ -521,6 +527,8 @@ impl RusterView {
             remote_filter_query: String::new(),
             session_dropdown_open: false,
             context_menu: None,
+            favorite_paths: crate::config::load_favorite_paths(),
+            favorites_menu_pane: None,
 
             local_scroll: UniformListScrollHandle::new(),
             remote_scroll: UniformListScrollHandle::new(),
@@ -554,7 +562,7 @@ impl RusterView {
             expanded_folders: std::collections::HashSet::new(),
 
             col_size_width: 95.0,
-            col_modified_width: 145.0,
+            col_modified_width: if saved_state.date_format == DateFormat::Date { 85.0 } else { 145.0 },
             col_permissions_width: 85.0,
             resizing_column: None,
             queue_panel_height: saved_state.queue_panel_height,
@@ -835,6 +843,18 @@ impl RusterView {
         crate::theme::Theme::new(self.theme)
     }
 
+    pub(crate) fn add_favorite_path(&mut self, path: PathBuf) {
+        if !self.favorite_paths.contains(&path) {
+            self.favorite_paths.push(path);
+            let _ = crate::config::save_favorite_paths(&self.favorite_paths);
+        }
+    }
+
+    pub(crate) fn remove_favorite_path_by_value(&mut self, path: &std::path::Path) {
+        self.favorite_paths.retain(|p| p != path);
+        let _ = crate::config::save_favorite_paths(&self.favorite_paths);
+    }
+
     pub fn set_theme(&mut self, theme: crate::theme::ThemeMode, cx: &mut Context<Self>) {
         self.theme = theme;
         self.apply_theme_to_window();
@@ -1010,6 +1030,8 @@ impl RusterView {
             self.show_local_pane,
             self.show_hidden,
             self.show_function_bar,
+            self.show_permissions,
+            self.date_format,
             &self.local_dir,
             &self.right_dir,
             self.max_concurrent_transfers,
@@ -1602,8 +1624,78 @@ impl RusterView {
     }
 
     pub(crate) fn reveal_selected_in_finder(&self, cx: &mut Context<Self>) {
-        if let Some(entry) = self.local_entries.get(self.local_selected) {
+        let entry = match self.active_pane {
+            ActivePane::Local => self.local_entries.get(self.local_selected),
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    self.right_entries.get(self.right_selected)
+                } else {
+                    None
+                }
+            }
+        };
+        if let Some(entry) = entry {
             cx.reveal_path(std::path::Path::new(&entry.path));
+        } else {
+            let dir = match self.active_pane {
+                ActivePane::Local => Some(&self.local_dir),
+                ActivePane::Remote if self.sessions.is_empty() => Some(&self.right_dir),
+                _ => None,
+            };
+            if let Some(dir) = dir {
+                cx.reveal_path(dir);
+            }
+        }
+    }
+
+    pub(crate) fn open_selected_in_terminal(&self, _cx: &mut Context<Self>) {
+        let target_dir: Option<PathBuf> = match self.active_pane {
+            ActivePane::Local => {
+                if let Some(entry) = self.local_entries.get(self.local_selected) {
+                    let p = std::path::Path::new(&entry.path);
+                    if entry.is_dir {
+                        Some(p.to_path_buf())
+                    } else {
+                        p.parent().map(|p| p.to_path_buf()).or_else(|| Some(self.local_dir.clone()))
+                    }
+                } else {
+                    Some(self.local_dir.clone())
+                }
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    if let Some(entry) = self.right_entries.get(self.right_selected) {
+                        let p = std::path::Path::new(&entry.path);
+                        if entry.is_dir {
+                            Some(p.to_path_buf())
+                        } else {
+                            p.parent().map(|p| p.to_path_buf()).or_else(|| Some(self.right_dir.clone()))
+                        }
+                    } else {
+                        Some(self.right_dir.clone())
+                    }
+                } else {
+                    None
+                }
+            }
+        };
+
+        if let Some(dir) = target_dir {
+            #[cfg(target_os = "macos")]
+            {
+                let _ = std::process::Command::new("open")
+                    .arg("-a")
+                    .arg("Terminal")
+                    .arg(&dir)
+                    .spawn();
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = std::process::Command::new("x-terminal-emulator")
+                    .arg("--working-directory")
+                    .arg(&dir)
+                    .spawn();
+            }
         }
     }
 
@@ -4404,6 +4496,7 @@ impl RusterView {
             "escape" => {
                 self.context_menu = None;
                 self.session_dropdown_open = false;
+                self.favorites_menu_pane = None;
                 if self.show_local_filter || self.show_remote_filter {
                     self.show_local_filter = false;
                     self.show_remote_filter = false;
@@ -4512,10 +4605,12 @@ impl Render for RusterView {
                             let new_size = (state.initial_size_w + delta).clamp(45.0, 300.0);
                             let actual_delta = new_size - state.initial_size_w;
                             this.col_size_width = new_size;
-                            this.col_modified_width = (state.initial_modified_w - actual_delta).clamp(55.0, 300.0);
+                            let min_mod = if this.date_format == DateFormat::Date { 45.0 } else { 55.0 };
+                            this.col_modified_width = (state.initial_modified_w - actual_delta).clamp(min_mod, 300.0);
                         }
                         2 => {
-                            let new_mod = (state.initial_modified_w + delta).clamp(55.0, 300.0);
+                            let min_mod = if this.date_format == DateFormat::Date { 45.0 } else { 55.0 };
+                            let new_mod = (state.initial_modified_w + delta).clamp(min_mod, 300.0);
                             let actual_delta = new_mod - state.initial_modified_w;
                             this.col_modified_width = new_mod;
                             this.col_permissions_width = (state.initial_permissions_w - actual_delta).clamp(40.0, 200.0);
@@ -4673,6 +4768,11 @@ impl Render for RusterView {
             .on_action(cx.listener(|this, _: &RevealInFinder, _, cx| {
                 if this.active_modal != ActiveModal::None { return; }
                 this.reveal_selected_in_finder(cx);
+                cx.notify();
+            }))
+            .on_action(cx.listener(|this, _: &OpenInTerminal, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.open_selected_in_terminal(cx);
                 cx.notify();
             }))
             .on_action(cx.listener(|this, _: &SelectAllItems, _, cx| {

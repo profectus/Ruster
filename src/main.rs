@@ -117,6 +117,7 @@ actions!(
         PermissionsModal,
         SynchronizeModal,
         RevealInFinder,
+        OpenInTerminal,
         SelectAllItems,
         GoToFolderModal,
         CheckForUpdates,
@@ -161,6 +162,7 @@ fn main() {
             KeyBinding::new("cmd-i", PermissionsModal, None),
             KeyBinding::new("cmd-s", SynchronizeModal, None),
             KeyBinding::new("cmd-shift-r", RevealInFinder, None),
+            KeyBinding::new("cmd-alt-t", OpenInTerminal, None),
             KeyBinding::new("cmd-a", SelectAllItems, None),
         ]);
         let state = crate::config::load_app_state();

@@ -57,6 +57,7 @@ impl RusterView {
 
         div()
             .id("pane-local")
+            .relative()
             .size_full()
             .flex()
             .flex_col()
@@ -67,6 +68,7 @@ impl RusterView {
                     this.active_pane = ActivePane::Local;
                     this.session_dropdown_open = false;
                     this.context_menu = None;
+                    this.favorites_menu_pane = None;
                     cx.notify();
                 }),
             )
@@ -259,6 +261,52 @@ impl RusterView {
                             )
                             .child(
                                 div()
+                                    .id("local-favorites")
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(22.0))
+                                    .h(px(22.0))
+                                    .rounded(px(4.0))
+                                    .bg(if self.favorites_menu_pane == Some(ActivePane::Local) {
+                                        theme.button_active_bg()
+                                    } else {
+                                        theme.button_secondary_bg()
+                                    })
+                                    .border_1()
+                                    .border_color(if self.favorites_menu_pane == Some(ActivePane::Local) {
+                                        theme.button_active_border()
+                                    } else {
+                                        theme.border()
+                                    })
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            cx.stop_propagation();
+                                            if this.favorites_menu_pane == Some(ActivePane::Local) {
+                                                this.favorites_menu_pane = None;
+                                            } else {
+                                                this.favorites_menu_pane = Some(ActivePane::Local);
+                                                this.session_dropdown_open = false;
+                                                this.context_menu = None;
+                                            }
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(render_icon(
+                                        "icons/star.svg",
+                                        13.0,
+                                        if self.favorites_menu_pane == Some(ActivePane::Local) {
+                                            theme.c_icon_active()
+                                        } else {
+                                            theme.c_icon_dark()
+                                        },
+                                    )),
+                            )
+                            .child(
+                                div()
                                     .id("local-volumes")
                                     .cursor_pointer()
                                     .flex()
@@ -373,6 +421,7 @@ impl RusterView {
                                             this.active_pane = ActivePane::Local;
                                             this.session_dropdown_open = false;
                                             this.context_menu = None;
+                                            this.favorites_menu_pane = None;
                                             for e in &mut this.local_entries {
                                                 e.selected = false;
                                                 e.space_marked = false;
@@ -422,6 +471,9 @@ impl RusterView {
                     .text_color(theme.text_secondary())
                     .child(t.status_counts(total_dirs, total_files, selected_count, selected_size)),
             )
+            .when(self.favorites_menu_pane == Some(ActivePane::Local), |el| {
+                el.child(self.render_favorites_popover(ActivePane::Local, cx))
+            })
     }
 
     pub fn render_remote_pane(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -510,6 +562,7 @@ impl RusterView {
 
         div()
             .id("pane-right-local")
+            .relative()
             .size_full()
             .flex()
             .flex_col()
@@ -520,6 +573,7 @@ impl RusterView {
                     this.active_pane = ActivePane::Remote;
                     this.session_dropdown_open = false;
                     this.context_menu = None;
+                    this.favorites_menu_pane = None;
                     cx.notify();
                 }),
             )
@@ -712,6 +766,52 @@ impl RusterView {
                             )
                             .child(
                                 div()
+                                    .id("right-local-favorites")
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(22.0))
+                                    .h(px(22.0))
+                                    .rounded(px(4.0))
+                                    .bg(if self.favorites_menu_pane == Some(ActivePane::Remote) {
+                                        theme.button_active_bg()
+                                    } else {
+                                        theme.button_secondary_bg()
+                                    })
+                                    .border_1()
+                                    .border_color(if self.favorites_menu_pane == Some(ActivePane::Remote) {
+                                        theme.button_active_border()
+                                    } else {
+                                        theme.border()
+                                    })
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            cx.stop_propagation();
+                                            if this.favorites_menu_pane == Some(ActivePane::Remote) {
+                                                this.favorites_menu_pane = None;
+                                            } else {
+                                                this.favorites_menu_pane = Some(ActivePane::Remote);
+                                                this.session_dropdown_open = false;
+                                                this.context_menu = None;
+                                            }
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(render_icon(
+                                        "icons/star.svg",
+                                        13.0,
+                                        if self.favorites_menu_pane == Some(ActivePane::Remote) {
+                                            theme.c_icon_active()
+                                        } else {
+                                            theme.c_icon_dark()
+                                        },
+                                    )),
+                            )
+                            .child(
+                                div()
                                     .id("right-local-volumes")
                                     .cursor_pointer()
                                     .flex()
@@ -826,6 +926,7 @@ impl RusterView {
                                             this.active_pane = ActivePane::Remote;
                                             this.session_dropdown_open = false;
                                             this.context_menu = None;
+                                            this.favorites_menu_pane = None;
                                             for e in &mut this.right_entries {
                                                 e.selected = false;
                                                 e.space_marked = false;
@@ -875,6 +976,9 @@ impl RusterView {
                     .text_color(theme.text_secondary())
                     .child(t.status_counts(total_dirs, total_files, selected_count, selected_size)),
             )
+            .when(self.favorites_menu_pane == Some(ActivePane::Remote), |el| {
+                el.child(self.render_favorites_popover(ActivePane::Remote, cx))
+            })
     }
 
     pub fn render_connected_remote_pane(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
@@ -1252,6 +1356,7 @@ impl RusterView {
                                             this.active_pane = ActivePane::Remote;
                                             this.session_dropdown_open = false;
                                             this.context_menu = None;
+                                            this.favorites_menu_pane = None;
                                             if let Some(s) = this.sessions.get_mut(this.active_session_idx) {
                                                 for e in &mut s.entries {
                                                     e.selected = false;
@@ -1493,50 +1598,52 @@ impl RusterView {
                     )
                     .child(t.col_modified()),
             )
-            .child(self.render_col_resize_handle(2, cx))
-            .child(
-                div()
-                    .id((prefix, 3usize))
-                    .cursor_pointer()
-                    .w(px(self.col_permissions_width))
-                    .flex_shrink_0()
-                    .px_2()
-                    .overflow_hidden()
-                    .whitespace_nowrap()
-                    .on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(move |this, _, _, cx| {
-                            if this.active_modal != ActiveModal::None { return; }
-                            if is_local {
-                                this.local_sort_asc = !this.local_sort_asc;
-                                this.local_sort_col = SortColumn::Permissions;
-                                sort_entries(
-                                    &mut this.local_entries,
-                                    this.local_sort_col,
-                                    this.local_sort_asc,
-                                );
-                            } else if this.sessions.is_empty() {
-                                this.remote_sort_asc = !this.remote_sort_asc;
-                                this.remote_sort_col = SortColumn::Permissions;
-                                sort_entries(
-                                    &mut this.right_entries,
-                                    this.remote_sort_col,
-                                    this.remote_sort_asc,
-                                );
-                            } else if let Some(s) = this.sessions.get_mut(this.active_session_idx) {
-                                this.remote_sort_asc = !this.remote_sort_asc;
-                                this.remote_sort_col = SortColumn::Permissions;
-                                sort_entries(
-                                    &mut s.entries,
-                                    this.remote_sort_col,
-                                    this.remote_sort_asc,
-                                );
-                            }
-                            cx.notify();
-                        }),
+            .when(self.show_permissions, |el| {
+                el.child(self.render_col_resize_handle(2, cx))
+                    .child(
+                        div()
+                            .id((prefix, 3usize))
+                            .cursor_pointer()
+                            .w(px(self.col_permissions_width))
+                            .flex_shrink_0()
+                            .px_2()
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |this, _, _, cx| {
+                                    if this.active_modal != ActiveModal::None { return; }
+                                    if is_local {
+                                        this.local_sort_asc = !this.local_sort_asc;
+                                        this.local_sort_col = SortColumn::Permissions;
+                                        sort_entries(
+                                            &mut this.local_entries,
+                                            this.local_sort_col,
+                                            this.local_sort_asc,
+                                        );
+                                    } else if this.sessions.is_empty() {
+                                        this.remote_sort_asc = !this.remote_sort_asc;
+                                        this.remote_sort_col = SortColumn::Permissions;
+                                        sort_entries(
+                                            &mut this.right_entries,
+                                            this.remote_sort_col,
+                                            this.remote_sort_asc,
+                                        );
+                                    } else if let Some(s) = this.sessions.get_mut(this.active_session_idx) {
+                                        this.remote_sort_asc = !this.remote_sort_asc;
+                                        this.remote_sort_col = SortColumn::Permissions;
+                                        sort_entries(
+                                            &mut s.entries,
+                                            this.remote_sort_col,
+                                            this.remote_sort_asc,
+                                        );
+                                    }
+                                    cx.notify();
+                                }),
+                            )
+                            .child(t.col_permissions()),
                     )
-                    .child(t.col_permissions()),
-            )
+            })
     }
 
     fn render_local_row(&self, idx: usize, cx: &mut Context<Self>) -> gpui::AnyElement {
@@ -1553,7 +1660,6 @@ impl RusterView {
         let entry_path = PathBuf::from(&entry.path);
         let is_dir = entry.is_dir;
         let is_dotdot = entry.name == "..";
-        let entry_name = entry.name.clone();
         let is_dark = theme.is_dark();
         let (row_icon, default_color) =
             get_file_icon(&entry.name, entry.is_dir, entry.is_symlink);
@@ -1592,13 +1698,15 @@ impl RusterView {
             .cursor_pointer()
             .w_full()
             .when(!is_dotdot, |el| {
-                let text = entry_name.clone();
+                let tooltip_data = FileTooltip::from_entry(
+                    entry,
+                    &t,
+                    is_dark,
+                    theme.adjust_file_icon_color(icon_color, is_dir),
+                );
                 el.when(!is_overlay_open, |el| {
                     el.tooltip(move |_, cx| {
-                        cx.new(|_| FileTooltip {
-                            text: text.clone(),
-                            is_dark,
-                        })
+                        cx.new(|_| tooltip_data.clone())
                         .into()
                     })
                 })
@@ -1628,7 +1736,9 @@ impl RusterView {
                         if this.active_modal != ActiveModal::None { return; }
                         this.active_pane = ActivePane::Local;
                         this.session_dropdown_open = false;
+                        this.favorites_menu_pane = None;
                         this.context_menu = None;
+                        this.favorites_menu_pane = None;
                         cx.stop_propagation();
                         let is_cmd = event.modifiers.platform
                             || event.modifiers.control
@@ -1678,6 +1788,7 @@ impl RusterView {
                         this.active_pane = ActivePane::Local;
                         this.local_selected = idx;
                         this.session_dropdown_open = false;
+                        this.favorites_menu_pane = None;
                         this.context_menu =
                             Some(ContextMenuState {
                                 pane: ActivePane::Local,
@@ -1757,24 +1868,26 @@ impl RusterView {
                     } else {
                         theme.row_text_secondary()
                     })
-                    .child(entry.modified.clone()),
+                    .child(entry.formatted_modified(self.date_format).to_string()),
             )
-            .child(div().w(px(7.0)).flex_shrink_0().h_full())
-            .child(
-                div()
-                    .w(px(self.col_permissions_width))
-                    .flex_shrink_0()
-                    .px_2()
-                    .text_xs()
-                    .overflow_hidden()
-                    .whitespace_nowrap()
-                    .text_color(if is_blue {
-                        rgb(0xffffff)
-                    } else {
-                        theme.row_text_secondary()
-                    })
-                    .child(entry.permissions_str.clone()),
-            )
+            .when(self.show_permissions, |el| {
+                el.child(div().w(px(7.0)).flex_shrink_0().h_full())
+                    .child(
+                        div()
+                            .w(px(self.col_permissions_width))
+                            .flex_shrink_0()
+                            .px_2()
+                            .text_xs()
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .text_color(if is_blue {
+                                rgb(0xffffff)
+                            } else {
+                                theme.row_text_secondary()
+                            })
+                            .child(entry.permissions_str.clone()),
+                    )
+            })
             .into_any_element()
     }
 
@@ -1792,7 +1905,6 @@ impl RusterView {
         let entry_path = PathBuf::from(&entry.path);
         let is_dir = entry.is_dir;
         let is_dotdot = entry.name == "..";
-        let entry_name = entry.name.clone();
         let is_dark = theme.is_dark();
         let (row_icon, default_color) =
             get_file_icon(&entry.name, entry.is_dir, entry.is_symlink);
@@ -1831,13 +1943,15 @@ impl RusterView {
             .cursor_pointer()
             .w_full()
             .when(!is_dotdot, |el| {
-                let text = entry_name.clone();
+                let tooltip_data = FileTooltip::from_entry(
+                    entry,
+                    &t,
+                    is_dark,
+                    theme.adjust_file_icon_color(icon_color, is_dir),
+                );
                 el.when(!is_overlay_open, |el| {
                     el.tooltip(move |_, cx| {
-                        cx.new(|_| FileTooltip {
-                            text: text.clone(),
-                            is_dark,
-                        })
+                        cx.new(|_| tooltip_data.clone())
                         .into()
                     })
                 })
@@ -1867,6 +1981,7 @@ impl RusterView {
                         if this.active_modal != ActiveModal::None { return; }
                         this.active_pane = ActivePane::Remote;
                         this.session_dropdown_open = false;
+                        this.favorites_menu_pane = None;
                         this.context_menu = None;
                         cx.stop_propagation();
                         let is_cmd = event.modifiers.platform
@@ -1917,6 +2032,7 @@ impl RusterView {
                         this.active_pane = ActivePane::Remote;
                         this.right_selected = idx;
                         this.session_dropdown_open = false;
+                        this.favorites_menu_pane = None;
                         this.context_menu =
                             Some(ContextMenuState {
                                 pane: ActivePane::Remote,
@@ -1996,24 +2112,26 @@ impl RusterView {
                     } else {
                         theme.row_text_secondary()
                     })
-                    .child(entry.modified.clone()),
+                    .child(entry.formatted_modified(self.date_format).to_string()),
             )
-            .child(div().w(px(7.0)).flex_shrink_0().h_full())
-            .child(
-                div()
-                    .w(px(self.col_permissions_width))
-                    .flex_shrink_0()
-                    .px_2()
-                    .text_xs()
-                    .overflow_hidden()
-                    .whitespace_nowrap()
-                    .text_color(if is_blue {
-                        rgb(0xffffff)
-                    } else {
-                        theme.row_text_secondary()
-                    })
-                    .child(entry.permissions_str.clone()),
-            )
+            .when(self.show_permissions, |el| {
+                el.child(div().w(px(7.0)).flex_shrink_0().h_full())
+                    .child(
+                        div()
+                            .w(px(self.col_permissions_width))
+                            .flex_shrink_0()
+                            .px_2()
+                            .text_xs()
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .text_color(if is_blue {
+                                rgb(0xffffff)
+                            } else {
+                                theme.row_text_secondary()
+                            })
+                            .child(entry.permissions_str.clone()),
+                    )
+            })
             .into_any_element()
     }
 
@@ -2035,7 +2153,6 @@ impl RusterView {
         let is_unfocused_selected = !is_focused && (entry.selected || (is_selected && entry.name == ".."));
         let is_dir = entry.is_dir || entry.is_symlink;
         let is_dotdot = entry.name == "..";
-        let entry_name = entry.name.clone();
         let is_dark = theme.is_dark();
         let target_path = entry.path.clone();
         let (row_icon, default_color) =
@@ -2075,13 +2192,15 @@ impl RusterView {
             .cursor_pointer()
             .w_full()
             .when(!is_dotdot, |el| {
-                let text = entry_name.clone();
+                let tooltip_data = FileTooltip::from_entry(
+                    entry,
+                    &t,
+                    is_dark,
+                    theme.adjust_file_icon_color(icon_color, is_dir),
+                );
                 el.when(!is_overlay_open, |el| {
                     el.tooltip(move |_, cx| {
-                        cx.new(|_| FileTooltip {
-                            text: text.clone(),
-                            is_dark,
-                        })
+                        cx.new(|_| tooltip_data.clone())
                         .into()
                     })
                 })
@@ -2113,6 +2232,7 @@ impl RusterView {
                         if this.active_modal != ActiveModal::None { return; }
                         this.active_pane = ActivePane::Remote;
                         this.session_dropdown_open = false;
+                        this.favorites_menu_pane = None;
                         this.context_menu = None;
                         cx.stop_propagation();
 
@@ -2185,6 +2305,7 @@ impl RusterView {
                             s.selected_index = idx;
                         }
                         this.session_dropdown_open = false;
+                        this.favorites_menu_pane = None;
                         this.context_menu =
                             Some(ContextMenuState {
                                 pane: ActivePane::Remote,
@@ -2266,24 +2387,26 @@ impl RusterView {
                     } else {
                         theme.row_text_secondary()
                     })
-                    .child(entry.modified.clone()),
+                    .child(entry.formatted_modified(self.date_format).to_string()),
             )
-            .child(div().w(px(7.0)).flex_shrink_0().h_full())
-            .child(
-                div()
-                    .w(px(self.col_permissions_width))
-                    .flex_shrink_0()
-                    .px_2()
-                    .text_xs()
-                    .overflow_hidden()
-                    .whitespace_nowrap()
-                    .text_color(if is_primary_selected {
-                        rgb(0xffffff)
-                    } else {
-                        theme.row_text_secondary()
-                    })
-                    .child(entry.permissions_str.clone()),
-            )
+            .when(self.show_permissions, |el| {
+                el.child(div().w(px(7.0)).flex_shrink_0().h_full())
+                    .child(
+                        div()
+                            .w(px(self.col_permissions_width))
+                            .flex_shrink_0()
+                            .px_2()
+                            .text_xs()
+                            .overflow_hidden()
+                            .whitespace_nowrap()
+                            .text_color(if is_primary_selected {
+                                rgb(0xffffff)
+                            } else {
+                                theme.row_text_secondary()
+                            })
+                            .child(entry.permissions_str.clone()),
+                    )
+            })
             .into_any_element()
     }
 

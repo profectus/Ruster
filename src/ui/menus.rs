@@ -1,13 +1,14 @@
 use gpui::{
     div, prelude::*, px, rgb, App, Context, IntoElement, Menu, MenuItem, MouseButton,
 };
+use std::path::PathBuf;
 use crate::app::{ContextMenuState, RusterView};
 use crate::icons::render_icon;
 use crate::i18n::{I18n, Locale};
 use crate::model::ActivePane;
 use crate::{
     CheckForUpdates, CopySelected, DeleteModal, EditSelected, GoToFolderModal, MoveSelected,
-    NewFolderModal, OpenSelected, OpenSiteManager, PermissionsModal, Quit, RefreshPanes,
+    NewFolderModal, OpenInTerminal, OpenSelected, OpenSiteManager, PermissionsModal, Quit, RefreshPanes,
     RenameModal, RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal,
     ToggleDualPane, ToggleFunctionBar, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree,
     ToggleTheme, ToggleTransferQueue,
@@ -119,6 +120,239 @@ impl RusterView {
             )
     }
 
+    pub fn render_favorites_popover(
+        &self,
+        pane: ActivePane,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let t = self.i18n();
+        let theme = self.theme();
+        let home_dir = std::env::var("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/Users"));
+
+        let current_dir = match pane {
+            ActivePane::Local => self.local_dir.clone(),
+            ActivePane::Remote => self.right_dir.clone(),
+        };
+        let is_already_favorite = self.favorite_paths.contains(&current_dir);
+
+        div()
+            .id(if pane == ActivePane::Local {
+                "favorites-popover-local"
+            } else {
+                "favorites-popover-right"
+            })
+            .absolute()
+            .top(px(34.0))
+            .right(px(10.0))
+            .w(px(280.0))
+            .rounded(px(6.0))
+            .bg(theme.popover_bg())
+            .border_1()
+            .border_color(theme.border_strong())
+            .shadow_lg()
+            .p_1()
+            .flex()
+            .flex_col()
+            .gap_0p5()
+            .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+            .on_mouse_down(MouseButton::Right, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+            // Header
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .px_2()
+                    .py_1()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_1p5()
+                            .child(render_icon("icons/star.svg", 13.0, theme.c_icon_active()))
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .text_color(theme.text_primary())
+                                    .child(t.favorites_title()),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .id("fav-header-close")
+                            .cursor_pointer()
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .w(px(18.0))
+                            .h(px(18.0))
+                            .rounded(px(3.0))
+                            .hover(|s| s.bg(theme.button_hover_bg()))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(|this, _, _, cx| {
+                                    this.favorites_menu_pane = None;
+                                    cx.notify();
+                                }),
+                            )
+                            .child(render_icon("icons/close.svg", 11.0, theme.c_icon_dark())),
+                    ),
+            )
+            .child(div().h(px(1.0)).my_0p5().bg(theme.border()))
+            // List of favorites
+            .child(
+                div()
+                    .id("fav-list-scroll")
+                    .max_h(px(240.0))
+                    .overflow_y_scroll()
+                    .flex()
+                    .flex_col()
+                    .gap_0p5()
+                    .when(self.favorite_paths.is_empty(), |el| {
+                        el.child(
+                            div()
+                                .px_2p5()
+                                .py_2()
+                                .text_xs()
+                                .text_color(theme.text_secondary())
+                                .child(t.favorites_empty()),
+                        )
+                    })
+                    .children(self.favorite_paths.iter().enumerate().map(|(idx, fav_path)| {
+                        let path_clone = fav_path.clone();
+                        let path_for_remove = fav_path.clone();
+                        let is_current = &current_dir == fav_path;
+
+                        let display_path = if fav_path == &home_dir {
+                            "~".to_string()
+                        } else if let Ok(rel) = fav_path.strip_prefix(&home_dir) {
+                            format!("~/{}", rel.display())
+                        } else {
+                            fav_path.to_string_lossy().to_string()
+                        };
+
+                        div()
+                            .id(("fav-item", idx))
+                            .cursor_pointer()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .px_2()
+                            .py_1p5()
+                            .rounded(px(4.0))
+                            .bg(if is_current {
+                                theme.popover_item_active()
+                            } else {
+                                theme.popover_bg()
+                            })
+                            .hover(|s| s.bg(theme.popover_item_active()))
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |this, _, _, cx| {
+                                    match pane {
+                                        ActivePane::Local => this.navigate_local(path_clone.clone()),
+                                        ActivePane::Remote => this.navigate_right_local(path_clone.clone()),
+                                    }
+                                    this.favorites_menu_pane = None;
+                                    cx.notify();
+                                }),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .overflow_hidden()
+                                    .child(render_icon("icons/folder.svg", 14.0, theme.c_folder()))
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(if is_current {
+                                                gpui::FontWeight::SEMIBOLD
+                                            } else {
+                                                gpui::FontWeight::NORMAL
+                                            })
+                                            .text_color(if is_current {
+                                                theme.text_accent()
+                                            } else {
+                                                theme.text_primary()
+                                            })
+                                            .overflow_hidden()
+                                            .whitespace_nowrap()
+                                            .child(display_path),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .id(("fav-del", idx))
+                                    .cursor_pointer()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .w(px(20.0))
+                                    .h(px(20.0))
+                                    .rounded(px(3.0))
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(move |this, _, _, cx| {
+                                            cx.stop_propagation();
+                                            this.remove_favorite_path_by_value(&path_for_remove);
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(render_icon("icons/trash.svg", 12.0, theme.c_icon_secondary())),
+                            )
+                    })),
+            )
+            .child(div().h(px(1.0)).my_0p5().bg(theme.border()))
+            // Add current location
+            .child(
+                if is_already_favorite {
+                    div()
+                        .id("fav-already-added")
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .px_2p5()
+                        .py_1p5()
+                        .rounded(px(4.0))
+                        .text_xs()
+                        .text_color(theme.text_secondary())
+                        .child(render_icon("icons/check.svg", 12.0, 0x16a34a))
+                        .child(t.favorites_already_added())
+                } else {
+                    let cur_to_add = current_dir.clone();
+                    div()
+                        .id("fav-add-current")
+                        .cursor_pointer()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .px_2p5()
+                        .py_1p5()
+                        .rounded(px(4.0))
+                        .text_xs()
+                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .text_color(theme.text_accent())
+                        .hover(|s| s.bg(theme.popover_item_active()))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(move |this, _, _, cx| {
+                                cx.stop_propagation();
+                                this.add_favorite_path(cur_to_add.clone());
+                                cx.notify();
+                            }),
+                        )
+                        .child(render_icon("icons/plus.svg", 12.0, theme.c_icon_active()))
+                        .child(t.favorites_add_current())
+                },
+            )
+    }
+
     pub fn render_context_menu(
         &self,
         menu: &ContextMenuState,
@@ -128,7 +362,7 @@ impl RusterView {
         let theme = self.theme();
         let x = menu.position.x.min(px(1040.0));
         let y = menu.position.y.min(px(580.0));
-        let is_local = menu.pane == ActivePane::Local;
+        let is_local = menu.pane == ActivePane::Local || (menu.pane == ActivePane::Remote && self.sessions.is_empty());
         let is_dir = match menu.pane {
             ActivePane::Local => self.local_entries.get(self.local_selected).map(|e| e.is_dir).unwrap_or(false),
             ActivePane::Remote => {
@@ -216,18 +450,31 @@ impl RusterView {
                 cx.notify();
             }))
             .when(is_local, |el| {
-                el.child(div().h(px(1.0)).my_0p5().bg(theme.border())).child(
-                    self.render_ctx_item(
-                        "ctx-finder",
-                        t.act_reveal_in_finder(),
-                        cx,
-                        |this, cx| {
-                            this.context_menu = None;
-                            this.reveal_selected_in_finder(cx);
-                            cx.notify();
-                        },
-                    ),
-                )
+                el.child(div().h(px(1.0)).my_0p5().bg(theme.border()))
+                    .child(
+                        self.render_ctx_item(
+                            "ctx-finder",
+                            t.act_reveal_in_finder(),
+                            cx,
+                            |this, cx| {
+                                this.context_menu = None;
+                                this.reveal_selected_in_finder(cx);
+                                cx.notify();
+                            },
+                        ),
+                    )
+                    .child(
+                        self.render_ctx_item(
+                            "ctx-terminal",
+                            t.act_open_in_terminal(),
+                            cx,
+                            |this, cx| {
+                                this.context_menu = None;
+                                this.open_selected_in_terminal(cx);
+                                cx.notify();
+                            },
+                        ),
+                    )
             })
     }
 
@@ -316,6 +563,7 @@ pub fn install_app_menus(cx: &mut App, locale: Locale) {
                 MenuItem::action(t.act_synchronize(), SynchronizeModal),
                 MenuItem::separator(),
                 MenuItem::action(t.act_reveal_in_finder(), RevealInFinder),
+                MenuItem::action(t.act_open_in_terminal(), OpenInTerminal),
                 MenuItem::action(t.act_select_all(), SelectAllItems),
                 MenuItem::separator(),
                 MenuItem::action(t.menu_go_to_folder(), GoToFolderModal),

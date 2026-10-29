@@ -58,6 +58,28 @@ pub enum SortColumn {
     Permissions,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum DateFormat {
+    Date,
+    DateTime,
+}
+
+impl DateFormat {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DateFormat::Date => "date",
+            DateFormat::DateTime => "date_time",
+        }
+    }
+
+    pub fn from_str(s: &str) -> Self {
+        match s.trim().to_lowercase().as_str() {
+            "date_time" | "datetime" | "date+time" | "date + time" => DateFormat::DateTime,
+            _ => DateFormat::Date,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct FileEntry {
     pub name: String,
@@ -67,6 +89,7 @@ pub struct FileEntry {
     pub size: u64,
     pub modified: String,
     pub modified_ts: i64,
+    pub created: Option<String>,
     pub permissions_str: String,
     pub octal_mode: u32,
     pub owner: String,
@@ -102,6 +125,16 @@ impl FileEntry {
             self.calculated_dir_size.unwrap_or(0)
         } else {
             self.size
+        }
+    }
+
+    pub fn formatted_modified(&self, format: DateFormat) -> &str {
+        if self.name == ".." || self.modified.is_empty() {
+            return "";
+        }
+        match format {
+            DateFormat::Date => self.modified.split_whitespace().next().unwrap_or(&self.modified),
+            DateFormat::DateTime => &self.modified,
         }
     }
 }
@@ -182,6 +215,7 @@ pub fn read_local_directory(dir: &Path, show_hidden: bool) -> Vec<FileEntry> {
                 size: 0,
                 modified: "".to_string(),
                 modified_ts: i64::MAX,
+                created: None,
                 permissions_str: "drwxr-xr-x".to_string(),
                 octal_mode: 0o755,
                 owner: "root".to_string(),
@@ -208,7 +242,7 @@ pub fn read_local_directory(dir: &Path, show_hidden: bool) -> Vec<FileEntry> {
             let symlink_meta = fs::symlink_metadata(&path_buf).ok();
             let meta = fs::metadata(&path_buf).ok().or(symlink_meta.clone());
 
-            let (size, raw_mode, permissions_str, modified, modified_ts, owner) =
+            let (size, raw_mode, permissions_str, modified, modified_ts, created, owner) =
                 if let Some(ref m) = meta {
                     is_dir = m.is_dir();
                     let size = if is_dir { 0 } else { m.len() };
@@ -242,13 +276,38 @@ pub fn read_local_directory(dir: &Path, show_hidden: bool) -> Vec<FileEntry> {
                         })
                         .unwrap_or_else(|| ("-".to_string(), 0));
 
+                    let created = m
+                        .created()
+                        .ok()
+                        .and_then(|st| st.duration_since(UNIX_EPOCH).ok())
+                        .and_then(|dur| {
+                            let secs = dur.as_secs() as i64;
+                            unsafe {
+                                let mut tm: libc::tm = std::mem::zeroed();
+                                let time_t_val = secs as libc::time_t;
+                                if !libc::localtime_r(&time_t_val, &mut tm).is_null() {
+                                    Some(format!(
+                                        "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+                                        tm.tm_year + 1900,
+                                        tm.tm_mon + 1,
+                                        tm.tm_mday,
+                                        tm.tm_hour,
+                                        tm.tm_min,
+                                        tm.tm_sec
+                                    ))
+                                } else {
+                                    None
+                                }
+                            }
+                        });
+
                     let uid = m.uid();
                     let owner = if uid == 0 {
                         "root".to_string()
                     } else {
                         std::env::var("USER").unwrap_or_else(|_| uid.to_string())
                     };
-                    (size, raw_mode, perm, mod_str, mod_ts, owner)
+                    (size, raw_mode, perm, mod_str, mod_ts, created, owner)
                 } else {
                     (
                         0,
@@ -256,6 +315,7 @@ pub fn read_local_directory(dir: &Path, show_hidden: bool) -> Vec<FileEntry> {
                         if is_dir { "drwxr-xr-x".to_string() } else { "-rw-r--r--".to_string() },
                         "-".to_string(),
                         0,
+                        None,
                         "unknown".to_string(),
                     )
                 };
@@ -268,6 +328,7 @@ pub fn read_local_directory(dir: &Path, show_hidden: bool) -> Vec<FileEntry> {
                 size,
                 modified,
                 modified_ts,
+                created,
                 permissions_str,
                 octal_mode: raw_mode,
                 owner,
@@ -1011,6 +1072,7 @@ mod tests {
             size: 1024,
             modified: "2026-01-01".to_string(),
             modified_ts: 0,
+            created: None,
             permissions_str: "rw-r--r--".to_string(),
             octal_mode: 0o644,
             owner: "user".to_string(),
@@ -1079,5 +1141,58 @@ mod tests {
         assert_eq!(ENV_COLORS[3].color, 0x10b981);
         assert_eq!(ENV_COLORS[4].name_en, "Purple");
         assert_eq!(ENV_COLORS[4].color, 0x8b5cf6);
+    }
+
+    #[test]
+    fn test_date_format_and_modified() {
+        assert_eq!(DateFormat::from_str("date"), DateFormat::Date);
+        assert_eq!(DateFormat::from_str("DATE"), DateFormat::Date);
+        assert_eq!(DateFormat::from_str("date_time"), DateFormat::DateTime);
+        assert_eq!(DateFormat::from_str("datetime"), DateFormat::DateTime);
+        assert_eq!(DateFormat::from_str("date + time"), DateFormat::DateTime);
+        assert_eq!(DateFormat::Date.as_str(), "date");
+        assert_eq!(DateFormat::DateTime.as_str(), "date_time");
+
+        let entry = FileEntry {
+            name: "test.txt".to_string(),
+            path: "/test/test.txt".to_string(),
+            is_dir: false,
+            is_symlink: false,
+            size: 100,
+            modified: "2026-10-28 20:15:30".to_string(),
+            modified_ts: 12345,
+            created: Some("2026-10-28 10:00:00".to_string()),
+            permissions_str: "-rw-r--r--".to_string(),
+            octal_mode: 0o644,
+            owner: "user".to_string(),
+            selected: false,
+            space_marked: false,
+            calculating_size: false,
+            calculated_dir_size: None,
+        };
+
+        assert_eq!(entry.formatted_modified(DateFormat::Date), "2026-10-28");
+        assert_eq!(entry.formatted_modified(DateFormat::DateTime), "2026-10-28 20:15:30");
+
+        let parent_entry = FileEntry {
+            name: "..".to_string(),
+            path: "/".to_string(),
+            is_dir: true,
+            is_symlink: false,
+            size: 0,
+            modified: "".to_string(),
+            modified_ts: 0,
+            created: None,
+            permissions_str: "drwxr-xr-x".to_string(),
+            octal_mode: 0o755,
+            owner: "root".to_string(),
+            selected: false,
+            space_marked: false,
+            calculating_size: false,
+            calculated_dir_size: None,
+        };
+
+        assert_eq!(parent_entry.formatted_modified(DateFormat::Date), "");
+        assert_eq!(parent_entry.formatted_modified(DateFormat::DateTime), "");
     }
 }

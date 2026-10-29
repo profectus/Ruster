@@ -1,7 +1,7 @@
 use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
 use crate::app::RusterView;
 use crate::icons::render_icon;
-use crate::model::ActiveModal;
+use crate::model::{ActiveModal, DateFormat};
 use crate::theme::ThemeMode;
 use crate::ui::helpers::render_textarea_value_with_cursor;
 
@@ -11,6 +11,8 @@ impl RusterView {
         let theme = self.theme();
         let show_hidden = self.show_hidden;
         let show_fnbar = self.show_function_bar;
+        let show_permissions = self.show_permissions;
+        let is_date_only = self.date_format == DateFormat::Date;
         let is_dark = theme.is_dark();
 
         let header_title = match self.locale {
@@ -119,6 +121,99 @@ impl RusterView {
                 crate::i18n::Locale::Zh => "底部快捷键栏已隐藏",
                 crate::i18n::Locale::Ja => "下部ショートカットバーは非表示です",
             }
+        };
+
+        let show_permissions_title = match self.locale {
+            crate::i18n::Locale::En => "Show permissions column (CHMOD)",
+            crate::i18n::Locale::Cs => "Zobrazovat sloupec oprávnění (CHMOD)",
+            crate::i18n::Locale::De => "Berechtigungsspalte anzeigen (CHMOD)",
+            crate::i18n::Locale::Es => "Mostrar columna de permisos (CHMOD)",
+            crate::i18n::Locale::Fr => "Afficher la colonne des permissions (CHMOD)",
+            crate::i18n::Locale::It => "Mostra colonna permessi (CHMOD)",
+            crate::i18n::Locale::Pl => "Pokazuj kolumnę uprawnień (CHMOD)",
+            crate::i18n::Locale::Pt => "Mostrar coluna de permissões (CHMOD)",
+            crate::i18n::Locale::Zh => "显示权限列 (CHMOD)",
+            crate::i18n::Locale::Ja => "アクセス権列を表示 (CHMOD)",
+        };
+
+        let show_permissions_desc = if show_permissions {
+            match self.locale {
+                crate::i18n::Locale::En => "Permissions column is currently visible",
+                crate::i18n::Locale::Cs => "Sloupec s oprávněními souborů je zobrazen",
+                crate::i18n::Locale::De => "Berechtigungsspalte wird angezeigt",
+                crate::i18n::Locale::Es => "La columna de permisos está visible",
+                crate::i18n::Locale::Fr => "La colonne des permissions est affichée",
+                crate::i18n::Locale::It => "La colonna permessi è visibile",
+                crate::i18n::Locale::Pl => "Kolumna uprawnień jest widoczna",
+                crate::i18n::Locale::Pt => "A coluna de permissões está visível",
+                crate::i18n::Locale::Zh => "权限列当前可见",
+                crate::i18n::Locale::Ja => "アクセス権列を表示中",
+            }
+        } else {
+            match self.locale {
+                crate::i18n::Locale::En => "Permissions column is hidden (more space for filename)",
+                crate::i18n::Locale::Cs => "Sloupec s oprávněními je skrytý (více místa pro název)",
+                crate::i18n::Locale::De => "Berechtigungsspalte ist ausgeblendet (mehr Platz für Dateinamen)",
+                crate::i18n::Locale::Es => "La columna de permisos está oculta (más espacio para nombres)",
+                crate::i18n::Locale::Fr => "La colonne des permissions est masquée (plus d'espace pour le nom)",
+                crate::i18n::Locale::It => "La colonna permessi è nascosta (più spazio per il nome)",
+                crate::i18n::Locale::Pl => "Kolumna uprawnień jest ukryta (więcej miejsca na nazwę)",
+                crate::i18n::Locale::Pt => "A coluna de permissões está oculta (mais espaço para o nome)",
+                crate::i18n::Locale::Zh => "权限列已隐藏（为文件名提供更多空间）",
+                crate::i18n::Locale::Ja => "アクセス権列は非表示です（ファイル名用のスペースを広く確保）",
+            }
+        };
+
+        let date_format_title = match self.locale {
+            crate::i18n::Locale::En => "Modified column date format",
+            crate::i18n::Locale::Cs => "Formát data ve sloupci Změněno",
+            crate::i18n::Locale::De => "Datumsformat in Spalte Geändert",
+            crate::i18n::Locale::Es => "Formato de fecha en columna Modificado",
+            crate::i18n::Locale::Fr => "Format de date dans la colonne Modifié",
+            crate::i18n::Locale::It => "Formato data nella colonna Modificato",
+            crate::i18n::Locale::Pl => "Format daty w kolumnie Zmodyfikowano",
+            crate::i18n::Locale::Pt => "Formato de data na coluna Modificado",
+            crate::i18n::Locale::Zh => "修改时间列日期格式",
+            crate::i18n::Locale::Ja => "更新日時列の表示形式",
+        };
+
+        let date_format_desc = match self.locale {
+            crate::i18n::Locale::En => "Choose between compact date or date with time",
+            crate::i18n::Locale::Cs => "Zvolte zkrácené datum nebo datum s časem",
+            crate::i18n::Locale::De => "Wählen Sie kompaktes Datum oder Datum mit Uhrzeit",
+            crate::i18n::Locale::Es => "Elija entre fecha compacta o fecha con hora",
+            crate::i18n::Locale::Fr => "Choisissez entre date compacte ou date avec heure",
+            crate::i18n::Locale::It => "Scegli tra data compatta o data con ora",
+            crate::i18n::Locale::Pl => "Wybierz datę skróconą lub datę z czasem",
+            crate::i18n::Locale::Pt => "Escolha entre data compacta ou data com hora",
+            crate::i18n::Locale::Zh => "在紧凑日期与包含时间的日期之间选择",
+            crate::i18n::Locale::Ja => "簡潔な日付か時刻付きの日時を選択します",
+        };
+
+        let opt_date_title = match self.locale {
+            crate::i18n::Locale::En => "Date only",
+            crate::i18n::Locale::Cs => "Pouze datum",
+            crate::i18n::Locale::De => "Nur Datum",
+            crate::i18n::Locale::Es => "Solo fecha",
+            crate::i18n::Locale::Fr => "Date seulement",
+            crate::i18n::Locale::It => "Solo data",
+            crate::i18n::Locale::Pl => "Tylko data",
+            crate::i18n::Locale::Pt => "Apenas data",
+            crate::i18n::Locale::Zh => "仅日期",
+            crate::i18n::Locale::Ja => "日付のみ",
+        };
+
+        let opt_datetime_title = match self.locale {
+            crate::i18n::Locale::En => "Date + Time",
+            crate::i18n::Locale::Cs => "Datum + čas",
+            crate::i18n::Locale::De => "Datum + Zeit",
+            crate::i18n::Locale::Es => "Fecha + hora",
+            crate::i18n::Locale::Fr => "Date + heure",
+            crate::i18n::Locale::It => "Data + ora",
+            crate::i18n::Locale::Pl => "Data + czas",
+            crate::i18n::Locale::Pt => "Data + hora",
+            crate::i18n::Locale::Zh => "日期 + 时间",
+            crate::i18n::Locale::Ja => "日付 + 時刻",
         };
 
         let editing_section_title = match self.locale {
@@ -646,6 +741,195 @@ impl RusterView {
                                                             .h(px(16.0))
                                                             .rounded(px(8.0))
                                                             .bg(rgb(0xffffff)),
+                                                    ),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .id("btn-toggle-show-permissions-settings")
+                                            .cursor_pointer()
+                                            .flex()
+                                            .items_center()
+                                            .justify_between()
+                                            .gap_3()
+                                            .p_2p5()
+                                            .bg(theme.modal_card_bg())
+                                            .rounded(px(6.0))
+                                            .border_1()
+                                            .border_color(theme.border())
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.show_permissions = !this.show_permissions;
+                                                if this.show_permissions {
+                                                    this.col_permissions_width = 85.0;
+                                                }
+                                                this.persist_app_state();
+                                                cx.notify();
+                                            }))
+                                            .child(
+                                                div()
+                                                    .flex_1()
+                                                    .min_w_0()
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap_0p5()
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                                            .text_color(theme.text_primary())
+                                                            .whitespace_normal()
+                                                            .child(show_permissions_title),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .text_color(theme.text_secondary())
+                                                            .whitespace_normal()
+                                                            .child(show_permissions_desc),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex_shrink_0()
+                                                    .w(px(38.0))
+                                                    .h(px(20.0))
+                                                    .rounded(px(10.0))
+                                                    .bg(if show_permissions { rgb(0x2563eb) } else if is_dark { rgb(0x3f3f46) } else { rgb(0xcbd5e1) })
+                                                    .p(px(2.0))
+                                                    .flex()
+                                                    .items_center()
+                                                    .when(show_permissions, |el| el.justify_end())
+                                                    .when(!show_permissions, |el| el.justify_start())
+                                                    .child(
+                                                        div()
+                                                            .w(px(16.0))
+                                                            .h(px(16.0))
+                                                            .rounded(px(8.0))
+                                                            .bg(rgb(0xffffff)),
+                                                    ),
+                                            ),
+                                    )
+                                    .child(
+                                        div()
+                                            .p_2p5()
+                                            .bg(theme.modal_card_bg())
+                                            .rounded(px(6.0))
+                                            .border_1()
+                                            .border_color(theme.border())
+                                            .flex()
+                                            .flex_col()
+                                            .gap_2()
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap_0p5()
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                                            .text_color(theme.text_primary())
+                                                            .child(date_format_title),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_xs()
+                                                            .text_color(theme.text_secondary())
+                                                            .whitespace_normal()
+                                                            .child(date_format_desc),
+                                                    ),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex()
+                                                    .gap_2()
+                                                    .child(
+                                                        div()
+                                                            .id("btn-date-format-date")
+                                                            .cursor_pointer()
+                                                            .flex_1()
+                                                            .p_2()
+                                                            .rounded(px(5.0))
+                                                            .bg(if is_date_only { theme.button_active_bg() } else { theme.modal_bg() })
+                                                            .border_1()
+                                                            .border_color(if is_date_only { theme.button_active_border() } else { theme.border() })
+                                                            .flex()
+                                                            .items_center()
+                                                            .justify_between()
+                                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                                this.date_format = DateFormat::Date;
+                                                                this.col_modified_width = 85.0;
+                                                                this.persist_app_state();
+                                                                cx.notify();
+                                                            }))
+                                                            .child(
+                                                                div()
+                                                                    .flex()
+                                                                    .flex_col()
+                                                                    .child(
+                                                                        div()
+                                                                            .text_xs()
+                                                                            .font_weight(if is_date_only { gpui::FontWeight::SEMIBOLD } else { gpui::FontWeight::NORMAL })
+                                                                            .text_color(if is_date_only { theme.text_accent() } else { theme.text_primary() })
+                                                                            .child(opt_date_title),
+                                                                    )
+                                                                    .child(
+                                                                        div()
+                                                                            .text_xs()
+                                                                            .text_color(theme.text_muted())
+                                                                            .child("YYYY-MM-DD"),
+                                                                    ),
+                                                            )
+                                                            .child(
+                                                                div().when(is_date_only, |icon_el| {
+                                                                    icon_el.child(render_icon("icons/check.svg", 13.0, theme.c_icon_active()))
+                                                                }),
+                                                            ),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .id("btn-date-format-datetime")
+                                                            .cursor_pointer()
+                                                            .flex_1()
+                                                            .p_2()
+                                                            .rounded(px(5.0))
+                                                            .bg(if !is_date_only { theme.button_active_bg() } else { theme.modal_bg() })
+                                                            .border_1()
+                                                            .border_color(if !is_date_only { theme.button_active_border() } else { theme.border() })
+                                                            .flex()
+                                                            .items_center()
+                                                            .justify_between()
+                                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                                this.date_format = DateFormat::DateTime;
+                                                                this.col_modified_width = 145.0;
+                                                                this.persist_app_state();
+                                                                cx.notify();
+                                                            }))
+                                                            .child(
+                                                                div()
+                                                                    .flex()
+                                                                    .flex_col()
+                                                                    .child(
+                                                                        div()
+                                                                            .text_xs()
+                                                                            .font_weight(if !is_date_only { gpui::FontWeight::SEMIBOLD } else { gpui::FontWeight::NORMAL })
+                                                                            .text_color(if !is_date_only { theme.text_accent() } else { theme.text_primary() })
+                                                                            .child(opt_datetime_title),
+                                                                    )
+                                                                    .child(
+                                                                        div()
+                                                                            .text_xs()
+                                                                            .text_color(theme.text_muted())
+                                                                            .child("YYYY-MM-DD HH:MM:SS"),
+                                                                    ),
+                                                            )
+                                                            .child(
+                                                                div().when(!is_date_only, |icon_el| {
+                                                                    icon_el.child(render_icon("icons/check.svg", 13.0, theme.c_icon_active()))
+                                                                }),
+                                                            ),
                                                     ),
                                             ),
                                     ),

@@ -10,6 +10,8 @@ pub struct AppState {
     pub show_local_pane: bool,
     pub show_hidden: bool,
     pub show_function_bar: bool,
+    pub show_permissions: bool,
+    pub date_format: crate::model::DateFormat,
     pub local_dir: PathBuf,
     pub right_dir: PathBuf,
     pub max_concurrent_transfers: usize,
@@ -39,6 +41,55 @@ pub fn state_file_path() -> PathBuf {
     config_dir().join("state.conf")
 }
 
+pub fn favorites_file_path() -> PathBuf {
+    config_dir().join("favorites.conf")
+}
+
+/// Loads favorite locations from `~/.config/ruster/favorites.conf`.
+/// If the file does not exist or is empty, returns standard default local paths.
+pub fn load_favorite_paths() -> Vec<PathBuf> {
+    let path = favorites_file_path();
+    if let Ok(content) = fs::read_to_string(&path) {
+        let mut paths = Vec::new();
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            let p = PathBuf::from(line);
+            if !paths.contains(&p) {
+                paths.push(p);
+            }
+        }
+        if !paths.is_empty() {
+            return paths;
+        }
+    }
+
+    let home = std::env::var("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/Users"));
+    let mut defaults = Vec::new();
+    defaults.push(home.clone());
+    let downloads = home.join("Downloads");
+    if downloads.exists() {
+        defaults.push(downloads);
+    }
+    defaults
+}
+
+/// Saves favorite paths to `~/.config/ruster/favorites.conf`.
+pub fn save_favorite_paths(favorites: &[PathBuf]) -> std::io::Result<()> {
+    let dir = config_dir();
+    fs::create_dir_all(&dir)?;
+    let mut out = String::from("# Ruster Favorite Locations\n");
+    for path in favorites {
+        out.push_str(&path.to_string_lossy());
+        out.push('\n');
+    }
+    fs::write(favorites_file_path(), out)
+}
+
 pub fn cleanup_remote_edit_temp() {
     let dir = std::env::temp_dir().join("ruster_remote_edit");
     if dir.exists() {
@@ -56,6 +107,8 @@ pub fn load_app_state() -> AppState {
     let mut show_local_pane = true;
     let mut show_hidden = false;
     let mut show_function_bar = true;
+    let mut show_permissions = false;
+    let mut date_format = crate::model::DateFormat::Date;
     let mut local_dir = default_local.clone();
     let mut right_dir = default_right.clone();
     let mut max_concurrent_transfers = 2usize;
@@ -88,6 +141,14 @@ pub fn load_app_state() -> AppState {
                         if let Ok(b) = v.trim().parse::<bool>() {
                             show_function_bar = b;
                         }
+                    }
+                    "show_permissions" => {
+                        if let Ok(b) = v.trim().parse::<bool>() {
+                            show_permissions = b;
+                        }
+                    }
+                    "date_format" => {
+                        date_format = crate::model::DateFormat::from_str(v.trim());
                     }
                     "local_dir" => {
                         let p = PathBuf::from(v.trim());
@@ -147,6 +208,8 @@ pub fn load_app_state() -> AppState {
         show_local_pane,
         show_hidden,
         show_function_bar,
+        show_permissions,
+        date_format,
         local_dir,
         right_dir,
         max_concurrent_transfers,
@@ -163,6 +226,8 @@ pub fn save_app_state(
     show_local_pane: bool,
     show_hidden: bool,
     show_function_bar: bool,
+    show_permissions: bool,
+    date_format: crate::model::DateFormat,
     local_dir: &std::path::Path,
     right_dir: &std::path::Path,
     max_concurrent_transfers: usize,
@@ -176,10 +241,12 @@ pub fn save_app_state(
     let dir = config_dir();
     fs::create_dir_all(&dir)?;
     let content = format!(
-        "show_local_pane={}\nshow_hidden={}\nshow_function_bar={}\nlocal_dir={}\nright_dir={}\nmax_concurrent_transfers={}\neditable_extensions={}\nwindow_width={}\nwindow_height={}\nqueue_panel_height={}\ntheme={}\nlocale={}\n",
+        "show_local_pane={}\nshow_hidden={}\nshow_function_bar={}\nshow_permissions={}\ndate_format={}\nlocal_dir={}\nright_dir={}\nmax_concurrent_transfers={}\neditable_extensions={}\nwindow_width={}\nwindow_height={}\nqueue_panel_height={}\ntheme={}\nlocale={}\n",
         show_local_pane,
         show_hidden,
         show_function_bar,
+        show_permissions,
+        date_format.as_str(),
         local_dir.to_string_lossy(),
         right_dir.to_string_lossy(),
         max_concurrent_transfers,
@@ -510,5 +577,85 @@ Host prod-app
 
         let wildcards = "Host *\n    User test\nHost ?\n    Port 22\n";
         assert!(parse_ssh_config_str(wildcards).is_empty());
+    }
+
+    #[test]
+    fn test_app_state_permissions_and_date_format() {
+        let sample_state = "show_permissions=true\ndate_format=date_time\n";
+        let mut show_permissions = false;
+        let mut date_format = crate::model::DateFormat::Date;
+        for line in sample_state.lines() {
+            if let Some((k, v)) = line.split_once('=') {
+                match k.trim() {
+                    "show_permissions" => {
+                        if let Ok(b) = v.trim().parse::<bool>() {
+                            show_permissions = b;
+                        }
+                    }
+                    "date_format" => {
+                        date_format = crate::model::DateFormat::from_str(v.trim());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        assert_eq!(show_permissions, true);
+        assert_eq!(date_format, crate::model::DateFormat::DateTime);
+
+        // Test default state: permissions is false (hidden), date_format is Date
+        let default_state = "";
+        let mut def_show_permissions = false;
+        let mut def_date_format = crate::model::DateFormat::Date;
+        for line in default_state.lines() {
+            if let Some((k, v)) = line.split_once('=') {
+                match k.trim() {
+                    "show_permissions" => {
+                        if let Ok(b) = v.trim().parse::<bool>() {
+                            def_show_permissions = b;
+                        }
+                    }
+                    "date_format" => {
+                        def_date_format = crate::model::DateFormat::from_str(v.trim());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        assert_eq!(def_show_permissions, false);
+        assert_eq!(def_date_format, crate::model::DateFormat::Date);
+    }
+
+    #[test]
+    fn test_favorites_serialization() {
+        let temp = std::env::temp_dir().join(format!("ruster_fav_test_{}", std::process::id()));
+        let paths = vec![
+            PathBuf::from("/Users/test"),
+            PathBuf::from("/Users/test/Documents"),
+            PathBuf::from("/Users/test/Downloads"),
+        ];
+        let mut out = String::from("# Ruster Favorite Locations\n");
+        for p in &paths {
+            out.push_str(&p.to_string_lossy());
+            out.push('\n');
+        }
+        let _ = fs::write(&temp, out);
+
+        let content = fs::read_to_string(&temp).unwrap();
+        let mut loaded = Vec::new();
+        for line in content.lines() {
+            let line = line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+            loaded.push(PathBuf::from(line));
+        }
+        assert_eq!(loaded, paths);
+
+        // Test delete
+        loaded.retain(|p| p != &PathBuf::from("/Users/test/Documents"));
+        assert_eq!(loaded.len(), 2);
+        assert!(!loaded.contains(&PathBuf::from("/Users/test/Documents")));
+
+        let _ = fs::remove_file(&temp);
     }
 }

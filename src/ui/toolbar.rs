@@ -125,10 +125,10 @@ impl RusterView {
                                 let tooltip_text = t.act_synchronize().to_string();
                                 let is_dark = theme.is_dark();
                                 move |_, cx| {
-                                    cx.new(|_| FileTooltip {
-                                        text: tooltip_text.clone(),
+                                    cx.new(|_| FileTooltip::simple(
+                                        tooltip_text.clone(),
                                         is_dark,
-                                    })
+                                    ))
                                     .into()
                                 }
                             }),
