@@ -152,13 +152,13 @@ pub fn load_app_state() -> AppState {
                     }
                     "local_dir" => {
                         let p = PathBuf::from(v.trim());
-                        if p.exists() && p.is_dir() {
+                        if (p.exists() && p.is_dir()) || crate::archive::is_valid_archive_path(&p) {
                             local_dir = p;
                         }
                     }
                     "right_dir" => {
                         let p = PathBuf::from(v.trim());
-                        if p.exists() && p.is_dir() {
+                        if (p.exists() && p.is_dir()) || crate::archive::is_valid_archive_path(&p) {
                             right_dir = p;
                         }
                     }

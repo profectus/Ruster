@@ -190,6 +190,10 @@ pub fn mode_to_rwx(mode: u32, is_dir: bool, is_symlink: bool) -> String {
 }
 
 pub fn read_local_directory(dir: &Path, show_hidden: bool) -> Vec<FileEntry> {
+    if let Some((archive_path, inner_path)) = crate::archive::split_archive_path(dir) {
+        return crate::archive::read_archive_directory(&archive_path, &inner_path, show_hidden);
+    }
+
     let mut entries = Vec::new();
 
     let clean_str = dir.to_string_lossy().trim_end_matches('/').to_string();

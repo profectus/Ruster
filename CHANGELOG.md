@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-10-30
+
+### Added
+- **Archive Virtual File System (VFS)**:
+  - Local browsing of `.zip`, `.tar.gz` / `.tgz`, `.tar`, `.7z`, `.rar`, and `.gz` archives directly as virtual folders.
+  - Seamless navigation into archive directories, nested subfolders, and return to parent directory via `..` or Backspace.
+  - Interactive breadcrumbs displaying archive internal paths with instant jump navigation.
+  - Transparent on-demand extraction for previewing and opening files inside archives with default macOS applications.
+  - Selective extraction via `F5`: copy/extract selected files or folders directly out of an archive into the opposite pane.
+  - State persistence: remembers and re-opens current directory even when located inside an archive.
+
+### Fixed
+- **Tooltip Positioning**:
+  - Encapsulated tooltip cards in an outer container with top padding (`28px`) and left padding (`10px`), ensuring the tooltip is physically rendered clearly below and slightly to the right of the mouse cursor pointer.
+
 ## [0.4.0] - 2026-10-30
 
 ### Added

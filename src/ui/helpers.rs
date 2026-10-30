@@ -272,113 +272,119 @@ impl Render for FileTooltip {
 
         if let Some(ref details) = self.details {
             div()
-                .mt(px(26.0))
-                .ml(px(8.0))
-                .px_3()
-                .py_2()
-                .w(px(380.0))
-                .rounded(px(6.0))
-                .bg(bg)
-                .border_1()
-                .border_color(border)
-                .shadow_lg()
-                .flex()
-                .flex_col()
-                .gap_1p5()
-                // Header: Icon + Name (wraps if too long, never overflows)
+                .pt(px(28.0))
+                .pl(px(10.0))
                 .child(
                     div()
-                        .w_full()
-                        .flex()
-                        .items_start()
-                        .gap_2()
-                        .child(
-                            div()
-                                .mt(px(1.0))
-                                .flex_shrink_0()
-                                .child(render_icon(details.icon_path, 15.0, details.icon_color)),
-                        )
-                        .child(
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .text_xs()
-                                .font_weight(gpui::FontWeight::SEMIBOLD)
-                                .text_color(text_main)
-                                .whitespace_normal()
-                                .child(details.name.clone()),
-                        ),
-                )
-                // Divider
-                .child(div().h(px(1.0)).bg(if is_dark { rgb(0x2e2e34) } else { rgb(0xe4e4e7) }))
-                // Key-value pairs
-                .child(
-                    div()
+                        .px_3()
+                        .py_2()
+                        .w(px(380.0))
+                        .rounded(px(6.0))
+                        .bg(bg)
+                        .border_1()
+                        .border_color(border)
+                        .shadow_lg()
                         .flex()
                         .flex_col()
-                        .gap_1()
-                        .children(details.items.iter().map(|item| {
-                            if item.is_full_width {
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_0p5()
-                                    .text_xs()
-                                    .child(
+                        .gap_1p5()
+                        // Header: Icon + Name (wraps if too long, never overflows)
+                        .child(
+                            div()
+                                .w_full()
+                                .flex()
+                                .items_start()
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .mt(px(1.0))
+                                        .flex_shrink_0()
+                                        .child(render_icon(details.icon_path, 15.0, details.icon_color)),
+                                )
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .min_w_0()
+                                        .text_xs()
+                                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                                        .text_color(text_main)
+                                        .whitespace_normal()
+                                        .child(details.name.clone()),
+                                ),
+                        )
+                        // Divider
+                        .child(div().h(px(1.0)).bg(if is_dark { rgb(0x2e2e34) } else { rgb(0xe4e4e7) }))
+                        // Key-value pairs
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .gap_1()
+                                .children(details.items.iter().map(|item| {
+                                    if item.is_full_width {
                                         div()
-                                            .text_color(text_muted)
-                                            .child(format!("{}:", item.label)),
-                                    )
-                                    .child(
+                                            .flex()
+                                            .flex_col()
+                                            .gap_0p5()
+                                            .text_xs()
+                                            .child(
+                                                div()
+                                                    .text_color(text_muted)
+                                                    .child(format!("{}:", item.label)),
+                                            )
+                                            .child(
+                                                div()
+                                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                                    .text_color(text_main)
+                                                    .whitespace_normal()
+                                                    .child(item.value.clone()),
+                                            )
+                                    } else {
                                         div()
-                                            .font_weight(gpui::FontWeight::MEDIUM)
-                                            .text_color(text_main)
-                                            .whitespace_normal()
-                                            .child(item.value.clone()),
-                                    )
-                            } else {
-                                div()
-                                    .flex()
-                                    .items_start()
-                                    .justify_between()
-                                    .gap_2()
-                                    .text_xs()
-                                    .child(
-                                        div()
-                                            .flex_shrink_0()
-                                            .text_color(text_muted)
-                                            .child(format!("{}:", item.label)),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .min_w_0()
-                                            .text_right()
-                                            .font_weight(gpui::FontWeight::MEDIUM)
-                                            .text_color(text_main)
-                                            .whitespace_normal()
-                                            .child(item.value.clone()),
-                                    )
-                            }
-                        })),
+                                            .flex()
+                                            .items_start()
+                                            .justify_between()
+                                            .gap_2()
+                                            .text_xs()
+                                            .child(
+                                                div()
+                                                    .flex_shrink_0()
+                                                    .text_color(text_muted)
+                                                    .child(format!("{}:", item.label)),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex_1()
+                                                    .min_w_0()
+                                                    .text_right()
+                                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                                    .text_color(text_main)
+                                                    .whitespace_normal()
+                                                    .child(item.value.clone()),
+                                            )
+                                    }
+                                })),
+                        ),
                 )
         } else {
             div()
-                .mt(px(26.0))
-                .ml(px(8.0))
-                .px_2p5()
-                .py_1p5()
-                .w(px(320.0))
-                .rounded(px(5.0))
-                .bg(if self.is_dark { rgb(0x222227) } else { rgb(0xffffff) })
-                .border_1()
-                .border_color(border)
-                .shadow_lg()
-                .text_xs()
-                .font_weight(gpui::FontWeight::MEDIUM)
-                .text_color(text_main)
-                .whitespace_normal()
-                .child(self.text.clone())
+                .pt(px(28.0))
+                .pl(px(10.0))
+                .child(
+                    div()
+                        .px_2p5()
+                        .py_1p5()
+                        .w(px(320.0))
+                        .rounded(px(5.0))
+                        .bg(if self.is_dark { rgb(0x222227) } else { rgb(0xffffff) })
+                        .border_1()
+                        .border_color(border)
+                        .shadow_lg()
+                        .text_xs()
+                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .text_color(text_main)
+                        .whitespace_normal()
+                        .child(self.text.clone()),
+                )
         }
     }
 }

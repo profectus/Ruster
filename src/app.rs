@@ -811,7 +811,7 @@ impl RusterView {
         } else {
             path
         };
-        if expanded.exists() && expanded.is_dir() {
+        if (expanded.exists() && expanded.is_dir()) || crate::archive::is_valid_archive_path(&expanded) {
             self.local_dir = expanded;
             self.local_selected = 0;
             self.reload_local();
@@ -832,7 +832,7 @@ impl RusterView {
         } else {
             path
         };
-        if expanded.exists() && expanded.is_dir() {
+        if (expanded.exists() && expanded.is_dir()) || crate::archive::is_valid_archive_path(&expanded) {
             self.right_dir = expanded;
             self.right_selected = 0;
             self.reload_right();
@@ -1532,6 +1532,12 @@ impl RusterView {
                     let p = PathBuf::from(&entry.path);
                     if entry.is_dir {
                         self.navigate_local(p);
+                    } else if crate::archive::is_archive_file(&entry.name) && p.is_file() {
+                        self.navigate_local(p);
+                    } else if let Some((archive_path, inner_path)) = crate::archive::split_archive_path(&p) {
+                        if let Ok(temp_file) = crate::archive::extract_single_file_to_temp(&archive_path, &inner_path) {
+                            cx.open_with_system(&temp_file);
+                        }
                     } else {
                         cx.open_with_system(&p);
                     }
@@ -1543,6 +1549,12 @@ impl RusterView {
                         let p = PathBuf::from(&entry.path);
                         if entry.is_dir {
                             self.navigate_right_local(p);
+                        } else if crate::archive::is_archive_file(&entry.name) && p.is_file() {
+                            self.navigate_right_local(p);
+                        } else if let Some((archive_path, inner_path)) = crate::archive::split_archive_path(&p) {
+                            if let Ok(temp_file) = crate::archive::extract_single_file_to_temp(&archive_path, &inner_path) {
+                                cx.open_with_system(&temp_file);
+                            }
                         } else {
                             cx.open_with_system(&p);
                         }
@@ -1746,7 +1758,7 @@ impl RusterView {
                             is_dir,
                             parent_id: None,
                         });
-                        if is_dir {
+                        if is_dir && crate::archive::split_archive_path(std::path::Path::new(&entry.path)).is_none() {
                             scan_local_folder_for_queue(
                                 &src,
                                 &dest.to_string_lossy(),
@@ -1799,7 +1811,7 @@ impl RusterView {
                             is_dir,
                             parent_id: None,
                         });
-                        if is_dir {
+                        if is_dir && crate::archive::split_archive_path(std::path::Path::new(&entry.path)).is_none() {
                             scan_local_folder_for_queue(
                                 std::path::Path::new(&entry.path),
                                 &target_path,
@@ -1855,7 +1867,7 @@ impl RusterView {
                             is_dir,
                             parent_id: None,
                         });
-                        if is_dir {
+                        if is_dir && crate::archive::split_archive_path(std::path::Path::new(&entry.path)).is_none() {
                             scan_local_folder_for_queue(
                                 &src,
                                 &dest.to_string_lossy(),
@@ -2282,7 +2294,9 @@ impl RusterView {
                                     r
                                 }
                                 TransferKind::Local { src, dest, remove_source } => {
-                                    if *remove_source {
+                                    if let Some((archive_path, inner_path)) = crate::archive::split_archive_path(src) {
+                                        crate::archive::extract_entry_to(&archive_path, &inner_path, dest.parent().unwrap_or(dest))
+                                    } else if *remove_source {
                                         move_local_item_with_progress(src, dest, &mut on_prog).map_err(|e| e.to_string())
                                     } else {
                                         copy_local_item_with_progress(src, dest, &mut on_prog).map(|_| ()).map_err(|e| e.to_string())

@@ -1757,6 +1757,14 @@ impl RusterView {
                                 this.navigate_local(
                                     entry_path.clone(),
                                 );
+                            } else if crate::archive::is_archive_file(&entry_path.to_string_lossy()) && entry_path.is_file() {
+                                this.navigate_local(
+                                    entry_path.clone(),
+                                );
+                            } else if let Some((archive_path, inner_path)) = crate::archive::split_archive_path(&entry_path) {
+                                if let Ok(temp_file) = crate::archive::extract_single_file_to_temp(&archive_path, &inner_path) {
+                                    cx.open_with_system(&temp_file);
+                                }
                             } else {
                                 cx.open_with_system(&entry_path);
                             }
@@ -2001,6 +2009,14 @@ impl RusterView {
                                 this.navigate_right_local(
                                     entry_path.clone(),
                                 );
+                            } else if crate::archive::is_archive_file(&entry_path.to_string_lossy()) && entry_path.is_file() {
+                                this.navigate_right_local(
+                                    entry_path.clone(),
+                                );
+                            } else if let Some((archive_path, inner_path)) = crate::archive::split_archive_path(&entry_path) {
+                                if let Ok(temp_file) = crate::archive::extract_single_file_to_temp(&archive_path, &inner_path) {
+                                    cx.open_with_system(&temp_file);
+                                }
                             } else {
                                 cx.open_with_system(&entry_path);
                             }
