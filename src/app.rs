@@ -30,7 +30,7 @@ use crate::network::{
 };
 use crate::ui::menus::install_app_menus;
 use crate::{
-    CheckForUpdates, CopySelected, DeleteModal, EditSelected, GoToFolderModal, MoveSelected,
+    CheckForUpdates, CompressModal, CopySelected, DeleteModal, EditSelected, ExtractModal, GoToFolderModal, MoveSelected,
     NewFolderModal, OpenInTerminal, OpenSelected, OpenSiteManager, PermissionsModal, RefreshPanes, RenameModal,
     RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal, ToggleDualPane,
     ToggleFunctionBar, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree, ToggleTheme,
@@ -194,6 +194,7 @@ pub struct RusterView {
 
     pub(crate) chmod_mode: u32,
     pub(crate) chmod_recursive: bool,
+    pub(crate) compress_format: crate::archive::ArchiveFormat,
 
     pub(crate) watched_remote_files: Vec<WatchedRemoteFile>,
     pub(crate) editable_extensions: String,
@@ -591,6 +592,7 @@ impl RusterView {
 
             chmod_mode: 0o755,
             chmod_recursive: false,
+            compress_format: crate::archive::ArchiveFormat::Zip,
 
             watched_remote_files: Vec::new(),
             editable_extensions: saved_state.editable_extensions,
@@ -2680,6 +2682,354 @@ impl RusterView {
         self.active_modal = ActiveModal::None;
     }
 
+    pub(crate) fn set_compress_format(&mut self, fmt: crate::archive::ArchiveFormat) {
+        self.compress_format = fmt;
+        let s = self.modal_input_text.trim();
+        let base = if s.to_lowercase().ends_with(".tar.gz") {
+            &s[..s.len() - 7]
+        } else if let Some((b, _)) = s.rsplit_once('.') {
+            b
+        } else {
+            s
+        };
+        if !base.is_empty() {
+            self.modal_input_text = format!("{}.{}", base, fmt.extension());
+            self.modal_cursor_pos = self.modal_input_text.chars().count();
+        }
+    }
+
+    pub(crate) fn open_compress_modal(&mut self) {
+        let (items, default_base) = match self.active_pane {
+            ActivePane::Local => {
+                let marked: Vec<FileEntry> = self
+                    .local_entries
+                    .iter()
+                    .filter(|e| e.is_any_selected() && e.name != "..")
+                    .cloned()
+                    .collect();
+                if marked.is_empty() {
+                    let sel = self.local_entries.get(self.local_selected).filter(|e| e.name != "..").cloned();
+                    let name = sel.as_ref().map(|e| e.name.clone()).unwrap_or_else(|| "archive".to_string());
+                    (sel.into_iter().collect(), name)
+                } else {
+                    let name = if marked.len() == 1 {
+                        marked[0].name.clone()
+                    } else {
+                        self.local_dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "archive".to_string())
+                    };
+                    (marked, name)
+                }
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    let marked: Vec<FileEntry> = self
+                        .right_entries
+                        .iter()
+                        .filter(|e| e.is_any_selected() && e.name != "..")
+                        .cloned()
+                        .collect();
+                    if marked.is_empty() {
+                        let sel = self.right_entries.get(self.right_selected).filter(|e| e.name != "..").cloned();
+                        let name = sel.as_ref().map(|e| e.name.clone()).unwrap_or_else(|| "archive".to_string());
+                        (sel.into_iter().collect(), name)
+                    } else {
+                        let name = if marked.len() == 1 {
+                            marked[0].name.clone()
+                        } else {
+                            self.right_dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "archive".to_string())
+                        };
+                        (marked, name)
+                    }
+                } else if let Some(session) = self.sessions.get(self.active_session_idx) {
+                    let marked: Vec<FileEntry> = session
+                        .entries
+                        .iter()
+                        .filter(|e| e.is_any_selected() && e.name != "..")
+                        .cloned()
+                        .collect();
+                    if marked.is_empty() {
+                        let sel = session.entries.get(session.selected_index).filter(|e| e.name != "..").cloned();
+                        let name = sel.as_ref().map(|e| e.name.clone()).unwrap_or_else(|| "archive".to_string());
+                        (sel.into_iter().collect(), name)
+                    } else {
+                        let name = if marked.len() == 1 {
+                            marked[0].name.clone()
+                        } else {
+                            "archive".to_string()
+                        };
+                        (marked, name)
+                    }
+                } else {
+                    (Vec::new(), "archive".to_string())
+                }
+            }
+        };
+
+        if items.is_empty() {
+            return;
+        }
+
+        let clean_base = default_base.trim_end_matches('/').to_string();
+        self.modal_input_text = format!("{}.{}", clean_base, self.compress_format.extension());
+        self.modal_cursor_pos = clean_base.chars().count();
+        self.active_modal = ActiveModal::Compress;
+    }
+
+    pub(crate) fn confirm_compress(&mut self, cx: &mut Context<Self>) {
+        let archive_name = self.modal_input_text.trim().to_string();
+        if archive_name.is_empty() {
+            return;
+        }
+        self.active_modal = ActiveModal::None;
+        cx.notify();
+
+        let format = self.compress_format;
+        match self.active_pane {
+            ActivePane::Local => {
+                let items: Vec<FileEntry> = {
+                    let marked: Vec<FileEntry> = self
+                        .local_entries
+                        .iter()
+                        .filter(|e| e.is_any_selected() && e.name != "..")
+                        .cloned()
+                        .collect();
+                    if marked.is_empty() {
+                        self.local_entries.get(self.local_selected).filter(|e| e.name != "..").cloned().into_iter().collect()
+                    } else {
+                        marked
+                    }
+                };
+                if items.is_empty() { return; }
+                let sources: Vec<PathBuf> = items.iter().map(|e| PathBuf::from(&e.path)).collect();
+                let target = if archive_name.starts_with('/') {
+                    PathBuf::from(archive_name)
+                } else {
+                    self.local_dir.join(archive_name)
+                };
+
+                cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+                    let mut cx = cx.clone();
+                    async move {
+                        let _ = std::thread::spawn(move || {
+                            crate::archive::compress_local(&sources, &target, format)
+                        }).join();
+                        let _ = this.update(&mut cx, |view, _| {
+                            view.reload_local();
+                        });
+                    }
+                }).detach();
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    let items: Vec<FileEntry> = {
+                        let marked: Vec<FileEntry> = self
+                            .right_entries
+                            .iter()
+                            .filter(|e| e.is_any_selected() && e.name != "..")
+                            .cloned()
+                            .collect();
+                        if marked.is_empty() {
+                            self.right_entries.get(self.right_selected).filter(|e| e.name != "..").cloned().into_iter().collect()
+                        } else {
+                            marked
+                        }
+                    };
+                    if items.is_empty() { return; }
+                    let sources: Vec<PathBuf> = items.iter().map(|e| PathBuf::from(&e.path)).collect();
+                    let target = if archive_name.starts_with('/') {
+                        PathBuf::from(archive_name)
+                    } else {
+                        self.right_dir.join(archive_name)
+                    };
+
+                    cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+                        let mut cx = cx.clone();
+                        async move {
+                            let _ = std::thread::spawn(move || {
+                                crate::archive::compress_local(&sources, &target, format)
+                            }).join();
+                            let _ = this.update(&mut cx, |view, _| {
+                                view.reload_right();
+                            });
+                        }
+                    }).detach();
+                } else if let Some(session) = self.sessions.get(self.active_session_idx) {
+                    if matches!(session.protocol, Protocol::Sftp | Protocol::Scp) {
+                        let items: Vec<FileEntry> = {
+                            let marked: Vec<FileEntry> = session
+                                .entries
+                                .iter()
+                                .filter(|e| e.is_any_selected() && e.name != "..")
+                                .cloned()
+                                .collect();
+                            if marked.is_empty() {
+                                session.entries.get(session.selected_index).filter(|e| e.name != "..").cloned().into_iter().collect()
+                            } else {
+                                marked
+                            }
+                        };
+                        if items.is_empty() { return; }
+                        let host = session.host.clone();
+                        let port = session.port;
+                        let username = session.username.clone();
+                        let current_path = session.current_path.clone();
+                        let file_args: Vec<String> = items.iter().map(|e| format!("\"{}\"", e.name)).collect();
+                        let remote_cmd = match format {
+                            crate::archive::ArchiveFormat::Zip => {
+                                format!("cd \"{}\" && zip -r \"{}\" {}", current_path, archive_name, file_args.join(" "))
+                            }
+                            crate::archive::ArchiveFormat::TarGz => {
+                                format!("cd \"{}\" && tar -czf \"{}\" {}", current_path, archive_name, file_args.join(" "))
+                            }
+                            crate::archive::ArchiveFormat::SevenZip => {
+                                format!("cd \"{}\" && 7z a \"{}\" {}", current_path, archive_name, file_args.join(" "))
+                            }
+                        };
+
+                        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+                            let mut cx = cx.clone();
+                            async move {
+                                let _ = std::thread::spawn(move || {
+                                    crate::network::run_remote_ssh_cmd(&host, port, &username, &remote_cmd)
+                                }).join();
+                                let _ = this.update(&mut cx, |view, _| {
+                                    view.navigate_remote(current_path);
+                                });
+                            }
+                        }).detach();
+                    }
+                }
+            }
+        }
+    }
+
+    pub(crate) fn open_extract_modal(&mut self) {
+        let entry = match self.active_pane {
+            ActivePane::Local => {
+                self.local_entries.get(self.local_selected).filter(|e| e.name != "..").cloned()
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    self.right_entries.get(self.right_selected).filter(|e| e.name != "..").cloned()
+                } else if let Some(s) = self.sessions.get(self.active_session_idx) {
+                    s.entries.get(s.selected_index).filter(|e| e.name != "..").cloned()
+                } else {
+                    None
+                }
+            }
+        };
+
+        let Some(entry) = entry else { return; };
+        if !crate::archive::is_archive_file(&entry.name) {
+            return;
+        }
+
+        let default_target = match self.active_pane {
+            ActivePane::Local => self.local_dir.to_string_lossy().to_string(),
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    self.right_dir.to_string_lossy().to_string()
+                } else if let Some(s) = self.sessions.get(self.active_session_idx) {
+                    s.current_path.clone()
+                } else {
+                    "/".to_string()
+                }
+            }
+        };
+
+        self.modal_input_text = default_target;
+        self.modal_cursor_pos = self.modal_input_text.chars().count();
+        self.active_modal = ActiveModal::Extract;
+    }
+
+    pub(crate) fn confirm_extract(&mut self, cx: &mut Context<Self>) {
+        let dest_str = self.modal_input_text.trim().to_string();
+        if dest_str.is_empty() {
+            return;
+        }
+        self.active_modal = ActiveModal::None;
+        cx.notify();
+
+        match self.active_pane {
+            ActivePane::Local => {
+                let entry = self.local_entries.get(self.local_selected).filter(|e| e.name != "..").cloned();
+                let Some(entry) = entry else { return; };
+                let src_archive = PathBuf::from(&entry.path);
+                let dest = PathBuf::from(&dest_str);
+
+                cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+                    let mut cx = cx.clone();
+                    async move {
+                        let _ = std::thread::spawn(move || {
+                            crate::archive::extract_local(&src_archive, &dest)
+                        }).join();
+                        let _ = this.update(&mut cx, |view, _| {
+                            view.reload_local();
+                        });
+                    }
+                }).detach();
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    let entry = self.right_entries.get(self.right_selected).filter(|e| e.name != "..").cloned();
+                    let Some(entry) = entry else { return; };
+                    let src_archive = PathBuf::from(&entry.path);
+                    let dest = PathBuf::from(&dest_str);
+
+                    cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+                        let mut cx = cx.clone();
+                        async move {
+                            let _ = std::thread::spawn(move || {
+                                crate::archive::extract_local(&src_archive, &dest)
+                            }).join();
+                            let _ = this.update(&mut cx, |view, _| {
+                                view.reload_right();
+                            });
+                        }
+                    }).detach();
+                } else if let Some(session) = self.sessions.get(self.active_session_idx) {
+                    if matches!(session.protocol, Protocol::Sftp | Protocol::Scp) {
+                        let entry = session.entries.get(session.selected_index).filter(|e| e.name != "..").cloned();
+                        let Some(entry) = entry else { return; };
+                        let host = session.host.clone();
+                        let port = session.port;
+                        let username = session.username.clone();
+                        let current_path = session.current_path.clone();
+
+                        let lower = entry.name.to_lowercase();
+                        let remote_cmd = if lower.ends_with(".zip") {
+                            format!("cd \"{}\" && unzip -q -o \"{}\" -d \"{}\"", current_path, entry.name, dest_str)
+                        } else if lower.ends_with(".tar.gz") || lower.ends_with(".tgz") {
+                            format!("cd \"{}\" && mkdir -p \"{}\" && tar -xzf \"{}\" -C \"{}\"", current_path, dest_str, entry.name, dest_str)
+                        } else if lower.ends_with(".tar") {
+                            format!("cd \"{}\" && mkdir -p \"{}\" && tar -xf \"{}\" -C \"{}\"", current_path, dest_str, entry.name, dest_str)
+                        } else if lower.ends_with(".7z") {
+                            format!("cd \"{}\" && 7z x -y \"{}\" -o\"{}\"", current_path, entry.name, dest_str)
+                        } else if lower.ends_with(".rar") {
+                            format!("cd \"{}\" && mkdir -p \"{}\" && unrar x -o+ \"{}\" \"{}/\"", current_path, dest_str, entry.name, dest_str)
+                        } else if lower.ends_with(".gz") {
+                            format!("cd \"{}\" && gunzip -k \"{}\"", current_path, entry.name)
+                        } else {
+                            return;
+                        };
+
+                        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+                            let mut cx = cx.clone();
+                            async move {
+                                let _ = std::thread::spawn(move || {
+                                    crate::network::run_remote_ssh_cmd(&host, port, &username, &remote_cmd)
+                                }).join();
+                                let _ = this.update(&mut cx, |view, _| {
+                                    view.navigate_remote(current_path);
+                                });
+                            }
+                        }).detach();
+                    }
+                }
+            }
+        }
+    }
+
     pub(crate) fn open_rename_modal(&mut self) {
         let current_name = match self.active_pane {
             ActivePane::Local => self
@@ -4195,10 +4545,10 @@ impl RusterView {
             return;
         }
 
-        // If a text-input modal (New Folder / Rename / GoToFolder) is open, route typing to modal_input_text
+        // If a text-input modal (New Folder / Rename / GoToFolder / Compress / Extract) is open, route typing to modal_input_text
         if matches!(
             self.active_modal,
-            ActiveModal::NewFolder | ActiveModal::Rename | ActiveModal::GoToFolder
+            ActiveModal::NewFolder | ActiveModal::Rename | ActiveModal::GoToFolder | ActiveModal::Compress | ActiveModal::Extract
         ) {
             let is_paste = (modifiers.platform || modifiers.control) && (key == "v" || key == "V");
             if is_paste {
@@ -4256,6 +4606,10 @@ impl RusterView {
                         self.confirm_rename();
                     } else if self.active_modal == ActiveModal::GoToFolder {
                         self.confirm_go_to_folder();
+                    } else if self.active_modal == ActiveModal::Compress {
+                        self.confirm_compress(cx);
+                    } else if self.active_modal == ActiveModal::Extract {
+                        self.confirm_extract(cx);
                     }
                     cx.notify();
                 }
@@ -4785,6 +5139,16 @@ impl Render for RusterView {
                 this.open_go_to_folder_modal();
                 cx.notify();
             }))
+            .on_action(cx.listener(|this, _: &CompressModal, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.open_compress_modal();
+                cx.notify();
+            }))
+            .on_action(cx.listener(|this, _: &ExtractModal, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.open_extract_modal();
+                cx.notify();
+            }))
             .on_action(cx.listener(|this, _: &CheckForUpdates, _, cx| {
                 this.check_for_updates(true, cx);
             }))
@@ -4909,6 +5273,12 @@ impl Render for RusterView {
                     false,
                     cx,
                 ))
+            })
+            .when(self.active_modal == ActiveModal::Compress, |el| {
+                el.child(self.render_compress_modal(cx))
+            })
+            .when(self.active_modal == ActiveModal::Extract, |el| {
+                el.child(self.render_extract_modal(cx))
             })
             .when(self.active_modal == ActiveModal::TransferProgress, |el| {
                 el.child(self.render_transfer_modal(cx))

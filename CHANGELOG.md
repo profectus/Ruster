@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-10-30
+
+### Added
+- **Archive Management (Pack & Unpack)**:
+  - **Compress (Alt+F5)**: Pack selected files and folders into `.zip`, `.tar.gz`, or `.7z` archives with interactive format switching and auto-extension updating.
+  - **Extract (Alt+F6)**: Extract archives (`.zip`, `.tar.gz`, `.tgz`, `.tar`, `.7z`, `.rar`, `.gz`) to current or custom directory with directory traversal security protection.
+  - **Remote SSH Acceleration**: Running compress or extract on remote SFTP/SCP panels executes directly on the remote server via SSH commands (`zip`, `unzip`, `tar`, `7z`, `unrar`) without transferring large archive payloads over the network.
+  - **Context Menu & App Menu Integration**: Added "Compress to Archive..." and conditional "Extract Archive..." to right-click menus and main Actions menu.
+  - **Full Localization**: Integrated archive titles, labels, and actions across all 10 supported world languages.
+
 ## [0.3.9] - 2026-10-29
 
 ### Added

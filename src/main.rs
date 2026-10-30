@@ -1,4 +1,5 @@
 mod app;
+pub mod archive;
 mod config;
 mod i18n;
 mod icons;
@@ -120,6 +121,8 @@ actions!(
         OpenInTerminal,
         SelectAllItems,
         GoToFolderModal,
+        CompressModal,
+        ExtractModal,
         CheckForUpdates,
     ]
 );
@@ -164,6 +167,8 @@ fn main() {
             KeyBinding::new("cmd-shift-r", RevealInFinder, None),
             KeyBinding::new("cmd-alt-t", OpenInTerminal, None),
             KeyBinding::new("cmd-a", SelectAllItems, None),
+            KeyBinding::new("alt-f5", CompressModal, None),
+            KeyBinding::new("alt-f6", ExtractModal, None),
         ]);
         let state = crate::config::load_app_state();
         let is_dark = state.theme.is_dark();

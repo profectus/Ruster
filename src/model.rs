@@ -752,6 +752,8 @@ pub enum ActiveModal {
     Rename,
     DeleteConfirm,
     GoToFolder,
+    Compress,
+    Extract,
     TransferProgress,
     TransferError,
     Settings,

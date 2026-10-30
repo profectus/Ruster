@@ -1,5 +1,6 @@
 use gpui::{div, prelude::*, px, rgb, Context, IntoElement, MouseButton};
 use crate::app::RusterView;
+use crate::archive::ArchiveFormat;
 use crate::model::{ActiveModal, ActivePane};
 use crate::ui::helpers::render_field_value_with_cursor;
 
@@ -261,6 +262,256 @@ impl RusterView {
                                         }),
                                     )
                                     .child(t.btn_delete()),
+                            ),
+                    ),
+            )
+    }
+
+    pub fn render_compress_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = self.i18n();
+        let theme = self.theme();
+        let is_dark = theme.is_dark();
+
+        div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_full()
+            .bg(theme.modal_backdrop())
+            .flex()
+            .items_center()
+            .justify_center()
+            .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+            .on_mouse_down(MouseButton::Right, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+            .child(
+                div()
+                    .w(px(400.0))
+                    .rounded(px(8.0))
+                    .bg(theme.modal_bg())
+                    .border_1()
+                    .border_color(theme.border_strong())
+                    .shadow_lg()
+                    .p_4()
+                    .flex()
+                    .flex_col()
+                    .gap_3()
+                    .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+                    .on_mouse_down(MouseButton::Right, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .text_color(theme.text_primary())
+                            .child(t.modal_compress_title()),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap_1p5()
+                            .child(
+                                div()
+                                    .text_xs()
+                                    .text_color(theme.text_secondary())
+                                    .mr_1()
+                                    .child(t.lbl_archive_format()),
+                            )
+                            .children([ArchiveFormat::Zip, ArchiveFormat::TarGz, ArchiveFormat::SevenZip].iter().enumerate().map(|(idx, &fmt)| {
+                                let is_active = self.compress_format == fmt;
+                                let label = match fmt {
+                                    ArchiveFormat::Zip => "ZIP",
+                                    ArchiveFormat::TarGz => "TAR.GZ",
+                                    ArchiveFormat::SevenZip => "7-Zip",
+                                };
+                                div()
+                                    .id(("compress-fmt", idx))
+                                    .cursor_pointer()
+                                    .px_2p5()
+                                    .py_0p5()
+                                    .rounded(px(4.0))
+                                    .border_1()
+                                    .border_color(if is_active { rgb(0x2563eb) } else { theme.border() })
+                                    .bg(if is_active { rgb(0x2563eb) } else { theme.button_bg() })
+                                    .text_xs()
+                                    .font_weight(if is_active { gpui::FontWeight::SEMIBOLD } else { gpui::FontWeight::NORMAL })
+                                    .text_color(if is_active { rgb(0xffffff) } else { theme.text_primary() })
+                                    .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                        this.set_compress_format(fmt);
+                                        cx.notify();
+                                    }))
+                                    .child(label)
+                            }))
+                    )
+                    .child(
+                        div()
+                            .px_3()
+                            .py_1p5()
+                            .rounded(px(5.0))
+                            .bg(theme.input_bg())
+                            .border_1()
+                            .border_color(theme.input_border_focus())
+                            .text_xs()
+                            .text_color(theme.text_primary())
+                            .child(render_field_value_with_cursor(
+                                &self.modal_input_text,
+                                true,
+                                self.modal_cursor_pos,
+                                "",
+                                false,
+                                is_dark,
+                            )),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .justify_end()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .id("compress-modal-cancel")
+                                    .cursor_pointer()
+                                    .px_3()
+                                    .py_1()
+                                    .rounded(px(4.0))
+                                    .bg(theme.button_bg())
+                                    .border_1()
+                                    .border_color(theme.border())
+                                    .text_xs()
+                                    .text_color(theme.text_primary())
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            this.active_modal = ActiveModal::None;
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(t.btn_cancel()),
+                            )
+                            .child(
+                                div()
+                                    .id("compress-modal-confirm")
+                                    .cursor_pointer()
+                                    .px_3()
+                                    .py_1()
+                                    .rounded(px(4.0))
+                                    .bg(rgb(0x2563eb))
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .text_color(rgb(0xffffff))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            this.confirm_compress(cx);
+                                        }),
+                                    )
+                                    .child(t.btn_compress()),
+                            ),
+                    ),
+            )
+    }
+
+    pub fn render_extract_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = self.i18n();
+        let theme = self.theme();
+        let is_dark = theme.is_dark();
+
+        div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_full()
+            .bg(theme.modal_backdrop())
+            .flex()
+            .items_center()
+            .justify_center()
+            .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+            .on_mouse_down(MouseButton::Right, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+            .child(
+                div()
+                    .w(px(420.0))
+                    .rounded(px(8.0))
+                    .bg(theme.modal_bg())
+                    .border_1()
+                    .border_color(theme.border_strong())
+                    .shadow_lg()
+                    .p_4()
+                    .flex()
+                    .flex_col()
+                    .gap_3()
+                    .on_mouse_down(MouseButton::Left, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+                    .on_mouse_down(MouseButton::Right, cx.listener(|_, _, _, cx| cx.stop_propagation()))
+                    .child(
+                        div()
+                            .text_xs()
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .text_color(theme.text_primary())
+                            .child(t.modal_extract_title()),
+                    )
+                    .child(
+                        div()
+                            .px_3()
+                            .py_1p5()
+                            .rounded(px(5.0))
+                            .bg(theme.input_bg())
+                            .border_1()
+                            .border_color(theme.input_border_focus())
+                            .text_xs()
+                            .text_color(theme.text_primary())
+                            .child(render_field_value_with_cursor(
+                                &self.modal_input_text,
+                                true,
+                                self.modal_cursor_pos,
+                                "",
+                                false,
+                                is_dark,
+                            )),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .justify_end()
+                            .gap_2()
+                            .child(
+                                div()
+                                    .id("extract-modal-cancel")
+                                    .cursor_pointer()
+                                    .px_3()
+                                    .py_1()
+                                    .rounded(px(4.0))
+                                    .bg(theme.button_bg())
+                                    .border_1()
+                                    .border_color(theme.border())
+                                    .text_xs()
+                                    .text_color(theme.text_primary())
+                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            this.active_modal = ActiveModal::None;
+                                            cx.notify();
+                                        }),
+                                    )
+                                    .child(t.btn_cancel()),
+                            )
+                            .child(
+                                div()
+                                    .id("extract-modal-confirm")
+                                    .cursor_pointer()
+                                    .px_3()
+                                    .py_1()
+                                    .rounded(px(4.0))
+                                    .bg(rgb(0x2563eb))
+                                    .text_xs()
+                                    .font_weight(gpui::FontWeight::MEDIUM)
+                                    .text_color(rgb(0xffffff))
+                                    .on_mouse_down(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _, _, cx| {
+                                            this.confirm_extract(cx);
+                                        }),
+                                    )
+                                    .child(t.btn_extract()),
                             ),
                     ),
             )

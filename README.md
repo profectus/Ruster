@@ -45,6 +45,7 @@
 - **Background Transfer Queue** — Multi-item queue with real-time transfer speeds, progress bars, auto-retry, and batch controls.
 - **Remote File Editing & Auto-Upload** — Edit remote files directly in your favorite local editor with automatic upload on save.
 - **Visual chmod Calculator** — Inspect and set permissions via octal input and interactive bit checkboxes with recursion support.
+- **Archive Manager (Pack & Unpack)** — Compress selected files into `.zip`, `.tar.gz`, or `.7z` (`Alt+F5`), and extract `.zip`, `.tar.gz`, `.tar`, `.7z`, `.rar`, and `.gz` (`Alt+F6`) both locally and lightning-fast on remote servers via SSH.
 - **Directory Synchronization** — Compare local and remote folders and synchronize missing or newer files with dry-run previews.
 - **Instant Quick Filter** — Filter thousands of files in milliseconds using `Cmd+F`.
 
@@ -114,6 +115,8 @@ Ruster includes a built-in update checker:
 | <kbd>F6</kbd> | Move / Rename Selected |
 | <kbd>F7</kbd> | Create New Folder |
 | <kbd>F8</kbd> / <kbd>Backspace</kbd> | Delete Selected |
+| <kbd>Alt</kbd> + <kbd>F5</kbd> | Compress to Archive (ZIP, TAR.GZ, 7Z) |
+| <kbd>Alt</kbd> + <kbd>F6</kbd> | Extract Archive (ZIP, TAR.GZ, 7Z, RAR, GZ) |
 | <kbd>Space</kbd> | Multi-select Toggle |
 
 ---

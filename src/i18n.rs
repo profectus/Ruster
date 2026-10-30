@@ -688,6 +688,36 @@ impl I18n {
         }
     }
 
+    pub fn act_compress(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Compress to Archive...",
+            Locale::Cs => "Zabalit do archivu...",
+            Locale::De => "Komprimieren...",
+            Locale::Es => "Comprimir archivo...",
+            Locale::Fr => "Compresser l'archive...",
+            Locale::It => "Comprimi archivio...",
+            Locale::Pl => "Spakuj do archiwum...",
+            Locale::Pt => "Comprimir arquivo...",
+            Locale::Zh => "压缩到归档...",
+            Locale::Ja => "アーカイブに圧縮...",
+        }
+    }
+
+    pub fn act_extract(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Extract Archive...",
+            Locale::Cs => "Rozbalit archiv...",
+            Locale::De => "Entpacken...",
+            Locale::Es => "Extraer archivo...",
+            Locale::Fr => "Extraire l'archive...",
+            Locale::It => "Estrai archivio...",
+            Locale::Pl => "Wypakuj archiwum...",
+            Locale::Pt => "Extrair arquivo...",
+            Locale::Zh => "解压归档...",
+            Locale::Ja => "アーカイブを展開...",
+        }
+    }
+
     // --- Pane & Table Headers ---
     pub fn local_label(&self) -> &'static str {
         match self.locale {
@@ -2052,6 +2082,81 @@ impl I18n {
             Locale::Pt => "Ir",
             Locale::Zh => "前往",
             Locale::Ja => "移動",
+        }
+    }
+
+    pub fn modal_compress_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Compress to Archive",
+            Locale::Cs => "Zabalit do archivu",
+            Locale::De => "In Archiv komprimieren",
+            Locale::Es => "Comprimir a archivo",
+            Locale::Fr => "Compresser dans l'archive",
+            Locale::It => "Comprimi in archivio",
+            Locale::Pl => "Spakuj do archiwum",
+            Locale::Pt => "Comprimir para arquivo",
+            Locale::Zh => "压缩到归档",
+            Locale::Ja => "アーカイブに圧縮",
+        }
+    }
+
+    pub fn modal_extract_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Extract Archive",
+            Locale::Cs => "Rozbalit archiv",
+            Locale::De => "Archiv entpacken",
+            Locale::Es => "Extraer archivo",
+            Locale::Fr => "Extraire l'archive",
+            Locale::It => "Estrai archivio",
+            Locale::Pl => "Wypakuj archiwum",
+            Locale::Pt => "Extrair arquivo",
+            Locale::Zh => "解压归档",
+            Locale::Ja => "アーカイブを展開",
+        }
+    }
+
+    pub fn btn_compress(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Compress",
+            Locale::Cs => "Zabalit",
+            Locale::De => "Komprimieren",
+            Locale::Es => "Comprimir",
+            Locale::Fr => "Compresser",
+            Locale::It => "Comprimi",
+            Locale::Pl => "Spakuj",
+            Locale::Pt => "Comprimir",
+            Locale::Zh => "压缩",
+            Locale::Ja => "圧縮",
+        }
+    }
+
+    pub fn btn_extract(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Extract",
+            Locale::Cs => "Rozbalit",
+            Locale::De => "Entpacken",
+            Locale::Es => "Extraer",
+            Locale::Fr => "Extraire",
+            Locale::It => "Estrai",
+            Locale::Pl => "Wypakuj",
+            Locale::Pt => "Extrair",
+            Locale::Zh => "解压",
+            Locale::Ja => "展開",
+        }
+    }
+
+    pub fn lbl_archive_format(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Format",
+            Locale::Cs => "Formát",
+            Locale::De => "Format",
+            Locale::Es => "Formato",
+            Locale::Fr => "Format",
+            Locale::It => "Formato",
+            Locale::Pl => "Format",
+            Locale::Pt => "Formato",
+            Locale::Zh => "格式",
+            Locale::Ja => "フォーマット",
         }
     }
 

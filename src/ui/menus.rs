@@ -7,7 +7,7 @@ use crate::icons::render_icon;
 use crate::i18n::{I18n, Locale};
 use crate::model::ActivePane;
 use crate::{
-    CheckForUpdates, CopySelected, DeleteModal, EditSelected, GoToFolderModal, MoveSelected,
+    CheckForUpdates, CompressModal, CopySelected, DeleteModal, EditSelected, ExtractModal, GoToFolderModal, MoveSelected,
     NewFolderModal, OpenInTerminal, OpenSelected, OpenSiteManager, PermissionsModal, Quit, RefreshPanes,
     RenameModal, RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal,
     ToggleDualPane, ToggleFunctionBar, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree,
@@ -375,6 +375,18 @@ impl RusterView {
                 }
             }
         };
+        let is_archive = match menu.pane {
+            ActivePane::Local => self.local_entries.get(self.local_selected).map(|e| crate::archive::is_archive_file(&e.name)).unwrap_or(false),
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    self.right_entries.get(self.right_selected).map(|e| crate::archive::is_archive_file(&e.name)).unwrap_or(false)
+                } else if let Some(s) = self.sessions.get(self.active_session_idx) {
+                    s.entries.get(s.selected_index).map(|e| crate::archive::is_archive_file(&e.name)).unwrap_or(false)
+                } else {
+                    false
+                }
+            }
+        };
 
         div()
             .absolute()
@@ -449,6 +461,19 @@ impl RusterView {
                 this.open_delete_modal();
                 cx.notify();
             }))
+            .child(div().h(px(1.0)).my_0p5().bg(theme.border()))
+            .child(self.render_ctx_item("ctx-compress", t.act_compress(), cx, |this, cx| {
+                this.context_menu = None;
+                this.open_compress_modal();
+                cx.notify();
+            }))
+            .when(is_archive, |el| {
+                el.child(self.render_ctx_item("ctx-extract", t.act_extract(), cx, |this, cx| {
+                    this.context_menu = None;
+                    this.open_extract_modal();
+                    cx.notify();
+                }))
+            })
             .when(is_local, |el| {
                 el.child(div().h(px(1.0)).my_0p5().bg(theme.border()))
                     .child(
@@ -558,6 +583,9 @@ pub fn install_app_menus(cx: &mut App, locale: Locale) {
                 MenuItem::action(t.act_new_folder(), NewFolderModal),
                 MenuItem::action(t.act_rename(), RenameModal),
                 MenuItem::action(t.act_delete(), DeleteModal),
+                MenuItem::separator(),
+                MenuItem::action(t.act_compress(), CompressModal),
+                MenuItem::action(t.act_extract(), ExtractModal),
                 MenuItem::separator(),
                 MenuItem::action(t.act_permissions(), PermissionsModal),
                 MenuItem::action(t.act_synchronize(), SynchronizeModal),
