@@ -1,6 +1,6 @@
 cask "ruster" do
-  version "0.3.9"
-  sha256 "ed13b4f680973dbff838cc72bbee48b764646c285e9eca708ee717f105ca2c40"
+  version "0.4.0"
+  sha256 "217e27ca25c1ffbe9c8c78ba6ccd4d96195246c9c75aeea98269f1f9c5e6a4ea"
 
   url "https://github.com/profectus/Ruster/releases/download/v#{version}/Ruster.zip"
   name "Ruster"
