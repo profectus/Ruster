@@ -1,10 +1,13 @@
 mod app;
 pub mod archive;
 mod config;
+pub mod diff;
 mod i18n;
 mod icons;
 mod model;
 mod network;
+pub mod rename;
+pub mod search;
 mod theme;
 mod ui;
 pub mod sync;
@@ -124,6 +127,9 @@ actions!(
         CompressModal,
         ExtractModal,
         CheckForUpdates,
+        MultiRenameModal,
+        FindFilesModal,
+        FileCompareModal,
     ]
 );
 
@@ -169,6 +175,10 @@ fn main() {
             KeyBinding::new("cmd-a", SelectAllItems, None),
             KeyBinding::new("alt-f5", CompressModal, None),
             KeyBinding::new("alt-f6", ExtractModal, None),
+            KeyBinding::new("cmd-m", MultiRenameModal, None),
+            KeyBinding::new("alt-f7", FindFilesModal, None),
+            KeyBinding::new("cmd-shift-f", FindFilesModal, None),
+            KeyBinding::new("cmd-d", FileCompareModal, None),
         ]);
         let state = crate::config::load_app_state();
         let is_dark = state.theme.is_dark();

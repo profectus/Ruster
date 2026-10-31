@@ -54,24 +54,29 @@ pub fn compress_local(
     sources: &[PathBuf],
     target_archive: &Path,
     format: ArchiveFormat,
+    password: Option<&str>,
 ) -> Result<(), String> {
     if sources.is_empty() {
         return Err("No files or folders selected to compress".to_string());
     }
 
     match format {
-        ArchiveFormat::Zip => compress_zip(sources, target_archive),
+        ArchiveFormat::Zip => compress_zip(sources, target_archive, password),
         ArchiveFormat::TarGz => compress_tar_gz(sources, target_archive),
-        ArchiveFormat::SevenZip => compress_sevenz(sources, target_archive),
+        ArchiveFormat::SevenZip => compress_sevenz(sources, target_archive, password),
     }
 }
 
-fn compress_zip(sources: &[PathBuf], target_archive: &Path) -> Result<(), String> {
+fn compress_zip(sources: &[PathBuf], target_archive: &Path, password: Option<&str>) -> Result<(), String> {
     let file = File::create(target_archive).map_err(|e| format!("Failed to create archive: {}", e))?;
     let mut zip = zip::ZipWriter::new(file);
-    let options = zip::write::SimpleFileOptions::default()
+    let mut options = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
         .unix_permissions(0o755);
+
+    if let Some(pass) = password.filter(|p| !p.trim().is_empty()) {
+        options = options.with_aes_encryption(zip::AesMode::Aes256, pass);
+    }
 
     for src in sources {
         let base_name = src.file_name().unwrap_or_default().to_string_lossy();
@@ -90,7 +95,7 @@ fn add_dir_to_zip<W: Write + io::Seek>(
     zip: &mut zip::ZipWriter<W>,
     dir_path: &Path,
     archive_prefix: &Path,
-    options: zip::write::SimpleFileOptions,
+    options: zip::write::FileOptions<'_, ()>,
 ) -> Result<(), String> {
     let dir_name_str = archive_prefix.to_string_lossy();
     let dir_entry_name = if dir_name_str.ends_with('/') {
@@ -119,7 +124,7 @@ fn add_file_to_zip<W: Write + io::Seek>(
     zip: &mut zip::ZipWriter<W>,
     file_path: &Path,
     entry_name: &str,
-    options: zip::write::SimpleFileOptions,
+    options: zip::write::FileOptions<'_, ()>,
 ) -> Result<(), String> {
     zip.start_file(entry_name, options)
         .map_err(|e| format!("Failed to start file in zip: {}", e))?;
@@ -149,10 +154,16 @@ fn compress_tar_gz(sources: &[PathBuf], target_archive: &Path) -> Result<(), Str
     Ok(())
 }
 
-fn compress_sevenz(sources: &[PathBuf], target_archive: &Path) -> Result<(), String> {
+fn compress_sevenz(sources: &[PathBuf], target_archive: &Path, password: Option<&str>) -> Result<(), String> {
+    let clean_pass = password.unwrap_or("").trim();
     if sources.len() == 1 {
-        sevenz_rust::compress_to_path(&sources[0], target_archive)
-            .map_err(|e| format!("7-Zip compression failed: {}", e))?;
+        if clean_pass.is_empty() {
+            sevenz_rust::compress_to_path(&sources[0], target_archive)
+                .map_err(|e| format!("7-Zip compression failed: {}", e))?;
+        } else {
+            sevenz_rust::compress_to_path_encrypted(&sources[0], target_archive, clean_pass.into())
+                .map_err(|e| format!("7-Zip compression failed: {}", e))?;
+        }
         return Ok(());
     }
 
@@ -171,8 +182,12 @@ fn compress_sevenz(sources: &[PathBuf], target_archive: &Path) -> Result<(), Str
         }
     }
 
-    let res = sevenz_rust::compress_to_path(&temp_dir, target_archive)
-        .map_err(|e| format!("7-Zip compression failed: {}", e));
+    let res = if clean_pass.is_empty() {
+        sevenz_rust::compress_to_path(&temp_dir, target_archive)
+    } else {
+        sevenz_rust::compress_to_path_encrypted(&temp_dir, target_archive, clean_pass.into())
+    }.map_err(|e| format!("7-Zip compression failed: {}", e));
+
     let _ = fs::remove_dir_all(&temp_dir);
     res
 }
@@ -192,6 +207,14 @@ fn copy_dir_all(src: &Path, dst: &Path) -> Result<(), String> {
 }
 
 pub fn extract_local(archive_path: &Path, dest_dir: &Path) -> Result<(), String> {
+    extract_local_with_password(archive_path, dest_dir, None)
+}
+
+pub fn extract_local_with_password(
+    archive_path: &Path,
+    dest_dir: &Path,
+    password: Option<&str>,
+) -> Result<(), String> {
     if !archive_path.exists() {
         return Err("Archive file does not exist".to_string());
     }
@@ -200,14 +223,19 @@ pub fn extract_local(archive_path: &Path, dest_dir: &Path) -> Result<(), String>
     let name = archive_path.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
 
     if name.ends_with(".zip") {
-        extract_zip(archive_path, dest_dir)
+        extract_zip(archive_path, dest_dir, password)
     } else if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
         extract_tar_gz(archive_path, dest_dir)
     } else if name.ends_with(".tar") {
         extract_tar(archive_path, dest_dir)
     } else if name.ends_with(".7z") {
-        sevenz_rust::decompress_file(archive_path, dest_dir)
-            .map_err(|e| format!("Failed to extract 7z: {}", e))
+        if let Some(pass) = password.filter(|p| !p.trim().is_empty()) {
+            sevenz_rust::decompress_file_with_password(archive_path, dest_dir, pass.into())
+                .map_err(|e| format!("Failed to extract 7z: {}", e))
+        } else {
+            sevenz_rust::decompress_file(archive_path, dest_dir)
+                .map_err(|e| format!("Failed to extract 7z: {}", e))
+        }
     } else if name.ends_with(".rar") {
         extract_rar(archive_path, dest_dir)
     } else if name.ends_with(".gz") {
@@ -217,12 +245,16 @@ pub fn extract_local(archive_path: &Path, dest_dir: &Path) -> Result<(), String>
     }
 }
 
-fn extract_zip(archive_path: &Path, dest_dir: &Path) -> Result<(), String> {
+fn extract_zip(archive_path: &Path, dest_dir: &Path, password: Option<&str>) -> Result<(), String> {
     let file = File::open(archive_path).map_err(|e| format!("Cannot open zip: {}", e))?;
     let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Invalid zip: {}", e))?;
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| format!("Zip entry error: {}", e))?;
+        let mut file = if let Some(pass) = password.filter(|p| !p.trim().is_empty()) {
+            archive.by_index_decrypt(i, pass.as_bytes()).map_err(|e| format!("Zip decryption error: {}", e))?
+        } else {
+            archive.by_index(i).map_err(|e| format!("Zip entry error: {}", e))?
+        };
         let outpath = match file.enclosed_name() {
             Some(path) => dest_dir.join(path),
             None => continue,
@@ -825,7 +857,7 @@ mod tests {
         fs::write(&src_file, "hello zip world").unwrap();
 
         let archive_zip = temp.join("archive.zip");
-        compress_local(&[src_file], &archive_zip, ArchiveFormat::Zip).unwrap();
+        compress_local(&[src_file], &archive_zip, ArchiveFormat::Zip, None).unwrap();
         assert!(archive_zip.exists());
 
         let extract_dir = temp.join("extracted_zip");
@@ -848,7 +880,7 @@ mod tests {
         fs::write(&src_file, "hello tar.gz world").unwrap();
 
         let archive_tar = temp.join("archive.tar.gz");
-        compress_local(&[src_file], &archive_tar, ArchiveFormat::TarGz).unwrap();
+        compress_local(&[src_file], &archive_tar, ArchiveFormat::TarGz, None).unwrap();
         assert!(archive_tar.exists());
 
         let extract_dir = temp.join("extracted_tar");
@@ -871,7 +903,7 @@ mod tests {
         fs::write(&src_file, "hello 7z world").unwrap();
 
         let archive_7z = temp.join("archive.7z");
-        compress_local(&[src_file], &archive_7z, ArchiveFormat::SevenZip).unwrap();
+        compress_local(&[src_file], &archive_7z, ArchiveFormat::SevenZip, None).unwrap();
         assert!(archive_7z.exists());
 
         let extract_dir = temp.join("extracted_7z");
@@ -897,7 +929,7 @@ mod tests {
         fs::write(&root_file, "root content").unwrap();
 
         let archive_zip = temp.join("test_vfs.zip");
-        compress_local(&[temp.join("folder"), root_file], &archive_zip, ArchiveFormat::Zip).unwrap();
+        compress_local(&[temp.join("folder"), root_file], &archive_zip, ArchiveFormat::Zip, None).unwrap();
         assert!(archive_zip.exists());
 
         // 1. Test split_archive_path
@@ -941,6 +973,52 @@ mod tests {
         extract_entry_to(&archive_zip, "folder", &target_dir).unwrap();
         assert!(target_dir.join("folder").join("nested.txt").exists());
         assert_eq!(fs::read_to_string(target_dir.join("folder").join("nested.txt")).unwrap(), "nested content");
+
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn test_zip_encrypted_roundtrip() {
+        let temp = std::env::temp_dir().join(format!("ruster_test_zip_enc_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(&temp).unwrap();
+
+        let src_file = temp.join("secret.txt");
+        fs::write(&src_file, "secret payload 12345").unwrap();
+
+        let archive_zip = temp.join("encrypted.zip");
+        compress_local(&[src_file], &archive_zip, ArchiveFormat::Zip, Some("mypassword123")).unwrap();
+        assert!(archive_zip.exists());
+
+        let extract_dir = temp.join("extracted_enc");
+        extract_local_with_password(&archive_zip, &extract_dir, Some("mypassword123")).unwrap();
+
+        let extracted_file = extract_dir.join("secret.txt");
+        assert!(extracted_file.exists());
+        assert_eq!(fs::read_to_string(extracted_file).unwrap(), "secret payload 12345");
+
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn test_sevenz_encrypted_roundtrip() {
+        let temp = std::env::temp_dir().join(format!("ruster_test_7z_enc_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&temp);
+        fs::create_dir_all(&temp).unwrap();
+
+        let src_file = temp.join("secret_7z.txt");
+        fs::write(&src_file, "secret 7z payload 98765").unwrap();
+
+        let archive_7z = temp.join("encrypted.7z");
+        compress_local(&[src_file], &archive_7z, ArchiveFormat::SevenZip, Some("pass7z_test")).unwrap();
+        assert!(archive_7z.exists());
+
+        let extract_dir = temp.join("extracted_7z_enc");
+        extract_local_with_password(&archive_7z, &extract_dir, Some("pass7z_test")).unwrap();
+
+        let extracted_file = extract_dir.join("secret_7z.txt");
+        assert!(extracted_file.exists());
+        assert_eq!(fs::read_to_string(extracted_file).unwrap(), "secret 7z payload 98765");
 
         let _ = fs::remove_dir_all(&temp);
     }

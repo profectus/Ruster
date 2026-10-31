@@ -1,6 +1,6 @@
 [package]
 name = "ruster"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 description = "Ruster"
 
@@ -9,7 +9,8 @@ flate2 = "1.0"
 gpui = { version = "0.2.2", features = ["runtime_shaders"] }
 libc = "0.2"
 objc = "0.2"
-sevenz-rust = "0.6"
+regex = "1.10"
+sevenz-rust = { version = "0.6", features = ["aes256"] }
 tar = "0.4"
 unrar = "0.5"
 zip = "2"

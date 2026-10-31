@@ -7,7 +7,8 @@ use crate::icons::render_icon;
 use crate::i18n::{I18n, Locale};
 use crate::model::ActivePane;
 use crate::{
-    CheckForUpdates, CompressModal, CopySelected, DeleteModal, EditSelected, ExtractModal, GoToFolderModal, MoveSelected,
+    CheckForUpdates, CompressModal, CopySelected, DeleteModal, EditSelected, ExtractModal,
+    FileCompareModal, FindFilesModal, GoToFolderModal, MoveSelected, MultiRenameModal,
     NewFolderModal, OpenInTerminal, OpenSelected, OpenSiteManager, PermissionsModal, Quit, RefreshPanes,
     RenameModal, RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal,
     ToggleDualPane, ToggleFunctionBar, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree,
@@ -446,6 +447,11 @@ impl RusterView {
                 this.open_rename_modal();
                 cx.notify();
             }))
+            .child(self.render_ctx_item("ctx-multirename", t.menu_multirename(), cx, |this, cx| {
+                this.context_menu = None;
+                this.open_multirename_modal();
+                cx.notify();
+            }))
             .child(self.render_ctx_item(
                 "ctx-chmod",
                 t.act_permissions(),
@@ -582,7 +588,11 @@ pub fn install_app_menus(cx: &mut App, locale: Locale) {
                 MenuItem::separator(),
                 MenuItem::action(t.act_new_folder(), NewFolderModal),
                 MenuItem::action(t.act_rename(), RenameModal),
+                MenuItem::action(t.menu_multirename(), MultiRenameModal),
                 MenuItem::action(t.act_delete(), DeleteModal),
+                MenuItem::separator(),
+                MenuItem::action(t.menu_find_files(), FindFilesModal),
+                MenuItem::action(t.menu_compare_files(), FileCompareModal),
                 MenuItem::separator(),
                 MenuItem::action(t.act_compress(), CompressModal),
                 MenuItem::action(t.act_extract(), ExtractModal),

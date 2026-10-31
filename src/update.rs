@@ -174,12 +174,43 @@ pub fn locate_target_app() -> PathBuf {
 
 pub fn restart_app() {
     let target_app = locate_target_app();
-    let script = format!(
-        "sleep 0.5 && /usr/bin/open -n \"{}\"",
-        target_app.to_string_lossy()
-    );
-    let _ = Command::new("/bin/sh")
-        .args(["-c", &script])
+    let app_pid = std::process::id().to_string();
+
+    let script = r#"
+        # 1. Wait for current Ruster process to completely terminate
+        for i in $(seq 1 50); do
+            if ! kill -0 "$1" 2>/dev/null; then
+                break
+            fi
+            sleep 0.1
+        done
+
+        # 2. If it somehow didn't exit within 5 seconds, force terminate it
+        if kill -0 "$1" 2>/dev/null; then
+            kill -9 "$1" 2>/dev/null
+        fi
+
+        # 3. Brief pause for WindowServer & LaunchServices to release previous state
+        sleep 0.2
+
+        # 4. Remove quarantine attribute if present
+        /usr/bin/xattr -dr com.apple.quarantine "$2" 2>/dev/null
+
+        # 5. Launch the newly installed application cleanly (without -n to avoid instance collisions)
+        /usr/bin/open "$2"
+    "#;
+
+    use std::os::unix::process::CommandExt;
+    let _ = Command::new("/bin/bash")
+        .arg("-c")
+        .arg(script)
+        .arg("ruster_restart")
+        .arg(app_pid)
+        .arg(target_app.to_string_lossy().to_string())
+        .process_group(0)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .spawn();
 
     std::process::exit(0);
@@ -278,9 +309,18 @@ pub fn perform_in_app_update(version: &str, mut on_progress: impl FnMut(String))
     on_progress("Instaluji novou verzi do /Applications...".to_string());
     let target_app = locate_target_app();
 
-    let _ = Command::new("/bin/rm")
-        .args(["-rf", target_app.to_str().unwrap()])
-        .output();
+    // Safely replace the app bundle:
+    // First atomically rename existing target_app to .old so the running process
+    // isn't disturbed and the target path becomes completely free
+    let backup_app = target_app.with_extension("app.old");
+    let _ = std::fs::remove_dir_all(&backup_app);
+    let _ = std::fs::rename(&target_app, &backup_app);
+
+    if target_app.exists() {
+        let _ = Command::new("/bin/rm")
+            .args(["-rf", target_app.to_str().unwrap()])
+            .output();
+    }
 
     let cp_res = Command::new("/bin/cp")
         .args([
@@ -292,8 +332,13 @@ pub fn perform_in_app_update(version: &str, mut on_progress: impl FnMut(String))
         .map_err(|e| format!("Chyba při kopírování: {e}"))?;
 
     if !cp_res.status.success() {
+        // Restore from backup if copy failed
+        let _ = std::fs::rename(&backup_app, &target_app);
         return Err("Nepodařilo se přepsat stávající aplikaci".to_string());
     }
+
+    // Clean up backup
+    let _ = std::fs::remove_dir_all(&backup_app);
 
     let _ = Command::new("/usr/bin/xattr")
         .args(["-dr", "com.apple.quarantine", target_app.to_str().unwrap()])

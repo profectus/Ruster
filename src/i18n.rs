@@ -1202,6 +1202,126 @@ impl I18n {
         }
     }
 
+    pub fn modal_site_manager_subtitle(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Saved SFTP, SCP and FTP servers",
+            Locale::Cs => "Uložené SFTP, SCP a FTP servery",
+            Locale::De => "Gespeicherte SFTP-, SCP- und FTP-Server",
+            Locale::Es => "Servidores SFTP, SCP y FTP guardados",
+            Locale::Fr => "Serveurs SFTP, SCP et FTP enregistrés",
+            Locale::It => "Server SFTP, SCP e FTP salvati",
+            Locale::Pl => "Zapisane serwery SFTP, SCP i FTP",
+            Locale::Pt => "Servidores SFTP, SCP e FTP salvos",
+            Locale::Zh => "已保存的 SFTP、SCP 和 FTP 服务器",
+            Locale::Ja => "保存された SFTP、SCP、FTP サーバー",
+        }
+    }
+
+    pub fn placeholder_search_sites(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Search server or host...",
+            Locale::Cs => "Hledat server nebo hostitele...",
+            Locale::De => "Server oder Host suchen...",
+            Locale::Es => "Buscar servidor o host...",
+            Locale::Fr => "Rechercher serveur ou hôte...",
+            Locale::It => "Cerca server o host...",
+            Locale::Pl => "Szukaj serwera lub hosta...",
+            Locale::Pt => "Buscar servidor ou host...",
+            Locale::Zh => "搜索服务器或主机...",
+            Locale::Ja => "サーバーまたはホストを検索...",
+        }
+    }
+
+    pub fn btn_new_server(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "+ New Server",
+            Locale::Cs => "+ Nový server",
+            Locale::De => "+ Neuer Server",
+            Locale::Es => "+ Nuevo servidor",
+            Locale::Fr => "+ Nouveau serveur",
+            Locale::It => "+ Nuovo server",
+            Locale::Pl => "+ Nowy serwer",
+            Locale::Pt => "+ Novo servidor",
+            Locale::Zh => "+ 新建服务器",
+            Locale::Ja => "+ 新規サーバー",
+        }
+    }
+
+    pub fn label_initial_remote_path(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Default Remote Directory (optional):",
+            Locale::Cs => "Výchozí vzdálená složka (volitelné):",
+            Locale::De => "Startverzeichnis (optional):",
+            Locale::Es => "Directorio remoto inicial (opcional):",
+            Locale::Fr => "Répertoire distant initial (optionnel) :",
+            Locale::It => "Cartella remota iniziale (opzionale):",
+            Locale::Pl => "Początkowy katalog zdalny (opcjonalnie):",
+            Locale::Pt => "Diretório remoto inicial (opcional):",
+            Locale::Zh => "初始远程目录 (可选):",
+            Locale::Ja => "初期リモートディレクトリ (任意):",
+        }
+    }
+
+    pub fn label_max_connections_short(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Max. Transfers:",
+            Locale::Cs => "Max. přenosů:",
+            Locale::De => "Max. Übertragungen:",
+            Locale::Es => "Transf. máx.:",
+            Locale::Fr => "Transferts max. :",
+            Locale::It => "Trasferimenti max:",
+            Locale::Pl => "Maks. transferów:",
+            Locale::Pt => "Transf. máx.:",
+            Locale::Zh => "最大并发传输:",
+            Locale::Ja => "最大転送数:",
+        }
+    }
+
+    pub fn btn_toggle_show_pass(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Show",
+            Locale::Cs => "Zobrazit",
+            Locale::De => "Anzeigen",
+            Locale::Es => "Mostrar",
+            Locale::Fr => "Afficher",
+            Locale::It => "Mostra",
+            Locale::Pl => "Pokaż",
+            Locale::Pt => "Mostrar",
+            Locale::Zh => "显示",
+            Locale::Ja => "表示",
+        }
+    }
+
+    pub fn btn_toggle_hide_pass(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Hide",
+            Locale::Cs => "Skrýt",
+            Locale::De => "Ausblenden",
+            Locale::Es => "Ocultar",
+            Locale::Fr => "Masquer",
+            Locale::It => "Nascondi",
+            Locale::Pl => "Ukryj",
+            Locale::Pt => "Ocultar",
+            Locale::Zh => "隐藏",
+            Locale::Ja => "非表示",
+        }
+    }
+
+    pub fn no_matching_sites(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "No matching servers found",
+            Locale::Cs => "Nenalezeny žádné servery",
+            Locale::De => "Keine passenden Server gefunden",
+            Locale::Es => "No se encontraron servidores coincidentes",
+            Locale::Fr => "Aucun serveur correspondant",
+            Locale::It => "Nessun server corrispondente trovato",
+            Locale::Pl => "Nie znaleziono pasujących serwerów",
+            Locale::Pt => "Nenhum servidor correspondente",
+            Locale::Zh => "未找到匹配的服务器",
+            Locale::Ja => "一致するサーバーが見つかりません",
+        }
+    }
+
     pub fn label_protocol(&self) -> &'static str {
         match self.locale {
             Locale::En => "Protocol",
@@ -1550,6 +1670,51 @@ impl I18n {
             Locale::Pt => "Importar SSH",
             Locale::Zh => "导入 SSH",
             Locale::Ja => "SSHインポート",
+        }
+    }
+
+    pub fn tooltip_import_ssh(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Import servers from ~/.ssh/config",
+            Locale::Cs => "Importovat servery z ~/.ssh/config",
+            Locale::De => "Server aus ~/.ssh/config importieren",
+            Locale::Es => "Importar servidores desde ~/.ssh/config",
+            Locale::Fr => "Importer des serveurs depuis ~/.ssh/config",
+            Locale::It => "Importa server da ~/.ssh/config",
+            Locale::Pl => "Importuj serwery z ~/.ssh/config",
+            Locale::Pt => "Importar servidores de ~/.ssh/config",
+            Locale::Zh => "从 ~/.ssh/config 导入服务器",
+            Locale::Ja => "~/.ssh/config からサーバーをインポート",
+        }
+    }
+
+    pub fn tooltip_new_server(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "New server",
+            Locale::Cs => "Nový server",
+            Locale::De => "Neuer Server",
+            Locale::Es => "Nuevo servidor",
+            Locale::Fr => "Nouveau serveur",
+            Locale::It => "Nuovo server",
+            Locale::Pl => "Nowy serwer",
+            Locale::Pt => "Novo servidor",
+            Locale::Zh => "新建服务器",
+            Locale::Ja => "新規サーバー",
+        }
+    }
+
+    pub fn tooltip_delete_site(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Delete selected server",
+            Locale::Cs => "Smazat vybraný server",
+            Locale::De => "Ausgewählten Server löschen",
+            Locale::Es => "Eliminar servidor seleccionado",
+            Locale::Fr => "Supprimer le serveur sélectionné",
+            Locale::It => "Elimina il server selezionato",
+            Locale::Pl => "Usuń wybrany serwer",
+            Locale::Pt => "Excluir servidor selecionado",
+            Locale::Zh => "删除选中的服务器",
+            Locale::Ja => "選択したサーバーを削除",
         }
     }
 
@@ -2478,6 +2643,550 @@ impl I18n {
             Locale::Ja => "お気に入りはまだありません",
         }
     }
+
+    pub fn modal_multirename_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Multi-Rename Tool",
+            Locale::Cs => "Hromadné přejmenování",
+            Locale::De => "Mehrfach-Umbenennung",
+            Locale::Es => "Herramienta de cambio múltiple de nombre",
+            Locale::Fr => "Outil de renommage par lot",
+            Locale::It => "Strumento di ridenominazione multipla",
+            Locale::Pl => "Narzędzie wielokrotnej zmiany nazwy",
+            Locale::Pt => "Ferramenta de renomeação em lote",
+            Locale::Zh => "批量重命名工具",
+            Locale::Ja => "一括リネームツール",
+        }
+    }
+
+    pub fn lbl_find(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Find:",
+            Locale::Cs => "Najít:",
+            Locale::De => "Suchen:",
+            Locale::Es => "Buscar:",
+            Locale::Fr => "Rechercher :",
+            Locale::It => "Trova:",
+            Locale::Pl => "Znajdź:",
+            Locale::Pt => "Localizar:",
+            Locale::Zh => "查找：",
+            Locale::Ja => "検索：",
+        }
+    }
+
+    pub fn lbl_replace(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Replace with:",
+            Locale::Cs => "Nahradit za:",
+            Locale::De => "Ersetzen durch:",
+            Locale::Es => "Reemplazar con:",
+            Locale::Fr => "Remplacer par :",
+            Locale::It => "Sostituisci con:",
+            Locale::Pl => "Zamień na:",
+            Locale::Pt => "Substituir por:",
+            Locale::Zh => "替换为：",
+            Locale::Ja => "置換：",
+        }
+    }
+
+    pub fn lbl_regex(&self) -> &'static str {
+        "RegEx"
+    }
+
+    pub fn lbl_case_sensitive(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Case sensitive",
+            Locale::Cs => "Rozlišovat velikost písmen",
+            Locale::De => "Groß-/Kleinschreibung beachten",
+            Locale::Es => "Distinguir mayúsculas/minúsculas",
+            Locale::Fr => "Respecter la casse",
+            Locale::It => "Distingui maiuscole/minuscole",
+            Locale::Pl => "Rozróżniaj wielkość liter",
+            Locale::Pt => "Diferenciar maiúsculas/minúsculas",
+            Locale::Zh => "区分大小写",
+            Locale::Ja => "大文字と小文字を区別",
+        }
+    }
+
+    pub fn lbl_counter(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Counter:",
+            Locale::Cs => "Počítadlo:",
+            Locale::De => "Zähler:",
+            Locale::Es => "Contador:",
+            Locale::Fr => "Compteur :",
+            Locale::It => "Contatore:",
+            Locale::Pl => "Licznik:",
+            Locale::Pt => "Contador:",
+            Locale::Zh => "计数器：",
+            Locale::Ja => "カウンター：",
+        }
+    }
+
+    pub fn lbl_start(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Start:",
+            Locale::Cs => "Od:",
+            Locale::De => "Start:",
+            Locale::Es => "Inicio:",
+            Locale::Fr => "Début :",
+            Locale::It => "Inizio:",
+            Locale::Pl => "Początek:",
+            Locale::Pt => "Início:",
+            Locale::Zh => "起始：",
+            Locale::Ja => "開始：",
+        }
+    }
+
+    pub fn lbl_step(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Step:",
+            Locale::Cs => "Krok:",
+            Locale::De => "Schritt:",
+            Locale::Es => "Paso:",
+            Locale::Fr => "Pas :",
+            Locale::It => "Passo:",
+            Locale::Pl => "Krok:",
+            Locale::Pt => "Passo:",
+            Locale::Zh => "步长：",
+            Locale::Ja => "ステップ：",
+        }
+    }
+
+    pub fn lbl_digits(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Digits:",
+            Locale::Cs => "Číslice:",
+            Locale::De => "Stellen:",
+            Locale::Es => "Dígitos:",
+            Locale::Fr => "Chiffres :",
+            Locale::It => "Cifre:",
+            Locale::Pl => "Cyfry:",
+            Locale::Pt => "Dígitos:",
+            Locale::Zh => "位数：",
+            Locale::Ja => "桁数：",
+        }
+    }
+
+    pub fn lbl_case_transform(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Case:",
+            Locale::Cs => "Změna písmen:",
+            Locale::De => "Groß-/Kleinschreibung:",
+            Locale::Es => "Mayúsculas/minúsculas:",
+            Locale::Fr => "Casse :",
+            Locale::It => "Maiuscole/minuscole:",
+            Locale::Pl => "Wielkość liter:",
+            Locale::Pt => "Maiúsculas/minúsculas:",
+            Locale::Zh => "大小写：",
+            Locale::Ja => "大文字/小文字：",
+        }
+    }
+
+    pub fn lbl_ext_transform(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Extension:",
+            Locale::Cs => "Přípona:",
+            Locale::De => "Erweiterung:",
+            Locale::Es => "Extensión:",
+            Locale::Fr => "Extension :",
+            Locale::It => "Estensione:",
+            Locale::Pl => "Rozszerzenie:",
+            Locale::Pt => "Extensão:",
+            Locale::Zh => "扩展名：",
+            Locale::Ja => "拡張子：",
+        }
+    }
+
+    pub fn col_old_name(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Original Name",
+            Locale::Cs => "Původní název",
+            Locale::De => "Ursprünglicher Name",
+            Locale::Es => "Nombre original",
+            Locale::Fr => "Nom d'origine",
+            Locale::It => "Nome originale",
+            Locale::Pl => "Pierwotna nazwa",
+            Locale::Pt => "Nome original",
+            Locale::Zh => "原名称",
+            Locale::Ja => "元の名前",
+        }
+    }
+
+    pub fn col_new_name(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "New Name",
+            Locale::Cs => "Nový název",
+            Locale::De => "Neuer Name",
+            Locale::Es => "Nuevo nombre",
+            Locale::Fr => "Nouveau nom",
+            Locale::It => "Nuovo nome",
+            Locale::Pl => "Nowa nazwa",
+            Locale::Pt => "Novo nome",
+            Locale::Zh => "新名称",
+            Locale::Ja => "新しい名前",
+        }
+    }
+
+    pub fn btn_rename(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Rename",
+            Locale::Cs => "Přejmenovat",
+            Locale::De => "Umbenennen",
+            Locale::Es => "Renombrar",
+            Locale::Fr => "Renommer",
+            Locale::It => "Rinomina",
+            Locale::Pl => "Zmień nazwę",
+            Locale::Pt => "Renomear",
+            Locale::Zh => "重命名",
+            Locale::Ja => "リネーム",
+        }
+    }
+
+    pub fn menu_multirename(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Multi-Rename Tool...",
+            Locale::Cs => "Hromadné přejmenování...",
+            Locale::De => "Mehrfach-Umbenennung...",
+            Locale::Es => "Cambio múltiple de nombre...",
+            Locale::Fr => "Renommage par lot...",
+            Locale::It => "Ridenominazione multipla...",
+            Locale::Pl => "Wielokrotna zmiana nazwy...",
+            Locale::Pt => "Renomeação em lote...",
+            Locale::Zh => "批量重命名...",
+            Locale::Ja => "一括リネーム...",
+        }
+    }
+
+    pub fn modal_find_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Find Files",
+            Locale::Cs => "Najít soubory",
+            Locale::De => "Dateien suchen",
+            Locale::Es => "Buscar archivos",
+            Locale::Fr => "Rechercher des fichiers",
+            Locale::It => "Cerca file",
+            Locale::Pl => "Szukaj plików",
+            Locale::Pt => "Localizar ficheiros",
+            Locale::Zh => "查找文件",
+            Locale::Ja => "ファイルを検索",
+        }
+    }
+
+    pub fn lbl_search_in(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Search in:",
+            Locale::Cs => "Hledat v:",
+            Locale::De => "Suchen in:",
+            Locale::Es => "Buscar en:",
+            Locale::Fr => "Rechercher dans :",
+            Locale::It => "Cerca in:",
+            Locale::Pl => "Szukaj w:",
+            Locale::Pt => "Procurar em:",
+            Locale::Zh => "搜索位置：",
+            Locale::Ja => "検索場所：",
+        }
+    }
+
+    pub fn lbl_file_mask(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "File mask:",
+            Locale::Cs => "Maska souboru:",
+            Locale::De => "Dateimaske:",
+            Locale::Es => "Máscara de archivo:",
+            Locale::Fr => "Masque de fichier :",
+            Locale::It => "Maschera file:",
+            Locale::Pl => "Maska pliku:",
+            Locale::Pt => "Máscara de ficheiro:",
+            Locale::Zh => "文件掩码：",
+            Locale::Ja => "ファイルマスク：",
+        }
+    }
+
+    pub fn lbl_containing_text(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Containing text:",
+            Locale::Cs => "Obsahuje text:",
+            Locale::De => "Enthaltener Text:",
+            Locale::Es => "Contiene texto:",
+            Locale::Fr => "Contenant le texte :",
+            Locale::It => "Contiene il testo:",
+            Locale::Pl => "Zawiera tekst:",
+            Locale::Pt => "Contendo o texto:",
+            Locale::Zh => "包含文本：",
+            Locale::Ja => "含まれるテキスト：",
+        }
+    }
+
+    pub fn lbl_recursive(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Search subfolders",
+            Locale::Cs => "Prohledávat podsložky",
+            Locale::De => "Unterordner durchsuchen",
+            Locale::Es => "Buscar en subcarpetas",
+            Locale::Fr => "Rechercher dans les sous-dossiers",
+            Locale::It => "Cerca nelle sottocartelle",
+            Locale::Pl => "Przeszukuj podkatalogi",
+            Locale::Pt => "Procurar em subpastas",
+            Locale::Zh => "搜索子文件夹",
+            Locale::Ja => "サブフォルダも検索",
+        }
+    }
+
+    pub fn lbl_min_size(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Min size (KB):",
+            Locale::Cs => "Min. velikost (KB):",
+            Locale::De => "Mindestgröße (KB):",
+            Locale::Es => "Tamaño mín. (KB):",
+            Locale::Fr => "Taille min. (Ko) :",
+            Locale::It => "Dimensione min (KB):",
+            Locale::Pl => "Min. rozmiar (KB):",
+            Locale::Pt => "Tamanho mín. (KB):",
+            Locale::Zh => "最小大小 (KB)：",
+            Locale::Ja => "最小サイズ (KB)：",
+        }
+    }
+
+    pub fn lbl_max_size(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Max size (KB):",
+            Locale::Cs => "Max. velikost (KB):",
+            Locale::De => "Maximalgröße (KB):",
+            Locale::Es => "Tamaño máx. (KB):",
+            Locale::Fr => "Taille max. (Ko) :",
+            Locale::It => "Dimensione max (KB):",
+            Locale::Pl => "Maks. rozmiar (KB):",
+            Locale::Pt => "Tamanho máx. (KB):",
+            Locale::Zh => "最大大小 (KB)：",
+            Locale::Ja => "最大サイズ (KB)：",
+        }
+    }
+
+    pub fn lbl_modified_days(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Modified within (days):",
+            Locale::Cs => "Změněno za (dny):",
+            Locale::De => "Geändert in den letzten (Tagen):",
+            Locale::Es => "Modificado en (días):",
+            Locale::Fr => "Modifié depuis (jours) :",
+            Locale::It => "Modificato negli ultimi (giorni):",
+            Locale::Pl => "Zmodyfikowano w ciągu (dni):",
+            Locale::Pt => "Modificado nos últimos (dias):",
+            Locale::Zh => "最近修改天数：",
+            Locale::Ja => "変更された日数以内：",
+        }
+    }
+
+    pub fn btn_search(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Start Search",
+            Locale::Cs => "Spustit hledání",
+            Locale::De => "Suche starten",
+            Locale::Es => "Iniciar búsqueda",
+            Locale::Fr => "Démarrer la recherche",
+            Locale::It => "Avvia ricerca",
+            Locale::Pl => "Rozpocznij szukanie",
+            Locale::Pt => "Iniciar pesquisa",
+            Locale::Zh => "开始搜索",
+            Locale::Ja => "検索開始",
+        }
+    }
+
+    pub fn btn_stop(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Stop",
+            Locale::Cs => "Zastavit",
+            Locale::De => "Stoppen",
+            Locale::Es => "Detener",
+            Locale::Fr => "Arrêter",
+            Locale::It => "Interrompi",
+            Locale::Pl => "Zatrzymaj",
+            Locale::Pt => "Parar",
+            Locale::Zh => "停止",
+            Locale::Ja => "停止",
+        }
+    }
+
+    pub fn btn_feed_to_listbox(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Feed to Panel",
+            Locale::Cs => "Přenést do panelu",
+            Locale::De => "In Panel übertragen",
+            Locale::Es => "Enviar al panel",
+            Locale::Fr => "Transférer dans le panneau",
+            Locale::It => "Invia al pannello",
+            Locale::Pl => "Przekaż do panelu",
+            Locale::Pt => "Transferir para o painel",
+            Locale::Zh => "发送到面板",
+            Locale::Ja => "パネルに反映",
+        }
+    }
+
+    pub fn lbl_results_count(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Found items:",
+            Locale::Cs => "Nalezeno položek:",
+            Locale::De => "Gefundene Elemente:",
+            Locale::Es => "Elementos encontrados:",
+            Locale::Fr => "Éléments trouvés :",
+            Locale::It => "Elementi trovati:",
+            Locale::Pl => "Znalezione elementy:",
+            Locale::Pt => "Itens encontrados:",
+            Locale::Zh => "找到的项目：",
+            Locale::Ja => "見つかった項目：",
+        }
+    }
+
+    pub fn menu_find_files(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Find Files...",
+            Locale::Cs => "Najít soubory...",
+            Locale::De => "Dateien suchen...",
+            Locale::Es => "Buscar archivos...",
+            Locale::Fr => "Rechercher des fichiers...",
+            Locale::It => "Cerca file...",
+            Locale::Pl => "Szukaj plików...",
+            Locale::Pt => "Localizar ficheiros...",
+            Locale::Zh => "查找文件...",
+            Locale::Ja => "ファイルを検索...",
+        }
+    }
+
+    pub fn modal_compare_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Compare Files by Content",
+            Locale::Cs => "Porovnání souborů podle obsahu",
+            Locale::De => "Dateien nach Inhalt vergleichen",
+            Locale::Es => "Comparar archivos por contenido",
+            Locale::Fr => "Comparer les fichiers par contenu",
+            Locale::It => "Confronta file per contenuto",
+            Locale::Pl => "Porównaj pliki według zawartości",
+            Locale::Pt => "Comparar ficheiros por conteúdo",
+            Locale::Zh => "按内容比较文件",
+            Locale::Ja => "ファイルの内容を比較",
+        }
+    }
+
+    pub fn lbl_identical(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "The files are identical",
+            Locale::Cs => "Soubory jsou identické",
+            Locale::De => "Die Dateien sind identisch",
+            Locale::Es => "Los archivos son idénticos",
+            Locale::Fr => "Les fichiers sont identiques",
+            Locale::It => "I file sono identici",
+            Locale::Pl => "Pliki są identyczne",
+            Locale::Pt => "Os ficheiros são idênticos",
+            Locale::Zh => "文件完全相同",
+            Locale::Ja => "ファイルは同一です",
+        }
+    }
+
+    pub fn lbl_different(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "The files are different",
+            Locale::Cs => "Soubory se liší",
+            Locale::De => "Die Dateien unterscheiden sich",
+            Locale::Es => "Los archivos son diferentes",
+            Locale::Fr => "Les fichiers sont différents",
+            Locale::It => "I file sono diversi",
+            Locale::Pl => "Pliki się różnią",
+            Locale::Pt => "Os ficheiros são diferentes",
+            Locale::Zh => "文件存在差异",
+            Locale::Ja => "ファイルは異なります",
+        }
+    }
+
+    pub fn lbl_binary_notice(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Binary files (visual text diff unavailable)",
+            Locale::Cs => "Binární soubory (textový diff není k dispozici)",
+            Locale::De => "Binärdateien (kein Text-Diff verfügbar)",
+            Locale::Es => "Archivos binarios (diferencia de texto no disponible)",
+            Locale::Fr => "Fichiers binaires (diff texte non disponible)",
+            Locale::It => "File binari (diff di testo non disponibile)",
+            Locale::Pl => "Pliki binarne (brak podglądu różnic tekstowych)",
+            Locale::Pt => "Ficheiros binários (diferença de texto indisponível)",
+            Locale::Zh => "二进制文件（无法显示文本差异）",
+            Locale::Ja => "バイナリファイル（テキスト差分は利用できません）",
+        }
+    }
+
+    pub fn lbl_differences_count(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Differences found:",
+            Locale::Cs => "Nalezeno rozdílů:",
+            Locale::De => "Gefundene Unterschiede:",
+            Locale::Es => "Diferencias encontradas:",
+            Locale::Fr => "Différences trouvées :",
+            Locale::It => "Differenze trovate:",
+            Locale::Pl => "Znalezione różnice:",
+            Locale::Pt => "Diferenças encontradas:",
+            Locale::Zh => "发现的差异：",
+            Locale::Ja => "見つかった差異：",
+        }
+    }
+
+    pub fn btn_open_external_diff(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Open in External Diff Tool",
+            Locale::Cs => "Otevřít v externím nástroji",
+            Locale::De => "In externem Diff-Tool öffnen",
+            Locale::Es => "Abrir en herramienta externa",
+            Locale::Fr => "Ouvrir dans l'outil externe",
+            Locale::It => "Apri nello strumento esterno",
+            Locale::Pl => "Otwórz w zewnętrznym narzędziu",
+            Locale::Pt => "Abrir em ferramenta externa",
+            Locale::Zh => "在外部比较工具中打开",
+            Locale::Ja => "外部差分ツールで開く",
+        }
+    }
+
+    pub fn menu_compare_files(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Compare by Content...",
+            Locale::Cs => "Porovnat podle obsahu...",
+            Locale::De => "Nach Inhalt vergleichen...",
+            Locale::Es => "Comparar por contenido...",
+            Locale::Fr => "Comparer par contenu...",
+            Locale::It => "Confronta per contenuto...",
+            Locale::Pl => "Porównaj według zawartości...",
+            Locale::Pt => "Comparar por conteúdo...",
+            Locale::Zh => "按内容比较...",
+            Locale::Ja => "内容で比較...",
+        }
+    }
+
+    pub fn lbl_password_optional(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Password (optional):",
+            Locale::Cs => "Heslo (volitelné):",
+            Locale::De => "Passwort (optional):",
+            Locale::Es => "Contraseña (opcional):",
+            Locale::Fr => "Mot de passe (facultatif) :",
+            Locale::It => "Password (facoltativa):",
+            Locale::Pl => "Hasło (opcjonalnie):",
+            Locale::Pt => "Palavra-passe (opcional):",
+            Locale::Zh => "密码（可选）：",
+            Locale::Ja => "パスワード（省略可能）：",
+        }
+    }
+
+    pub fn lbl_show_password(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Show",
+            Locale::Cs => "Zobrazit",
+            Locale::De => "Anzeigen",
+            Locale::Es => "Mostrar",
+            Locale::Fr => "Afficher",
+            Locale::It => "Mostra",
+            Locale::Pl => "Pokaż",
+            Locale::Pt => "Mostrar",
+            Locale::Zh => "显示",
+            Locale::Ja => "表示",
+        }
+    }
 }
 
 #[cfg(test)]
@@ -2526,6 +3235,19 @@ mod tests {
             assert!(!t.btn_abort_transfer().is_empty());
             assert!(!t.btn_show_log().is_empty());
             assert!(!t.btn_hide_log().is_empty());
+
+            // Test Connection Manager redesign i18n
+            assert!(!t.modal_site_manager_subtitle().is_empty());
+            assert!(!t.placeholder_search_sites().is_empty());
+            assert!(!t.btn_new_server().is_empty());
+            assert!(!t.tooltip_new_server().is_empty());
+            assert!(!t.tooltip_import_ssh().is_empty());
+            assert!(!t.tooltip_delete_site().is_empty());
+            assert!(!t.label_initial_remote_path().is_empty());
+            assert!(!t.label_max_connections_short().is_empty());
+            assert!(!t.btn_toggle_show_pass().is_empty());
+            assert!(!t.btn_toggle_hide_pass().is_empty());
+            assert!(!t.no_matching_sites().is_empty());
 
             // Test favorites i18n
             assert!(!t.favorites_title().is_empty());

@@ -344,22 +344,92 @@ impl RusterView {
                     )
                     .child(
                         div()
+                            .id("compress-field-name")
+                            .cursor_pointer()
                             .px_3()
                             .py_1p5()
                             .rounded(px(5.0))
                             .bg(theme.input_bg())
                             .border_1()
-                            .border_color(theme.input_border_focus())
+                            .border_color(if self.modal_sub_field == 0 {
+                                theme.input_border_focus()
+                            } else {
+                                theme.border()
+                            })
                             .text_xs()
                             .text_color(theme.text_primary())
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                this.modal_sub_field = 0;
+                                cx.notify();
+                            }))
                             .child(render_field_value_with_cursor(
                                 &self.modal_input_text,
-                                true,
+                                self.modal_sub_field == 0,
                                 self.modal_cursor_pos,
                                 "",
                                 false,
                                 is_dark,
                             )),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_between()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme.text_secondary())
+                                            .child(t.lbl_password_optional()),
+                                    )
+                                    .child(
+                                        div()
+                                            .id("compress-toggle-show-pass")
+                                            .cursor_pointer()
+                                            .text_xs()
+                                            .text_color(if self.archive_password_visible { rgb(0x2563eb) } else { theme.text_muted() })
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.archive_password_visible = !this.archive_password_visible;
+                                                cx.notify();
+                                            }))
+                                            .child(t.lbl_show_password()),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .id("compress-field-pass")
+                                    .cursor_pointer()
+                                    .px_3()
+                                    .py_1p5()
+                                    .rounded(px(5.0))
+                                    .bg(theme.input_bg())
+                                    .border_1()
+                                    .border_color(if self.modal_sub_field == 1 {
+                                        theme.input_border_focus()
+                                    } else {
+                                        theme.border()
+                                    })
+                                    .text_xs()
+                                    .text_color(theme.text_primary())
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                        this.modal_sub_field = 1;
+                                        cx.notify();
+                                    }))
+                                    .child(render_field_value_with_cursor(
+                                        &self.archive_password_input,
+                                        self.modal_sub_field == 1,
+                                        self.archive_password_cursor_pos,
+                                        "",
+                                        !self.archive_password_visible,
+                                        is_dark,
+                                    )),
+                            ),
                     )
                     .child(
                         div()
@@ -450,22 +520,92 @@ impl RusterView {
                     )
                     .child(
                         div()
+                            .id("extract-field-dest")
+                            .cursor_pointer()
                             .px_3()
                             .py_1p5()
                             .rounded(px(5.0))
                             .bg(theme.input_bg())
                             .border_1()
-                            .border_color(theme.input_border_focus())
+                            .border_color(if self.modal_sub_field == 0 {
+                                theme.input_border_focus()
+                            } else {
+                                theme.border()
+                            })
                             .text_xs()
                             .text_color(theme.text_primary())
+                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                this.modal_sub_field = 0;
+                                cx.notify();
+                            }))
                             .child(render_field_value_with_cursor(
                                 &self.modal_input_text,
-                                true,
+                                self.modal_sub_field == 0,
                                 self.modal_cursor_pos,
                                 "",
                                 false,
                                 is_dark,
                             )),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap_1()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_between()
+                                    .child(
+                                        div()
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme.text_secondary())
+                                            .child(t.lbl_password_optional()),
+                                    )
+                                    .child(
+                                        div()
+                                            .id("extract-toggle-show-pass")
+                                            .cursor_pointer()
+                                            .text_xs()
+                                            .text_color(if self.archive_password_visible { rgb(0x2563eb) } else { theme.text_muted() })
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.archive_password_visible = !this.archive_password_visible;
+                                                cx.notify();
+                                            }))
+                                            .child(t.lbl_show_password()),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .id("extract-field-pass")
+                                    .cursor_pointer()
+                                    .px_3()
+                                    .py_1p5()
+                                    .rounded(px(5.0))
+                                    .bg(theme.input_bg())
+                                    .border_1()
+                                    .border_color(if self.modal_sub_field == 1 {
+                                        theme.input_border_focus()
+                                    } else {
+                                        theme.border()
+                                    })
+                                    .text_xs()
+                                    .text_color(theme.text_primary())
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                        this.modal_sub_field = 1;
+                                        cx.notify();
+                                    }))
+                                    .child(render_field_value_with_cursor(
+                                        &self.archive_password_input,
+                                        self.modal_sub_field == 1,
+                                        self.archive_password_cursor_pos,
+                                        "",
+                                        !self.archive_password_visible,
+                                        is_dark,
+                                    )),
+                            ),
                     )
                     .child(
                         div()

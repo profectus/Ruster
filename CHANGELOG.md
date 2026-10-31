@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-10-31
+
+### Added
+- **Multi-Rename Tool (`Cmd+M` / `F2`)**:
+  - Comprehensive batch file and folder rename with find & replace, regex support with capture groups, case conversions (UPPER, lower, Title Case, Sentence case), numeric sequencing `[C]` / `[C:start:step:digits]`, and date tags `[Y]`, `[M]`, `[D]`.
+  - Real-time live preview of new names, name collision detection, and instant undo capability.
+- **Find Files (`Cmd+Shift+F` / `Alt+F7`)**:
+  - Advanced asynchronous file search with wildcard and regex filename matching, file size and date filters, and text search inside files (with UTF-8 and CP1250 encoding support).
+  - Non-blocking background worker thread with real-time streaming results and "Feed to Listbox" feature to load matching results directly into a file pane.
+- **Compare Files (`Cmd+D`)**:
+  - Built-in LCS (Longest Common Subsequence) side-by-side and unified line diff tool with syntax highlighting for additions, deletions, and modifications.
+  - Fast binary byte-by-byte comparison for binary files, and one-click launch of external diff tools (`opendiff` / FileMerge, VS Code, DiffMerge).
+- **Archive Password Encryption**:
+  - AES-256 encryption support for creating and extracting password-protected `.zip` and `.7z` archives using native `sevenz-rust` and `zip` crates.
+  - Password fields with visibility toggles in Compress (`Alt+F5`) and Extract (`Alt+F6`) dialogs.
+- **Modernized Connection Manager**:
+  - Re-architected dual-pane site manager modal with real-time server search filtering by name, host, user, and remote directory.
+  - Streamlined connection profile editing: clean protocol dropdown selector (SFTP, SCP, FTPS Explicit, FTPS Implicit, FTP), host + port grid, username and password with show/hide toggle.
+  - Configurable initial remote directory navigating directly to the desired remote path on connect.
+  - Direct number input for concurrent transfer limits (1–10) with +/- quick steppers.
+  - Clean server list displaying name and destination path (`user@host:path`) with aesthetic color dot indicators, floppy disk save icon, and icon-only actions with tooltips.
+
+### Fixed
+- **In-App Updater Process Relaunch**:
+  - Fixed macOS application relaunch after auto-update in `src/update.rs` using reliable `open -n -a` detachment script preventing stale process locks.
+
 ## [0.4.1] - 2026-10-30
 
 ### Added

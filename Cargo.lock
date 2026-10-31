@@ -4579,12 +4579,13 @@ dependencies = [
 
 [[package]]
 name = "ruster"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "flate2",
  "gpui",
  "libc",
  "objc",
+ "regex",
  "sevenz-rust",
  "tar",
  "unrar",
@@ -4965,13 +4966,16 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26482cf1ecce4540dc782fc70019eba89ffc4d87b3717eb5ec524b5db6fdefef"
 dependencies = [
+ "aes",
  "bit-set 0.6.0",
  "byteorder",
+ "cbc",
  "crc",
  "filetime_creation",
  "js-sys",
  "lzma-rust",
  "nt-time",
+ "rand 0.8.8",
  "sha2 0.10.9",
  "wasm-bindgen",
 ]

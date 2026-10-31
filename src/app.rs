@@ -30,7 +30,8 @@ use crate::network::{
 };
 use crate::ui::menus::install_app_menus;
 use crate::{
-    CheckForUpdates, CompressModal, CopySelected, DeleteModal, EditSelected, ExtractModal, GoToFolderModal, MoveSelected,
+    CheckForUpdates, CompressModal, CopySelected, DeleteModal, EditSelected, ExtractModal,
+    FileCompareModal, FindFilesModal, GoToFolderModal, MoveSelected, MultiRenameModal,
     NewFolderModal, OpenInTerminal, OpenSelected, OpenSiteManager, PermissionsModal, RefreshPanes, RenameModal,
     RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal, ToggleDualPane,
     ToggleFunctionBar, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree, ToggleTheme,
@@ -178,6 +179,9 @@ pub struct RusterView {
     pub(crate) draft_protocol: Protocol,
     pub(crate) active_site_field: SiteEditField,
     pub(crate) site_password_input: String,
+    pub(crate) site_password_revealed: bool,
+    pub(crate) site_search_query: String,
+    pub(crate) site_proto_dropdown_open: bool,
     pub(crate) site_cursor_pos: usize,
     pub(crate) modal_cursor_pos: usize,
     pub(crate) site_error_message: Option<String>,
@@ -205,6 +209,31 @@ pub struct RusterView {
     pub(crate) update_status: Option<crate::update::UpdateStatus>,
     pub(crate) update_copied_notice: bool,
     pub(crate) sync_state: SyncState,
+
+    // MultiRename
+    pub(crate) multirename_items: Vec<(PathBuf, String, bool)>,
+    pub(crate) multirename_config: crate::rename::MultiRenameConfig,
+    pub(crate) multirename_previews: Vec<crate::rename::RenamePreview>,
+    pub(crate) multirename_active_field: usize,
+    pub(crate) multirename_cursor_pos: usize,
+
+    // Find Files
+    pub(crate) find_query: crate::search::SearchQuery,
+    pub(crate) find_results: Vec<crate::search::SearchResult>,
+    pub(crate) find_is_searching: bool,
+    pub(crate) find_cancel_flag: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    pub(crate) find_selected_idx: usize,
+    pub(crate) find_active_field: usize,
+    pub(crate) find_cursor_pos: usize,
+
+    // File Compare
+    pub(crate) file_compare: Option<crate::diff::FileComparison>,
+
+    // Archive Password
+    pub(crate) modal_sub_field: usize,
+    pub(crate) archive_password_input: String,
+    pub(crate) archive_password_cursor_pos: usize,
+    pub(crate) archive_password_visible: bool,
 
     pub(crate) window_width: f32,
     pub(crate) window_height: f32,
@@ -576,6 +605,9 @@ impl RusterView {
             draft_protocol,
             active_site_field: SiteEditField::None,
             site_password_input: String::new(),
+            site_password_revealed: false,
+            site_search_query: String::new(),
+            site_proto_dropdown_open: false,
             site_cursor_pos: 0,
             modal_cursor_pos: 0,
             site_error_message: None,
@@ -603,6 +635,27 @@ impl RusterView {
             update_status: None,
             update_copied_notice: false,
             sync_state: SyncState::default(),
+
+            multirename_items: Vec::new(),
+            multirename_config: crate::rename::MultiRenameConfig::default(),
+            multirename_previews: Vec::new(),
+            multirename_active_field: 0,
+            multirename_cursor_pos: 0,
+
+            find_query: crate::search::SearchQuery::default(),
+            find_results: Vec::new(),
+            find_is_searching: false,
+            find_cancel_flag: None,
+            find_selected_idx: 0,
+            find_active_field: 0,
+            find_cursor_pos: 0,
+
+            file_compare: None,
+
+            modal_sub_field: 0,
+            archive_password_input: String::new(),
+            archive_password_cursor_pos: 0,
+            archive_password_visible: false,
 
             window_width: saved_state.window_width,
             window_height: saved_state.window_height,
@@ -2786,6 +2839,10 @@ impl RusterView {
         let clean_base = default_base.trim_end_matches('/').to_string();
         self.modal_input_text = format!("{}.{}", clean_base, self.compress_format.extension());
         self.modal_cursor_pos = clean_base.chars().count();
+        self.modal_sub_field = 0;
+        self.archive_password_input.clear();
+        self.archive_password_cursor_pos = 0;
+        self.archive_password_visible = false;
         self.active_modal = ActiveModal::Compress;
     }
 
@@ -2794,6 +2851,11 @@ impl RusterView {
         if archive_name.is_empty() {
             return;
         }
+        let pass = if self.archive_password_input.trim().is_empty() {
+            None
+        } else {
+            Some(self.archive_password_input.trim().to_string())
+        };
         self.active_modal = ActiveModal::None;
         cx.notify();
 
@@ -2821,11 +2883,12 @@ impl RusterView {
                     self.local_dir.join(archive_name)
                 };
 
+                let pass_local = pass.clone();
                 cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
                     let mut cx = cx.clone();
                     async move {
                         let _ = std::thread::spawn(move || {
-                            crate::archive::compress_local(&sources, &target, format)
+                            crate::archive::compress_local(&sources, &target, format, pass_local.as_deref())
                         }).join();
                         let _ = this.update(&mut cx, |view, _| {
                             view.reload_local();
@@ -2856,11 +2919,12 @@ impl RusterView {
                         self.right_dir.join(archive_name)
                     };
 
+                    let pass_local = pass.clone();
                     cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
                         let mut cx = cx.clone();
                         async move {
                             let _ = std::thread::spawn(move || {
-                                crate::archive::compress_local(&sources, &target, format)
+                                crate::archive::compress_local(&sources, &target, format, pass_local.as_deref())
                             }).join();
                             let _ = this.update(&mut cx, |view, _| {
                                 view.reload_right();
@@ -2890,13 +2954,21 @@ impl RusterView {
                         let file_args: Vec<String> = items.iter().map(|e| format!("\"{}\"", e.name)).collect();
                         let remote_cmd = match format {
                             crate::archive::ArchiveFormat::Zip => {
-                                format!("cd \"{}\" && zip -r \"{}\" {}", current_path, archive_name, file_args.join(" "))
+                                if let Some(p) = &pass {
+                                    format!("cd \"{}\" && zip -P \"{}\" -r \"{}\" {}", current_path, p, archive_name, file_args.join(" "))
+                                } else {
+                                    format!("cd \"{}\" && zip -r \"{}\" {}", current_path, archive_name, file_args.join(" "))
+                                }
                             }
                             crate::archive::ArchiveFormat::TarGz => {
                                 format!("cd \"{}\" && tar -czf \"{}\" {}", current_path, archive_name, file_args.join(" "))
                             }
                             crate::archive::ArchiveFormat::SevenZip => {
-                                format!("cd \"{}\" && 7z a \"{}\" {}", current_path, archive_name, file_args.join(" "))
+                                if let Some(p) = &pass {
+                                    format!("cd \"{}\" && 7z a -p\"{}\" \"{}\" {}", current_path, p, archive_name, file_args.join(" "))
+                                } else {
+                                    format!("cd \"{}\" && 7z a \"{}\" {}", current_path, archive_name, file_args.join(" "))
+                                }
                             }
                         };
 
@@ -2953,6 +3025,10 @@ impl RusterView {
 
         self.modal_input_text = default_target;
         self.modal_cursor_pos = self.modal_input_text.chars().count();
+        self.modal_sub_field = 0;
+        self.archive_password_input.clear();
+        self.archive_password_cursor_pos = 0;
+        self.archive_password_visible = false;
         self.active_modal = ActiveModal::Extract;
     }
 
@@ -2961,6 +3037,11 @@ impl RusterView {
         if dest_str.is_empty() {
             return;
         }
+        let pass = if self.archive_password_input.trim().is_empty() {
+            None
+        } else {
+            Some(self.archive_password_input.trim().to_string())
+        };
         self.active_modal = ActiveModal::None;
         cx.notify();
 
@@ -2971,11 +3052,12 @@ impl RusterView {
                 let src_archive = PathBuf::from(&entry.path);
                 let dest = PathBuf::from(&dest_str);
 
+                let pass_local = pass.clone();
                 cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
                     let mut cx = cx.clone();
                     async move {
                         let _ = std::thread::spawn(move || {
-                            crate::archive::extract_local(&src_archive, &dest)
+                            crate::archive::extract_local_with_password(&src_archive, &dest, pass_local.as_deref())
                         }).join();
                         let _ = this.update(&mut cx, |view, _| {
                             view.reload_local();
@@ -2990,11 +3072,12 @@ impl RusterView {
                     let src_archive = PathBuf::from(&entry.path);
                     let dest = PathBuf::from(&dest_str);
 
+                    let pass_local = pass.clone();
                     cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
                         let mut cx = cx.clone();
                         async move {
                             let _ = std::thread::spawn(move || {
-                                crate::archive::extract_local(&src_archive, &dest)
+                                crate::archive::extract_local_with_password(&src_archive, &dest, pass_local.as_deref())
                             }).join();
                             let _ = this.update(&mut cx, |view, _| {
                                 view.reload_right();
@@ -3012,15 +3095,27 @@ impl RusterView {
 
                         let lower = entry.name.to_lowercase();
                         let remote_cmd = if lower.ends_with(".zip") {
-                            format!("cd \"{}\" && unzip -q -o \"{}\" -d \"{}\"", current_path, entry.name, dest_str)
+                            if let Some(p) = &pass {
+                                format!("cd \"{}\" && unzip -q -o -P \"{}\" \"{}\" -d \"{}\"", current_path, p, entry.name, dest_str)
+                            } else {
+                                format!("cd \"{}\" && unzip -q -o \"{}\" -d \"{}\"", current_path, entry.name, dest_str)
+                            }
                         } else if lower.ends_with(".tar.gz") || lower.ends_with(".tgz") {
                             format!("cd \"{}\" && mkdir -p \"{}\" && tar -xzf \"{}\" -C \"{}\"", current_path, dest_str, entry.name, dest_str)
                         } else if lower.ends_with(".tar") {
                             format!("cd \"{}\" && mkdir -p \"{}\" && tar -xf \"{}\" -C \"{}\"", current_path, dest_str, entry.name, dest_str)
                         } else if lower.ends_with(".7z") {
-                            format!("cd \"{}\" && 7z x -y \"{}\" -o\"{}\"", current_path, entry.name, dest_str)
+                            if let Some(p) = &pass {
+                                format!("cd \"{}\" && 7z x -y -p\"{}\" \"{}\" -o\"{}\"", current_path, p, entry.name, dest_str)
+                            } else {
+                                format!("cd \"{}\" && 7z x -y \"{}\" -o\"{}\"", current_path, entry.name, dest_str)
+                            }
                         } else if lower.ends_with(".rar") {
-                            format!("cd \"{}\" && mkdir -p \"{}\" && unrar x -o+ \"{}\" \"{}/\"", current_path, dest_str, entry.name, dest_str)
+                            if let Some(p) = &pass {
+                                format!("cd \"{}\" && mkdir -p \"{}\" && unrar x -o+ -p\"{}\" \"{}\" \"{}/\"", current_path, dest_str, p, entry.name, dest_str)
+                            } else {
+                                format!("cd \"{}\" && mkdir -p \"{}\" && unrar x -o+ \"{}\" \"{}/\"", current_path, dest_str, entry.name, dest_str)
+                            }
                         } else if lower.ends_with(".gz") {
                             format!("cd \"{}\" && gunzip -k \"{}\"", current_path, entry.name)
                         } else {
@@ -3124,6 +3219,360 @@ impl RusterView {
             }
         }
         self.active_modal = ActiveModal::None;
+    }
+
+    pub(crate) fn open_multirename_modal(&mut self) {
+        let items: Vec<FileEntry> = match self.active_pane {
+            ActivePane::Local => {
+                let marked: Vec<FileEntry> = self
+                    .local_entries
+                    .iter()
+                    .filter(|e| e.is_any_selected() && e.name != "..")
+                    .cloned()
+                    .collect();
+                if marked.is_empty() {
+                    self.local_entries.get(self.local_selected).filter(|e| e.name != "..").cloned().into_iter().collect()
+                } else {
+                    marked
+                }
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    let marked: Vec<FileEntry> = self
+                        .right_entries
+                        .iter()
+                        .filter(|e| e.is_any_selected() && e.name != "..")
+                        .cloned()
+                        .collect();
+                    if marked.is_empty() {
+                        self.right_entries.get(self.right_selected).filter(|e| e.name != "..").cloned().into_iter().collect()
+                    } else {
+                        marked
+                    }
+                } else if let Some(session) = self.sessions.get(self.active_session_idx) {
+                    let marked: Vec<FileEntry> = session
+                        .entries
+                        .iter()
+                        .filter(|e| e.is_any_selected() && e.name != "..")
+                        .cloned()
+                        .collect();
+                    if marked.is_empty() {
+                        session.entries.get(session.selected_index).filter(|e| e.name != "..").cloned().into_iter().collect()
+                    } else {
+                        marked
+                    }
+                } else {
+                    Vec::new()
+                }
+            }
+        };
+
+        if items.is_empty() {
+            return;
+        }
+
+        self.multirename_items = items
+            .into_iter()
+            .map(|e| (PathBuf::from(&e.path), e.name, e.is_dir))
+            .collect();
+        self.multirename_config = crate::rename::MultiRenameConfig::default();
+        self.multirename_active_field = 0;
+        self.multirename_cursor_pos = 0;
+        self.recompute_multirename_previews();
+        self.active_modal = ActiveModal::MultiRename;
+    }
+
+    pub(crate) fn recompute_multirename_previews(&mut self) {
+        self.multirename_previews = crate::rename::compute_rename_previews(
+            &self.multirename_items,
+            &self.multirename_config,
+        );
+    }
+
+    fn apply_multirename_field_val(&mut self, val: String) {
+        match self.multirename_active_field {
+            0 => self.multirename_config.find_pattern = val,
+            1 => self.multirename_config.replace_pattern = val,
+            2 => self.multirename_config.counter_start = val.parse::<u32>().unwrap_or(1),
+            3 => self.multirename_config.counter_step = val.parse::<u32>().unwrap_or(1),
+            4 => self.multirename_config.counter_digits = val.parse::<usize>().unwrap_or(2),
+            _ => {}
+        }
+        self.recompute_multirename_previews();
+    }
+
+    fn apply_find_field_val(&mut self, val: String) {
+        match self.find_active_field {
+            0 => self.find_query.root_dir = PathBuf::from(val),
+            1 => self.find_query.name_pattern = val,
+            2 => self.find_query.containing_text = val,
+            _ => {}
+        }
+    }
+
+    pub(crate) fn confirm_multirename(&mut self, cx: &mut Context<Self>) {
+        if self.multirename_previews.iter().any(|p| p.has_collision) {
+            return;
+        }
+        let previews = self.multirename_previews.clone();
+        self.active_modal = ActiveModal::None;
+        cx.notify();
+
+        match self.active_pane {
+            ActivePane::Local => {
+                let _ = crate::rename::execute_local_renames(&previews);
+                self.reload_local();
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    let _ = crate::rename::execute_local_renames(&previews);
+                    self.reload_right();
+                } else if let Some(session) = self.sessions.get(self.active_session_idx) {
+                    let protocol = session.protocol;
+                    let host = session.host.clone();
+                    let port = session.port;
+                    let username = session.username.clone();
+                    let password = session.password.clone();
+                    let current_path = session.current_path.clone();
+
+                    cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+                        let mut cx = cx.clone();
+                        async move {
+                            for item in previews {
+                                if item.has_change && !item.has_collision {
+                                    let old_path = format!("{}/{}", current_path.trim_end_matches('/'), item.original_name);
+                                    let new_path = format!("{}/{}", current_path.trim_end_matches('/'), item.new_name);
+                                    let _ = crate::network::remote_rename(
+                                        protocol,
+                                        &host,
+                                        port,
+                                        &username,
+                                        password.as_deref(),
+                                        &old_path,
+                                        &new_path,
+                                    );
+                                }
+                            }
+                            let _ = this.update(&mut cx, |view, _| {
+                                view.navigate_remote(current_path);
+                            });
+                        }
+                    }).detach();
+                }
+            }
+        }
+    }
+
+    pub(crate) fn open_find_files_modal(&mut self) {
+        let initial_dir = match self.active_pane {
+            ActivePane::Local => self.local_dir.clone(),
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    self.right_dir.clone()
+                } else {
+                    self.local_dir.clone()
+                }
+            }
+        };
+
+        self.find_query = crate::search::SearchQuery {
+            root_dir: initial_dir,
+            name_pattern: "*".to_string(),
+            containing_text: String::new(),
+            case_sensitive: false,
+            use_regex: false,
+            recursive: true,
+            min_size_bytes: None,
+            max_size_bytes: None,
+            modified_within_days: None,
+        };
+        self.find_results.clear();
+        self.find_is_searching = false;
+        self.find_cancel_flag = None;
+        self.find_selected_idx = 0;
+        self.find_active_field = 1;
+        self.find_cursor_pos = self.find_query.name_pattern.chars().count();
+        self.active_modal = ActiveModal::FindFiles;
+    }
+
+    pub(crate) fn start_find_files(&mut self, cx: &mut Context<Self>) {
+        if self.find_is_searching {
+            return;
+        }
+        self.find_is_searching = true;
+        self.find_results.clear();
+        self.find_selected_idx = 0;
+
+        let query = self.find_query.clone();
+        let cancel_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        self.find_cancel_flag = Some(cancel_flag.clone());
+        cx.notify();
+
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                let (tx, rx) = std::sync::mpsc::channel();
+                let flag_thread = cancel_flag.clone();
+                let search_thread = std::thread::spawn(move || {
+                    crate::search::execute_search(query, flag_thread, move |res| {
+                        let _ = tx.send(res);
+                    });
+                });
+
+                let mut batch = Vec::new();
+                let mut last_update = std::time::Instant::now();
+
+                while let Ok(res) = rx.recv() {
+                    batch.push(res);
+                    if batch.len() >= 50 || last_update.elapsed() > std::time::Duration::from_millis(150) {
+                        let to_send = std::mem::take(&mut batch);
+                        let update_res = this.update(&mut cx, |view, _| {
+                            view.find_results.extend(to_send);
+                        });
+                        if update_res.is_err() {
+                            cancel_flag.store(true, std::sync::atomic::Ordering::Relaxed);
+                            break;
+                        }
+                        last_update = std::time::Instant::now();
+                    }
+                }
+
+                if !batch.is_empty() {
+                    let to_send = batch;
+                    let _ = this.update(&mut cx, |view, _| {
+                        view.find_results.extend(to_send);
+                    });
+                }
+
+                let _ = search_thread.join();
+                let _ = this.update(&mut cx, |view, _| {
+                    view.find_is_searching = false;
+                    view.find_cancel_flag = None;
+                });
+            }
+        }).detach();
+    }
+
+    pub(crate) fn stop_find_files(&mut self) {
+        if let Some(flag) = &self.find_cancel_flag {
+            flag.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+        self.find_is_searching = false;
+        self.find_cancel_flag = None;
+    }
+
+    pub(crate) fn feed_search_to_listbox(&mut self, cx: &mut Context<Self>) {
+        self.stop_find_files();
+        if self.find_results.is_empty() {
+            return;
+        }
+
+        let entries: Vec<FileEntry> = self.find_results.iter().map(|r| {
+            FileEntry {
+                name: r.name.clone(),
+                path: r.path.to_string_lossy().to_string(),
+                is_dir: r.is_dir,
+                is_symlink: false,
+                size: r.size,
+                modified: r.modified_str.clone(),
+                modified_ts: r.modified_ts,
+                created: None,
+                permissions_str: String::new(),
+                octal_mode: 0,
+                owner: String::new(),
+                selected: false,
+                space_marked: false,
+                calculating_size: false,
+                calculated_dir_size: None,
+            }
+        }).collect();
+
+        match self.active_pane {
+            ActivePane::Local => {
+                self.local_entries = entries;
+                self.local_selected = 0;
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    self.right_entries = entries;
+                    self.right_selected = 0;
+                } else if let Some(session) = self.sessions.get_mut(self.active_session_idx) {
+                    session.entries = entries;
+                    session.selected_index = 0;
+                }
+            }
+        }
+
+        self.active_modal = ActiveModal::None;
+        cx.notify();
+    }
+
+    pub(crate) fn open_file_compare_modal(&mut self) {
+        let (file_a, file_b) = self.determine_compare_targets();
+        let (Some(path_a), Some(path_b)) = (file_a, file_b) else {
+            return;
+        };
+
+        match crate::diff::compare_files(&path_a, &path_b) {
+            Ok(comp) => {
+                self.file_compare = Some(comp);
+                self.active_modal = ActiveModal::FileCompare;
+            }
+            Err(e) => {
+                self.log_server(ServerLogKind::Error, format!("Porovnání souborů selhalo: {}", e));
+            }
+        }
+    }
+
+    fn determine_compare_targets(&self) -> (Option<PathBuf>, Option<PathBuf>) {
+        let marked: Vec<PathBuf> = self
+            .local_entries
+            .iter()
+            .filter(|e| e.is_any_selected() && e.name != ".." && !e.is_dir)
+            .map(|e| PathBuf::from(&e.path))
+            .collect();
+        if marked.len() == 2 {
+            return (Some(marked[0].clone()), Some(marked[1].clone()));
+        }
+
+        let curr_local = self.local_entries.get(self.local_selected).filter(|e| !e.is_dir && e.name != "..");
+        let right_target = if self.sessions.is_empty() {
+            if let Some(cl) = curr_local {
+                let matching = self.right_entries.iter().find(|e| e.name == cl.name && !e.is_dir);
+                matching.map(|e| PathBuf::from(&e.path)).or_else(|| {
+                    self.right_entries.get(self.right_selected).filter(|e| !e.is_dir && e.name != "..").map(|e| PathBuf::from(&e.path))
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        if let (Some(cl), Some(rt)) = (curr_local, right_target) {
+            return (Some(PathBuf::from(&cl.path)), Some(rt));
+        }
+
+        (None, None)
+    }
+
+    pub(crate) fn open_external_diff(&mut self) {
+        let Some(comp) = &self.file_compare else { return; };
+        let path_a = comp.file_a_path.to_string_lossy().to_string();
+        let path_b = comp.file_b_path.to_string_lossy().to_string();
+
+        let vscode_bin = "/usr/local/bin/code";
+        let opendiff_bin = "/usr/bin/opendiff";
+
+        if std::path::Path::new(vscode_bin).exists() {
+            let _ = std::process::Command::new(vscode_bin)
+                .args(["--diff", &path_a, &path_b])
+                .spawn();
+        } else if std::path::Path::new(opendiff_bin).exists() {
+            let _ = std::process::Command::new(opendiff_bin)
+                .args([&path_a, &path_b])
+                .spawn();
+        }
     }
 
     pub(crate) fn open_delete_modal(&mut self) {
@@ -3743,29 +4192,42 @@ impl RusterView {
     }
 
     pub(crate) fn current_site_field_val(&self) -> String {
-        if let Some(site) = self.saved_sites.get(self.selected_site_idx) {
-            match self.active_site_field {
-                SiteEditField::Name => site.name.clone(),
-                SiteEditField::Host => site.host.clone(),
-                SiteEditField::Port => {
-                    if site.port == 0 {
-                        String::new()
-                    } else {
-                        site.port.to_string()
+        match self.active_site_field {
+            SiteEditField::Search => self.site_search_query.clone(),
+            _ => {
+                if let Some(site) = self.saved_sites.get(self.selected_site_idx) {
+                    match self.active_site_field {
+                        SiteEditField::Search => unreachable!(),
+                        SiteEditField::Name => site.name.clone(),
+                        SiteEditField::Host => site.host.clone(),
+                        SiteEditField::Port => {
+                            if site.port == 0 {
+                                String::new()
+                            } else {
+                                site.port.to_string()
+                            }
+                        }
+                        SiteEditField::Username => site.username.clone(),
+                        SiteEditField::Password => self.site_password_input.clone(),
+                        SiteEditField::RemotePath => site.folder.clone(),
+                        SiteEditField::MaxConnections => site.max_connections.to_string(),
+                        SiteEditField::None => String::new(),
                     }
+                } else {
+                    String::new()
                 }
-                SiteEditField::Username => site.username.clone(),
-                SiteEditField::Password => self.site_password_input.clone(),
-                SiteEditField::None => String::new(),
             }
-        } else {
-            String::new()
         }
     }
 
     pub(crate) fn set_current_site_field_val(&mut self, new_val: String) {
+        if self.active_site_field == SiteEditField::Search {
+            self.site_search_query = new_val;
+            return;
+        }
         if let Some(site) = self.saved_sites.get_mut(self.selected_site_idx) {
             match self.active_site_field {
+                SiteEditField::Search => {}
                 SiteEditField::Name => site.name = new_val,
                 SiteEditField::Host => site.host = new_val,
                 SiteEditField::Port => {
@@ -3774,6 +4236,11 @@ impl RusterView {
                 }
                 SiteEditField::Username => site.username = new_val,
                 SiteEditField::Password => self.site_password_input = new_val,
+                SiteEditField::RemotePath => site.folder = new_val,
+                SiteEditField::MaxConnections => {
+                    let digits: String = new_val.chars().filter(|c| c.is_ascii_digit()).collect();
+                    site.max_connections = digits.parse::<usize>().unwrap_or(1).clamp(1, 10);
+                }
                 SiteEditField::None => {}
             }
         }
@@ -3817,6 +4284,9 @@ impl RusterView {
         self.context_menu = None;
         self.active_modal = ActiveModal::SiteManager;
         self.active_site_field = SiteEditField::Name;
+        self.site_search_query.clear();
+        self.site_proto_dropdown_open = false;
+        self.site_password_revealed = false;
         self.site_cursor_pos = self.current_site_field_val().chars().count();
         self.site_password_input.clear();
         self.site_error_message = None;
@@ -3869,10 +4339,12 @@ impl RusterView {
 
             let new_id = self.sessions.len() + 1;
             let protocol = self.draft_protocol;
-            let remote_dir = if initial_path.is_empty() {
-                "/".to_string()
-            } else {
+            let remote_dir = if !site.folder.trim().is_empty() {
+                site.folder.trim().to_string()
+            } else if !initial_path.is_empty() {
                 initial_path
+            } else {
+                "/".to_string()
             };
 
             self.show_queue = true;
@@ -4419,12 +4891,23 @@ impl RusterView {
         // If SiteManager is open and a field is focused, route typing to that field
         if self.active_modal == ActiveModal::SiteManager {
             if key == "escape" {
+                if self.site_proto_dropdown_open {
+                    self.site_proto_dropdown_open = false;
+                    cx.notify();
+                    return;
+                }
                 self.active_modal = ActiveModal::None;
                 self.active_site_field = SiteEditField::None;
+                self.site_search_query.clear();
                 cx.notify();
                 return;
             }
             if key == "enter" {
+                if self.site_proto_dropdown_open {
+                    self.site_proto_dropdown_open = false;
+                    cx.notify();
+                    return;
+                }
                 self.connect_selected_site(cx);
                 cx.notify();
                 return;
@@ -4432,19 +4915,25 @@ impl RusterView {
             if key == "tab" {
                 if modifiers.shift {
                     self.active_site_field = match self.active_site_field {
-                        SiteEditField::None | SiteEditField::Name => SiteEditField::Password,
+                        SiteEditField::None | SiteEditField::Search => SiteEditField::MaxConnections,
+                        SiteEditField::Name => SiteEditField::Search,
                         SiteEditField::Host => SiteEditField::Name,
                         SiteEditField::Port => SiteEditField::Host,
                         SiteEditField::Username => SiteEditField::Port,
                         SiteEditField::Password => SiteEditField::Username,
+                        SiteEditField::RemotePath => SiteEditField::Password,
+                        SiteEditField::MaxConnections => SiteEditField::RemotePath,
                     };
                 } else {
                     self.active_site_field = match self.active_site_field {
-                        SiteEditField::None | SiteEditField::Password => SiteEditField::Name,
+                        SiteEditField::None | SiteEditField::MaxConnections => SiteEditField::Search,
+                        SiteEditField::Search => SiteEditField::Name,
                         SiteEditField::Name => SiteEditField::Host,
                         SiteEditField::Host => SiteEditField::Port,
                         SiteEditField::Port => SiteEditField::Username,
                         SiteEditField::Username => SiteEditField::Password,
+                        SiteEditField::Password => SiteEditField::RemotePath,
+                        SiteEditField::RemotePath => SiteEditField::MaxConnections,
                     };
                 }
                 self.site_cursor_pos = self.current_site_field_val().chars().count();
@@ -4564,6 +5053,107 @@ impl RusterView {
             self.active_modal,
             ActiveModal::NewFolder | ActiveModal::Rename | ActiveModal::GoToFolder | ActiveModal::Compress | ActiveModal::Extract
         ) {
+            let is_compress_or_extract = matches!(self.active_modal, ActiveModal::Compress | ActiveModal::Extract);
+
+            if is_compress_or_extract && key == "tab" {
+                self.modal_sub_field = if self.modal_sub_field == 0 { 1 } else { 0 };
+                cx.notify();
+                return;
+            }
+
+            // Route to password field if modal_sub_field == 1
+            if is_compress_or_extract && self.modal_sub_field == 1 {
+                let is_paste = (modifiers.platform || modifiers.control) && (key == "v" || key == "V");
+                if is_paste {
+                    if let Some(pasted) = self.get_clipboard_text(cx) {
+                        let clean = pasted.trim_matches(['\r', '\n']).to_string();
+                        let mut chars: Vec<char> = self.archive_password_input.chars().collect();
+                        let pos = self.archive_password_cursor_pos.min(chars.len());
+                        let count = clean.chars().count();
+                        for (i, ch) in clean.chars().enumerate() {
+                            chars.insert(pos + i, ch);
+                        }
+                        self.archive_password_cursor_pos = pos + count;
+                        self.archive_password_input = chars.into_iter().collect();
+                        cx.notify();
+                        return;
+                    }
+                }
+                let is_clear_or_select_all = (modifiers.platform || modifiers.control)
+                    && (key == "a" || key == "A" || key == "backspace");
+                if is_clear_or_select_all {
+                    self.archive_password_input.clear();
+                    self.archive_password_cursor_pos = 0;
+                    cx.notify();
+                    return;
+                }
+                if key == "left" {
+                    self.archive_password_cursor_pos = self.archive_password_cursor_pos.saturating_sub(1);
+                    cx.notify();
+                    return;
+                }
+                if key == "right" {
+                    self.archive_password_cursor_pos = (self.archive_password_cursor_pos + 1).min(self.archive_password_input.chars().count());
+                    cx.notify();
+                    return;
+                }
+                if key == "home" {
+                    self.archive_password_cursor_pos = 0;
+                    cx.notify();
+                    return;
+                }
+                if key == "end" {
+                    self.archive_password_cursor_pos = self.archive_password_input.chars().count();
+                    cx.notify();
+                    return;
+                }
+                match key {
+                    "escape" => {
+                        self.active_modal = ActiveModal::None;
+                        cx.notify();
+                    }
+                    "enter" => {
+                        if self.active_modal == ActiveModal::Compress {
+                            self.confirm_compress(cx);
+                        } else if self.active_modal == ActiveModal::Extract {
+                            self.confirm_extract(cx);
+                        }
+                        cx.notify();
+                    }
+                    "backspace" => {
+                        let mut chars: Vec<char> = self.archive_password_input.chars().collect();
+                        if self.archive_password_cursor_pos > 0 && self.archive_password_cursor_pos <= chars.len() {
+                            chars.remove(self.archive_password_cursor_pos - 1);
+                            self.archive_password_cursor_pos -= 1;
+                            self.archive_password_input = chars.into_iter().collect();
+                        }
+                        cx.notify();
+                    }
+                    "delete" => {
+                        let mut chars: Vec<char> = self.archive_password_input.chars().collect();
+                        if self.archive_password_cursor_pos < chars.len() {
+                            chars.remove(self.archive_password_cursor_pos);
+                            self.archive_password_input = chars.into_iter().collect();
+                        }
+                        cx.notify();
+                    }
+                    _ => {
+                        if !modifiers.platform && !modifiers.control && key.chars().count() == 1 {
+                            let mut chars: Vec<char> = self.archive_password_input.chars().collect();
+                            let pos = self.archive_password_cursor_pos.min(chars.len());
+                            let count = key.chars().count();
+                            for (i, ch) in key.chars().enumerate() {
+                                chars.insert(pos + i, ch);
+                            }
+                            self.archive_password_cursor_pos = pos + count;
+                            self.archive_password_input = chars.into_iter().collect();
+                            cx.notify();
+                        }
+                    }
+                }
+                return;
+            }
+
             let is_paste = (modifiers.platform || modifiers.control) && (key == "v" || key == "V");
             if is_paste {
                 if let Some(pasted) = self.get_clipboard_text(cx) {
@@ -4657,6 +5247,267 @@ impl RusterView {
                         cx.notify();
                     }
                 }
+            }
+            return;
+        }
+
+        // MultiRename modal key routing
+        if self.active_modal == ActiveModal::MultiRename {
+            if key == "escape" {
+                self.active_modal = ActiveModal::None;
+                cx.notify();
+                return;
+            }
+            if key == "enter" {
+                self.confirm_multirename(cx);
+                return;
+            }
+            if key == "tab" {
+                self.multirename_active_field = if modifiers.shift {
+                    (self.multirename_active_field + 4) % 5
+                } else {
+                    (self.multirename_active_field + 1) % 5
+                };
+                let val = match self.multirename_active_field {
+                    0 => self.multirename_config.find_pattern.clone(),
+                    1 => self.multirename_config.replace_pattern.clone(),
+                    2 => self.multirename_config.counter_start.to_string(),
+                    3 => self.multirename_config.counter_step.to_string(),
+                    4 => self.multirename_config.counter_digits.to_string(),
+                    _ => String::new(),
+                };
+                self.multirename_cursor_pos = val.chars().count();
+                cx.notify();
+                return;
+            }
+
+            let mut current_val = match self.multirename_active_field {
+                0 => self.multirename_config.find_pattern.clone(),
+                1 => self.multirename_config.replace_pattern.clone(),
+                2 => self.multirename_config.counter_start.to_string(),
+                3 => self.multirename_config.counter_step.to_string(),
+                4 => self.multirename_config.counter_digits.to_string(),
+                _ => String::new(),
+            };
+
+            let is_paste = (modifiers.platform || modifiers.control) && (key == "v" || key == "V");
+            if is_paste {
+                if let Some(pasted) = self.get_clipboard_text(cx) {
+                    let clean = pasted.trim_matches(['\r', '\n']).to_string();
+                    let mut chars: Vec<char> = current_val.chars().collect();
+                    let pos = self.multirename_cursor_pos.min(chars.len());
+                    for (i, ch) in clean.chars().enumerate() {
+                        chars.insert(pos + i, ch);
+                    }
+                    current_val = chars.into_iter().collect();
+                    self.multirename_cursor_pos = pos + clean.chars().count();
+                    self.apply_multirename_field_val(current_val);
+                    cx.notify();
+                    return;
+                }
+            }
+
+            let is_clear = (modifiers.platform || modifiers.control) && (key == "a" || key == "A" || key == "backspace");
+            if is_clear {
+                self.multirename_cursor_pos = 0;
+                self.apply_multirename_field_val(String::new());
+                cx.notify();
+                return;
+            }
+
+            if key == "left" {
+                self.multirename_cursor_pos = self.multirename_cursor_pos.saturating_sub(1);
+                cx.notify();
+                return;
+            }
+            if key == "right" {
+                self.multirename_cursor_pos = (self.multirename_cursor_pos + 1).min(current_val.chars().count());
+                cx.notify();
+                return;
+            }
+            if key == "home" {
+                self.multirename_cursor_pos = 0;
+                cx.notify();
+                return;
+            }
+            if key == "end" {
+                self.multirename_cursor_pos = current_val.chars().count();
+                cx.notify();
+                return;
+            }
+            if key == "backspace" {
+                let mut chars: Vec<char> = current_val.chars().collect();
+                if self.multirename_cursor_pos > 0 && self.multirename_cursor_pos <= chars.len() {
+                    chars.remove(self.multirename_cursor_pos - 1);
+                    self.multirename_cursor_pos -= 1;
+                    self.apply_multirename_field_val(chars.into_iter().collect());
+                    cx.notify();
+                }
+                return;
+            }
+            if key == "delete" {
+                let mut chars: Vec<char> = current_val.chars().collect();
+                if self.multirename_cursor_pos < chars.len() {
+                    chars.remove(self.multirename_cursor_pos);
+                    self.apply_multirename_field_val(chars.into_iter().collect());
+                    cx.notify();
+                }
+                return;
+            }
+            if !modifiers.platform && !modifiers.control && key.chars().count() == 1 {
+                let ch = key.chars().next().unwrap();
+                if (self.multirename_active_field < 2) || ch.is_ascii_digit() {
+                    let mut chars: Vec<char> = current_val.chars().collect();
+                    let pos = self.multirename_cursor_pos.min(chars.len());
+                    chars.insert(pos, ch);
+                    self.multirename_cursor_pos = pos + 1;
+                    self.apply_multirename_field_val(chars.into_iter().collect());
+                    cx.notify();
+                }
+                return;
+            }
+            return;
+        }
+
+        // FindFiles modal key routing
+        if self.active_modal == ActiveModal::FindFiles {
+            if key == "escape" {
+                if self.find_is_searching {
+                    self.stop_find_files();
+                } else {
+                    self.active_modal = ActiveModal::None;
+                }
+                cx.notify();
+                return;
+            }
+            if key == "enter" {
+                if !self.find_is_searching {
+                    self.start_find_files(cx);
+                }
+                return;
+            }
+            if key == "tab" {
+                self.find_active_field = if modifiers.shift {
+                    (self.find_active_field + 2) % 3
+                } else {
+                    (self.find_active_field + 1) % 3
+                };
+                let val = match self.find_active_field {
+                    0 => self.find_query.root_dir.to_string_lossy().to_string(),
+                    1 => self.find_query.name_pattern.clone(),
+                    2 => self.find_query.containing_text.clone(),
+                    _ => String::new(),
+                };
+                self.find_cursor_pos = val.chars().count();
+                cx.notify();
+                return;
+            }
+            if key == "up" || key == "arrowup" {
+                if !self.find_results.is_empty() {
+                    self.find_selected_idx = self.find_selected_idx.saturating_sub(1);
+                    cx.notify();
+                }
+                return;
+            }
+            if key == "down" || key == "arrowdown" {
+                if !self.find_results.is_empty() {
+                    self.find_selected_idx = (self.find_selected_idx + 1).min(self.find_results.len().saturating_sub(1));
+                    cx.notify();
+                }
+                return;
+            }
+
+            let mut current_val = match self.find_active_field {
+                0 => self.find_query.root_dir.to_string_lossy().to_string(),
+                1 => self.find_query.name_pattern.clone(),
+                2 => self.find_query.containing_text.clone(),
+                _ => String::new(),
+            };
+
+            let is_paste = (modifiers.platform || modifiers.control) && (key == "v" || key == "V");
+            if is_paste {
+                if let Some(pasted) = self.get_clipboard_text(cx) {
+                    let clean = pasted.trim_matches(['\r', '\n']).to_string();
+                    let mut chars: Vec<char> = current_val.chars().collect();
+                    let pos = self.find_cursor_pos.min(chars.len());
+                    for (i, ch) in clean.chars().enumerate() {
+                        chars.insert(pos + i, ch);
+                    }
+                    current_val = chars.into_iter().collect();
+                    self.find_cursor_pos = pos + clean.chars().count();
+                    self.apply_find_field_val(current_val);
+                    cx.notify();
+                    return;
+                }
+            }
+
+            let is_clear = (modifiers.platform || modifiers.control) && (key == "a" || key == "A" || key == "backspace");
+            if is_clear {
+                self.find_cursor_pos = 0;
+                self.apply_find_field_val(String::new());
+                cx.notify();
+                return;
+            }
+
+            if key == "left" {
+                self.find_cursor_pos = self.find_cursor_pos.saturating_sub(1);
+                cx.notify();
+                return;
+            }
+            if key == "right" {
+                self.find_cursor_pos = (self.find_cursor_pos + 1).min(current_val.chars().count());
+                cx.notify();
+                return;
+            }
+            if key == "home" {
+                self.find_cursor_pos = 0;
+                cx.notify();
+                return;
+            }
+            if key == "end" {
+                self.find_cursor_pos = current_val.chars().count();
+                cx.notify();
+                return;
+            }
+            if key == "backspace" {
+                let mut chars: Vec<char> = current_val.chars().collect();
+                if self.find_cursor_pos > 0 && self.find_cursor_pos <= chars.len() {
+                    chars.remove(self.find_cursor_pos - 1);
+                    self.find_cursor_pos -= 1;
+                    self.apply_find_field_val(chars.into_iter().collect());
+                    cx.notify();
+                }
+                return;
+            }
+            if key == "delete" {
+                let mut chars: Vec<char> = current_val.chars().collect();
+                if self.find_cursor_pos < chars.len() {
+                    chars.remove(self.find_cursor_pos);
+                    self.apply_find_field_val(chars.into_iter().collect());
+                    cx.notify();
+                }
+                return;
+            }
+            if !modifiers.platform && !modifiers.control && key.chars().count() == 1 {
+                let ch = key.chars().next().unwrap();
+                let mut chars: Vec<char> = current_val.chars().collect();
+                let pos = self.find_cursor_pos.min(chars.len());
+                chars.insert(pos, ch);
+                self.find_cursor_pos = pos + 1;
+                self.apply_find_field_val(chars.into_iter().collect());
+                cx.notify();
+                return;
+            }
+            return;
+        }
+
+        // FileCompare modal key routing
+        if self.active_modal == ActiveModal::FileCompare {
+            if key == "escape" {
+                self.active_modal = ActiveModal::None;
+                self.file_compare = None;
+                cx.notify();
+                return;
             }
             return;
         }
@@ -5163,6 +6014,21 @@ impl Render for RusterView {
                 this.open_extract_modal();
                 cx.notify();
             }))
+            .on_action(cx.listener(|this, _: &MultiRenameModal, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.open_multirename_modal();
+                cx.notify();
+            }))
+            .on_action(cx.listener(|this, _: &FindFilesModal, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.open_find_files_modal();
+                cx.notify();
+            }))
+            .on_action(cx.listener(|this, _: &FileCompareModal, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.open_file_compare_modal();
+                cx.notify();
+            }))
             .on_action(cx.listener(|this, _: &CheckForUpdates, _, cx| {
                 this.check_for_updates(true, cx);
             }))
@@ -5309,6 +6175,15 @@ impl Render for RusterView {
             })
             .when(self.active_modal == ActiveModal::Update, |el| {
                 el.child(self.render_update_modal(cx))
+            })
+            .when(self.active_modal == ActiveModal::MultiRename, |el| {
+                el.child(self.render_multirename_modal(cx))
+            })
+            .when(self.active_modal == ActiveModal::FindFiles, |el| {
+                el.child(self.render_find_files_modal(cx))
+            })
+            .when(self.active_modal == ActiveModal::FileCompare, |el| {
+                el.child(self.render_file_compare_modal(cx))
             })
     }
 }

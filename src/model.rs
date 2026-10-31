@@ -762,6 +762,9 @@ pub enum ActiveModal {
     TransferError,
     Settings,
     Update,
+    MultiRename,
+    FindFiles,
+    FileCompare,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -881,11 +884,14 @@ impl SyncState {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum SiteEditField {
     None,
+    Search,
     Name,
     Host,
     Port,
     Username,
     Password,
+    RemotePath,
+    MaxConnections,
 }
 
 pub fn default_saved_sites() -> Vec<SavedSiteProfile> {
