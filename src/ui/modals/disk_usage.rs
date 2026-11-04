@@ -110,7 +110,7 @@ impl RusterView {
                                                 this.start_disk_usage_scan(cx);
                                             }))
                                             .child(render_icon("icons/sync.svg", 12.0, theme.c_icon_secondary()))
-                                            .child("Rescan"),
+                                            .child(t.btn_rescan()),
                                     )
                                     .child(
                                         div()
@@ -198,42 +198,44 @@ impl RusterView {
                                     .items_center()
                                     .gap_1p5()
                                     .flex_shrink_0()
-                                    // Home directory shortcut
+                                    // Home directory shortcut (icon only)
                                     .child(
                                         div()
                                             .id("disk-usage-home-btn")
                                             .cursor_pointer()
-                                            .px_2()
-                                            .py_0p5()
+                                            .w(px(24.0))
+                                            .h(px(22.0))
                                             .rounded(px(3.0))
                                             .bg(theme.button_secondary_bg())
                                             .hover(|s| s.bg(theme.button_hover_bg()))
                                             .border_1()
                                             .border_color(theme.border())
-                                            .text_xs()
-                                            .text_color(theme.text_secondary())
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
                                             .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                                 if let Ok(home) = std::env::var("HOME") {
                                                     this.disk_usage_root = PathBuf::from(home);
                                                     this.start_disk_usage_scan(cx);
                                                 }
                                             }))
-                                            .child("Domů"),
+                                            .child(render_icon("icons/home.svg", 13.0, theme.c_icon_secondary())),
                                     )
-                                    // Volumes / Mounted disks shortcut
+                                    // Volumes / Mounted disks shortcut (icon only)
                                     .child(
                                         div()
                                             .id("disk-usage-volumes-btn")
                                             .cursor_pointer()
-                                            .px_2()
-                                            .py_0p5()
+                                            .w(px(24.0))
+                                            .h(px(22.0))
                                             .rounded(px(3.0))
                                             .bg(theme.button_secondary_bg())
                                             .hover(|s| s.bg(theme.button_hover_bg()))
                                             .border_1()
                                             .border_color(theme.border())
-                                            .text_xs()
-                                            .text_color(theme.text_secondary())
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
                                             .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
                                                 let volumes = PathBuf::from("/Volumes");
                                                 if volumes.exists() {
@@ -243,7 +245,7 @@ impl RusterView {
                                                 }
                                                 this.start_disk_usage_scan(cx);
                                             }))
-                                            .child("Disky"),
+                                            .child(render_icon("icons/hard-drive.svg", 13.0, theme.c_icon_secondary())),
                                     ),
                             ),
                     )
@@ -277,7 +279,7 @@ impl RusterView {
                                                     .flex()
                                                     .items_center()
                                                     .gap_1()
-                                                    .child("Celkem:")
+                                                    .child(t.lbl_total())
                                                     .child(
                                                         div()
                                                             .font_weight(gpui::FontWeight::BOLD)
@@ -291,7 +293,7 @@ impl RusterView {
                                                     .flex()
                                                     .items_center()
                                                     .gap_1()
-                                                    .child("Souborů:")
+                                                    .child(t.lbl_files())
                                                     .child(
                                                         div()
                                                             .font_weight(gpui::FontWeight::SEMIBOLD)
@@ -305,7 +307,7 @@ impl RusterView {
                                                     .flex()
                                                     .items_center()
                                                     .gap_1()
-                                                    .child("Složek:")
+                                                    .child(t.lbl_folders())
                                                     .child(
                                                         div()
                                                             .font_weight(gpui::FontWeight::SEMIBOLD)
@@ -332,14 +334,13 @@ impl RusterView {
                                                         .text_xs()
                                                         .text_color(rgb(0x10b981))
                                                         .font_weight(gpui::FontWeight::MEDIUM)
-                                                        .child(format!(
-                                                            "Skenuji: {} souborů ({})",
+                                                        .child(t.lbl_scanning_files_count(
                                                             self.disk_usage_scanned_files_live,
-                                                            format_bytes(self.disk_usage_scanned_bytes_live)
+                                                            &format_bytes(self.disk_usage_scanned_bytes_live),
                                                         )),
                                                 )
                                         } else {
-                                            div().text_xs().text_color(theme.text_muted()).child("Skenování dokončeno")
+                                            div().text_xs().text_color(theme.text_muted()).child(t.lbl_scan_completed())
                                         }
                                     ),
                             )
@@ -426,12 +427,12 @@ impl RusterView {
                                             .gap_3()
                                             .text_xs()
                                             .text_color(theme.text_secondary())
-                                            .child(self.render_cat_pill(0x3b82f6, &format!("Build ({:.1}%)", pct_build)))
-                                            .child(self.render_cat_pill(0xf59e0b, &format!("Dependencies ({:.1}%)", pct_deps)))
-                                            .child(self.render_cat_pill(0x10b981, &format!("Archivy ({:.1}%)", pct_archives)))
-                                            .child(self.render_cat_pill(0x8b5cf6, &format!("Git ({:.1}%)", pct_git)))
-                                            .child(self.render_cat_pill(0xf43f5e, &format!("Media ({:.1}%)", pct_media)))
-                                            .child(self.render_cat_pill(0x64748b, &format!("Ostatní ({:.1}%)", pct_other))),
+                                            .child(self.render_cat_pill(0x3b82f6, &format!("{} ({:.1}%)", t.cat_build(), pct_build)))
+                                            .child(self.render_cat_pill(0xf59e0b, &format!("{} ({:.1}%)", t.cat_dependencies(), pct_deps)))
+                                            .child(self.render_cat_pill(0x10b981, &format!("{} ({:.1}%)", t.cat_archives(), pct_archives)))
+                                            .child(self.render_cat_pill(0x8b5cf6, &format!("{} ({:.1}%)", t.cat_git(), pct_git)))
+                                            .child(self.render_cat_pill(0xf43f5e, &format!("{} ({:.1}%)", t.cat_media(), pct_media)))
+                                            .child(self.render_cat_pill(0x64748b, &format!("{} ({:.1}%)", t.cat_other(), pct_other))),
                                     ),
                             ),
                     )
@@ -554,7 +555,7 @@ impl RusterView {
                                         div()
                                             .text_xs()
                                             .text_color(theme.text_secondary())
-                                            .child("Vybráno:"),
+                                            .child(t.lbl_selected()),
                                     )
                                     .child(
                                         div()
@@ -603,7 +604,7 @@ impl RusterView {
                                                     cx.reveal_path(&this.disk_usage_root);
                                                 }
                                             }))
-                                            .child("Finder"),
+                                            .child(t.act_reveal_in_finder()),
                                     )
                                     // Delete / Move to Trash
                                     .child(
@@ -628,6 +629,28 @@ impl RusterView {
                                             }))
                                             .child(render_icon("icons/trash.svg", 12.0, 0xef4444))
                                             .child(t.btn_move_to_trash()),
+                                    )
+                                    // Close Button
+                                    .child(
+                                        div()
+                                            .id("disk-usage-close-btn")
+                                            .cursor_pointer()
+                                            .px_3()
+                                            .py_1p5()
+                                            .rounded(px(5.0))
+                                            .bg(theme.button_secondary_bg())
+                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                            .border_1()
+                                            .border_color(theme.border())
+                                            .text_xs()
+                                            .font_weight(gpui::FontWeight::MEDIUM)
+                                            .text_color(theme.text_primary())
+                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                this.stop_disk_usage_scan();
+                                                this.active_modal = ActiveModal::None;
+                                                cx.notify();
+                                            }))
+                                            .child(t.btn_close()),
                                     ),
                             ),
                     ),
@@ -721,7 +744,7 @@ impl RusterView {
                         .text_base()
                         .font_weight(gpui::FontWeight::BOLD)
                         .text_color(theme.text_primary())
-                        .child("Probíhá analýza obsazeného prostoru..."),
+                        .child(t.lbl_analyzing_disk_space()),
                 )
                 .child(
                     div()
@@ -729,7 +752,7 @@ impl RusterView {
                         .text_color(theme.text_muted())
                         .max_w(px(640.0))
                         .overflow_hidden()
-                        .child(format!("Aktuálně: {}", self.disk_usage_scanned_current_dir)),
+                        .child(format!("{} {}", t.lbl_current(), self.disk_usage_scanned_current_dir)),
                 )
                 // Live progress stats pill
                 .child(
@@ -747,14 +770,14 @@ impl RusterView {
                             div()
                                 .text_xs()
                                 .text_color(theme.text_secondary())
-                                .child(format!("📁 Prohledáno: {} složek", self.disk_usage_scanned_dirs_live)),
+                                .child(t.lbl_scanned_folders_count(self.disk_usage_scanned_dirs_live)),
                         )
                         .child(div().text_color(theme.border_strong()).child("•"))
                         .child(
                             div()
                                 .text_xs()
                                 .text_color(theme.text_secondary())
-                                .child(format!("📄 Nalezeno: {} souborů", self.disk_usage_scanned_files_live)),
+                                .child(t.lbl_scanned_files_count(self.disk_usage_scanned_files_live)),
                         )
                         .child(div().text_color(theme.border_strong()).child("•"))
                         .child(
@@ -807,12 +830,12 @@ impl RusterView {
                     .text_xs()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(theme.text_secondary())
-                    .child(div().w(px(350.0)).child("Název složky / souboru"))
+                    .child(div().w(px(350.0)).child(t.col_folder_or_file()))
                     .child(div().w(px(180.0)).child(t.col_usage()))
-                    .child(div().w(px(100.0)).text_right().child("Velikost"))
-                    .child(div().w(px(80.0)).text_right().child("Podíl"))
-                    .child(div().w(px(90.0)).text_right().child("Souborů"))
-                    .child(div().w(px(130.0)).text_right().child("Změněno")),
+                    .child(div().w(px(100.0)).text_right().child(t.col_size()))
+                    .child(div().w(px(80.0)).text_right().child(t.col_share()))
+                    .child(div().w(px(90.0)).text_right().child(t.col_files()))
+                    .child(div().w(px(130.0)).text_right().child(t.col_modified())),
             )
             // Table Rows
             .child(
@@ -996,6 +1019,7 @@ impl RusterView {
     // --- TAB 2: Extensions View ---
     fn render_extensions_view(&self, _cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme();
+        let t = self.i18n();
         let total_size = self.disk_usage_total_size.max(1) as f32;
 
         div()
@@ -1017,11 +1041,11 @@ impl RusterView {
                     .text_xs()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(theme.text_secondary())
-                    .child(div().w(px(160.0)).child("Přípona"))
-                    .child(div().w(px(240.0)).child("Kategorie / Popis"))
-                    .child(div().w(px(200.0)).child("Využití"))
-                    .child(div().w(px(130.0)).text_right().child("Celková velikost"))
-                    .child(div().w(px(130.0)).text_right().child("Počet souborů")),
+                    .child(div().w(px(160.0)).child(t.col_extension()))
+                    .child(div().w(px(240.0)).child(t.col_category_description()))
+                    .child(div().w(px(200.0)).child(t.col_usage()))
+                    .child(div().w(px(130.0)).text_right().child(t.col_total_size()))
+                    .child(div().w(px(130.0)).text_right().child(t.col_file_count())),
             )
             // Rows
             .child(
@@ -1054,13 +1078,17 @@ impl RusterView {
                                         .w(px(160.0))
                                         .font_weight(gpui::FontWeight::BOLD)
                                         .text_color(if theme.is_dark() { rgb(0x60a5fa) } else { rgb(0x2563eb) })
-                                        .child(ext.extension.clone()),
+                                        .child(if ext.extension == "(no extension)" {
+                                            t.ext_category_name("(no extension)").to_string()
+                                        } else {
+                                            ext.extension.clone()
+                                        }),
                                 )
                                 .child(
                                     div()
                                         .w(px(240.0))
                                         .text_color(theme.text_primary())
-                                        .child(ext.category.clone()),
+                                        .child(t.ext_category_name(&ext.category)),
                                 )
                                 .child(
                                     div()
@@ -1107,6 +1135,7 @@ impl RusterView {
     // --- TAB 3: Top 100 Files View ---
     fn render_top_files_view(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self.theme();
+        let t = self.i18n();
 
         div()
             .flex_1()
@@ -1127,10 +1156,10 @@ impl RusterView {
                     .text_xs()
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .text_color(theme.text_secondary())
-                    .child(div().w(px(340.0)).child("Název souboru"))
-                    .child(div().flex_1().child("Cesta"))
-                    .child(div().w(px(120.0)).text_right().child("Velikost"))
-                    .child(div().w(px(130.0)).text_right().child("Datum změny")),
+                    .child(div().w(px(340.0)).child(t.col_file_name()))
+                    .child(div().flex_1().child(t.col_path()))
+                    .child(div().w(px(120.0)).text_right().child(t.col_size()))
+                    .child(div().w(px(130.0)).text_right().child(t.col_date_modified())),
             )
             // Rows
             .child(

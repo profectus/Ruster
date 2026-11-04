@@ -3351,6 +3351,527 @@ impl I18n {
             Locale::Ja => "スキャン中：",
         }
     }
+
+    pub fn btn_rescan(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Rescan",
+            Locale::Cs => "Znovu načíst",
+            Locale::De => "Neu laden",
+            Locale::Es => "Reescanear",
+            Locale::Fr => "Réanalyser",
+            Locale::It => "Rianalizza",
+            Locale::Pl => "Skanuj ponownie",
+            Locale::Pt => "Analisar novamente",
+            Locale::Zh => "重新扫描",
+            Locale::Ja => "再スキャン",
+        }
+    }
+
+    pub fn lbl_total(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Total:",
+            Locale::Cs => "Celkem:",
+            Locale::De => "Gesamt:",
+            Locale::Es => "Total:",
+            Locale::Fr => "Total :",
+            Locale::It => "Totale:",
+            Locale::Pl => "Łącznie:",
+            Locale::Pt => "Total:",
+            Locale::Zh => "总计：",
+            Locale::Ja => "合計：",
+        }
+    }
+
+    pub fn lbl_files(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Files:",
+            Locale::Cs => "Souborů:",
+            Locale::De => "Dateien:",
+            Locale::Es => "Archivos:",
+            Locale::Fr => "Fichiers :",
+            Locale::It => "File:",
+            Locale::Pl => "Plików:",
+            Locale::Pt => "Ficheiros:",
+            Locale::Zh => "文件数：",
+            Locale::Ja => "ファイル数：",
+        }
+    }
+
+    pub fn lbl_folders(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Folders:",
+            Locale::Cs => "Složek:",
+            Locale::De => "Ordner:",
+            Locale::Es => "Carpetas:",
+            Locale::Fr => "Dossiers :",
+            Locale::It => "Cartelle:",
+            Locale::Pl => "Folderów:",
+            Locale::Pt => "Pastas:",
+            Locale::Zh => "文件夹数：",
+            Locale::Ja => "フォルダー数：",
+        }
+    }
+
+    pub fn lbl_scanning_files_count(&self, count: usize, bytes_str: &str) -> String {
+        match self.locale {
+            Locale::En => format!("Scanning: {} files ({})", count, bytes_str),
+            Locale::Cs => format!("Skenuji: {} souborů ({})", count, bytes_str),
+            Locale::De => format!("Scanne: {} Dateien ({})", count, bytes_str),
+            Locale::Es => format!("Escaneando: {} archivos ({})", count, bytes_str),
+            Locale::Fr => format!("Analyse : {} fichiers ({})", count, bytes_str),
+            Locale::It => format!("Scansione: {} file ({})", count, bytes_str),
+            Locale::Pl => format!("Skanowanie: {} plików ({})", count, bytes_str),
+            Locale::Pt => format!("A analisar: {} ficheiros ({})", count, bytes_str),
+            Locale::Zh => format!("正在扫描：{} 个文件 ({})", count, bytes_str),
+            Locale::Ja => format!("スキャン中: {} ファイル ({})", count, bytes_str),
+        }
+    }
+
+    pub fn lbl_scan_completed(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Scan completed",
+            Locale::Cs => "Skenování dokončeno",
+            Locale::De => "Scan abgeschlossen",
+            Locale::Es => "Escaneo completado",
+            Locale::Fr => "Analyse terminée",
+            Locale::It => "Scansione completata",
+            Locale::Pl => "Skanowanie ukończone",
+            Locale::Pt => "Análise concluída",
+            Locale::Zh => "扫描完成",
+            Locale::Ja => "スキャン完了",
+        }
+    }
+
+    pub fn cat_build(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Build",
+            Locale::Cs => "Sestavení",
+            Locale::De => "Build",
+            Locale::Es => "Compilación",
+            Locale::Fr => "Build",
+            Locale::It => "Build",
+            Locale::Pl => "Kompilacja",
+            Locale::Pt => "Build",
+            Locale::Zh => "构建产物",
+            Locale::Ja => "ビルド",
+        }
+    }
+
+    pub fn cat_dependencies(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Dependencies",
+            Locale::Cs => "Závislosti",
+            Locale::De => "Abhängigkeiten",
+            Locale::Es => "Dependencias",
+            Locale::Fr => "Dépendances",
+            Locale::It => "Dipendenze",
+            Locale::Pl => "Zależności",
+            Locale::Pt => "Dependências",
+            Locale::Zh => "依赖项",
+            Locale::Ja => "依存関係",
+        }
+    }
+
+    pub fn cat_archives(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Archives",
+            Locale::Cs => "Archivy",
+            Locale::De => "Archive",
+            Locale::Es => "Archivos comprimidos",
+            Locale::Fr => "Archives",
+            Locale::It => "Archivi",
+            Locale::Pl => "Archiwa",
+            Locale::Pt => "Ficheiros compactados",
+            Locale::Zh => "压缩文件",
+            Locale::Ja => "アーカイブ",
+        }
+    }
+
+    pub fn cat_git(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Git Repositories",
+            Locale::Cs => "Git repozitáře",
+            Locale::De => "Git-Repositories",
+            Locale::Es => "Repositorios Git",
+            Locale::Fr => "Dépôts Git",
+            Locale::It => "Repository Git",
+            Locale::Pl => "Repozytoria Git",
+            Locale::Pt => "Repositórios Git",
+            Locale::Zh => "Git 仓库",
+            Locale::Ja => "Git リポジトリ",
+        }
+    }
+
+    pub fn cat_media(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Media",
+            Locale::Cs => "Média",
+            Locale::De => "Medien",
+            Locale::Es => "Multimedia",
+            Locale::Fr => "Médias",
+            Locale::It => "File multimediali",
+            Locale::Pl => "Multimedia",
+            Locale::Pt => "Multimédia",
+            Locale::Zh => "媒体文件",
+            Locale::Ja => "メディア",
+        }
+    }
+
+    pub fn cat_other(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Other",
+            Locale::Cs => "Ostatní",
+            Locale::De => "Sonstiges",
+            Locale::Es => "Otros",
+            Locale::Fr => "Autre",
+            Locale::It => "Altro",
+            Locale::Pl => "Inne",
+            Locale::Pt => "Outros",
+            Locale::Zh => "其他",
+            Locale::Ja => "その他",
+        }
+    }
+
+    pub fn lbl_analyzing_disk_space(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Analyzing disk space usage...",
+            Locale::Cs => "Probíhá analýza obsazeného prostoru...",
+            Locale::De => "Speicherplatzbelegung wird analysiert...",
+            Locale::Es => "Analizando uso de espacio en disco...",
+            Locale::Fr => "Analyse de l'espace disque en cours...",
+            Locale::It => "Analisi dello spazio su disco in corso...",
+            Locale::Pl => "Trwa analiza zajętości dysku...",
+            Locale::Pt => "A analisar espaço em disco...",
+            Locale::Zh => "正在分析磁盘空间使用情况...",
+            Locale::Ja => "ディスク容量を分析中...",
+        }
+    }
+
+    pub fn lbl_current(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Current:",
+            Locale::Cs => "Aktuálně:",
+            Locale::De => "Aktuell:",
+            Locale::Es => "Actual:",
+            Locale::Fr => "Actuel :",
+            Locale::It => "Attuale:",
+            Locale::Pl => "Aktualnie:",
+            Locale::Pt => "Atual:",
+            Locale::Zh => "当前：",
+            Locale::Ja => "現在：",
+        }
+    }
+
+    pub fn lbl_scanned_folders_count(&self, count: usize) -> String {
+        match self.locale {
+            Locale::En => format!("📁 Scanned: {} folders", count),
+            Locale::Cs => format!("📁 Prohledáno: {} složek", count),
+            Locale::De => format!("📁 Durchsucht: {} Ordner", count),
+            Locale::Es => format!("📁 Exploradas: {} carpetas", count),
+            Locale::Fr => format!("📁 Analysés : {} dossiers", count),
+            Locale::It => format!("📁 Scansionate: {} cartelle", count),
+            Locale::Pl => format!("📁 Przeszukano: {} folderów", count),
+            Locale::Pt => format!("📁 Analisadas: {} pastas", count),
+            Locale::Zh => format!("📁 已扫描：{} 个文件夹", count),
+            Locale::Ja => format!("📁 スキャン済み: {} フォルダー", count),
+        }
+    }
+
+    pub fn lbl_scanned_files_count(&self, count: usize) -> String {
+        match self.locale {
+            Locale::En => format!("📄 Found: {} files", count),
+            Locale::Cs => format!("📄 Nalezeno: {} souborů", count),
+            Locale::De => format!("📄 Gefunden: {} Dateien", count),
+            Locale::Es => format!("📄 Encontrados: {} archivos", count),
+            Locale::Fr => format!("📄 Trouvés : {} fichiers", count),
+            Locale::It => format!("📄 Trovati: {} file", count),
+            Locale::Pl => format!("📄 Znaleziono: {} plików", count),
+            Locale::Pt => format!("📄 Encontrados: {} ficheiros", count),
+            Locale::Zh => format!("📄 已发现：{} 个文件", count),
+            Locale::Ja => format!("📄 発見済み: {} ファイル", count),
+        }
+    }
+
+    pub fn col_folder_or_file(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Folder / File Name",
+            Locale::Cs => "Název složky / souboru",
+            Locale::De => "Ordner- / Dateiname",
+            Locale::Es => "Nombre de carpeta / archivo",
+            Locale::Fr => "Nom de dossier / fichier",
+            Locale::It => "Nome cartella / file",
+            Locale::Pl => "Nazwa folderu / pliku",
+            Locale::Pt => "Nome da pasta / ficheiro",
+            Locale::Zh => "文件夹 / 文件名称",
+            Locale::Ja => "フォルダー / ファイル名",
+        }
+    }
+
+    pub fn col_share(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Share",
+            Locale::Cs => "Podíl",
+            Locale::De => "Anteil",
+            Locale::Es => "Porcentaje",
+            Locale::Fr => "Part",
+            Locale::It => "Quota",
+            Locale::Pl => "Udział",
+            Locale::Pt => "Percentagem",
+            Locale::Zh => "占比",
+            Locale::Ja => "割合",
+        }
+    }
+
+    pub fn col_files(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Files",
+            Locale::Cs => "Souborů",
+            Locale::De => "Dateien",
+            Locale::Es => "Archivos",
+            Locale::Fr => "Fichiers",
+            Locale::It => "File",
+            Locale::Pl => "Plików",
+            Locale::Pt => "Ficheiros",
+            Locale::Zh => "文件数",
+            Locale::Ja => "ファイル数",
+        }
+    }
+
+    pub fn col_extension(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Extension",
+            Locale::Cs => "Přípona",
+            Locale::De => "Erweiterung",
+            Locale::Es => "Extensión",
+            Locale::Fr => "Extension",
+            Locale::It => "Estensione",
+            Locale::Pl => "Rozszerzenie",
+            Locale::Pt => "Extensão",
+            Locale::Zh => "扩展名",
+            Locale::Ja => "拡張子",
+        }
+    }
+
+    pub fn col_category_description(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Category / Description",
+            Locale::Cs => "Kategorie / Popis",
+            Locale::De => "Kategorie / Beschreibung",
+            Locale::Es => "Categoría / Descripción",
+            Locale::Fr => "Catégorie / Description",
+            Locale::It => "Categoria / Descrizione",
+            Locale::Pl => "Kategoria / Opis",
+            Locale::Pt => "Categoria / Descrição",
+            Locale::Zh => "分类 / 描述",
+            Locale::Ja => "カテゴリ / 説明",
+        }
+    }
+
+    pub fn col_total_size(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Total Size",
+            Locale::Cs => "Celková velikost",
+            Locale::De => "Gesamtgröße",
+            Locale::Es => "Tamaño total",
+            Locale::Fr => "Taille totale",
+            Locale::It => "Dimensione totale",
+            Locale::Pl => "Rozmiar całkowity",
+            Locale::Pt => "Tamanho total",
+            Locale::Zh => "总大小",
+            Locale::Ja => "合計サイズ",
+        }
+    }
+
+    pub fn col_file_count(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "File Count",
+            Locale::Cs => "Počet souborů",
+            Locale::De => "Dateianzahl",
+            Locale::Es => "Cantidad de archivos",
+            Locale::Fr => "Nombre de fichiers",
+            Locale::It => "Numero di file",
+            Locale::Pl => "Liczba plików",
+            Locale::Pt => "Contagem de ficheiros",
+            Locale::Zh => "文件数量",
+            Locale::Ja => "ファイル数",
+        }
+    }
+
+    pub fn col_file_name(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "File Name",
+            Locale::Cs => "Název souboru",
+            Locale::De => "Dateiname",
+            Locale::Es => "Nombre del archivo",
+            Locale::Fr => "Nom du fichier",
+            Locale::It => "Nome file",
+            Locale::Pl => "Nazwa pliku",
+            Locale::Pt => "Nome do ficheiro",
+            Locale::Zh => "文件名",
+            Locale::Ja => "ファイル名",
+        }
+    }
+
+    pub fn col_path(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Path",
+            Locale::Cs => "Cesta",
+            Locale::De => "Pfad",
+            Locale::Es => "Ruta",
+            Locale::Fr => "Chemin",
+            Locale::It => "Percorso",
+            Locale::Pl => "Ścieżka",
+            Locale::Pt => "Caminho",
+            Locale::Zh => "路径",
+            Locale::Ja => "パス",
+        }
+    }
+
+    pub fn col_date_modified(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Date Modified",
+            Locale::Cs => "Datum změny",
+            Locale::De => "Änderungsdatum",
+            Locale::Es => "Fecha de modificación",
+            Locale::Fr => "Date de modification",
+            Locale::It => "Data di modifica",
+            Locale::Pl => "Data modyfikacji",
+            Locale::Pt => "Data de modificação",
+            Locale::Zh => "修改日期",
+            Locale::Ja => "更新日時",
+        }
+    }
+
+    pub fn lbl_selected(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Selected:",
+            Locale::Cs => "Vybráno:",
+            Locale::De => "Ausgewählt:",
+            Locale::Es => "Seleccionado:",
+            Locale::Fr => "Sélectionné :",
+            Locale::It => "Selezionato:",
+            Locale::Pl => "Wybrano:",
+            Locale::Pt => "Selecionado:",
+            Locale::Zh => "已选：",
+            Locale::Ja => "選択中：",
+        }
+    }
+
+    pub fn btn_close(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Close",
+            Locale::Cs => "Zavřít",
+            Locale::De => "Schließen",
+            Locale::Es => "Cerrar",
+            Locale::Fr => "Fermer",
+            Locale::It => "Chiudi",
+            Locale::Pl => "Zamknij",
+            Locale::Pt => "Fechar",
+            Locale::Zh => "关闭",
+            Locale::Ja => "閉じる",
+        }
+    }
+
+    pub fn ext_category_name(&self, cat: &str) -> &'static str {
+        match cat {
+            "Source Code" => match self.locale {
+                Locale::En => "Source Code",
+                Locale::Cs => "Zdrojový kód",
+                Locale::De => "Quellcode",
+                Locale::Es => "Código fuente",
+                Locale::Fr => "Code source",
+                Locale::It => "Codice sorgente",
+                Locale::Pl => "Kod źródłowy",
+                Locale::Pt => "Código-fonte",
+                Locale::Zh => "源代码",
+                Locale::Ja => "ソースコード",
+            },
+            "Build / Objects" => match self.locale {
+                Locale::En => "Build / Objects",
+                Locale::Cs => "Sestavení / Objekty",
+                Locale::De => "Build / Objekte",
+                Locale::Es => "Compilación / Objetos",
+                Locale::Fr => "Build / Objets",
+                Locale::It => "Build / Oggetti",
+                Locale::Pl => "Kompilacja / Obiekty",
+                Locale::Pt => "Build / Objetos",
+                Locale::Zh => "构建 / 目标文件",
+                Locale::Ja => "ビルド / オブジェクト",
+            },
+            "Archives & Disk Images" => match self.locale {
+                Locale::En => "Archives & Disk Images",
+                Locale::Cs => "Archivy a obrazy disků",
+                Locale::De => "Archive & Datenträgerabbilder",
+                Locale::Es => "Archivos e imágenes de disco",
+                Locale::Fr => "Archives & Images disque",
+                Locale::It => "Archivi e immagini disco",
+                Locale::Pl => "Archiwa i obrazy dysków",
+                Locale::Pt => "Ficheiros e imagens de disco",
+                Locale::Zh => "压缩包与磁盘镜像",
+                Locale::Ja => "アーカイブ & ディスクイメージ",
+            },
+            "Media / Video & Audio" => match self.locale {
+                Locale::En => "Media (Audio & Video)",
+                Locale::Cs => "Média (Audio a video)",
+                Locale::De => "Medien (Audio & Video)",
+                Locale::Es => "Multimedia (Audio y vídeo)",
+                Locale::Fr => "Médias (Audio & Vidéo)",
+                Locale::It => "File multimediali (Audio e video)",
+                Locale::Pl => "Multimedia (Audio i wideo)",
+                Locale::Pt => "Multimédia (Áudio e vídeo)",
+                Locale::Zh => "音视频媒体",
+                Locale::Ja => "メディア (音声 & 映像)",
+            },
+            "Images" => match self.locale {
+                Locale::En => "Images",
+                Locale::Cs => "Obrázky",
+                Locale::De => "Bilder",
+                Locale::Es => "Imágenes",
+                Locale::Fr => "Images",
+                Locale::It => "Immagini",
+                Locale::Pl => "Obrazy",
+                Locale::Pt => "Imagens",
+                Locale::Zh => "图像",
+                Locale::Ja => "画像",
+            },
+            "Documents" => match self.locale {
+                Locale::En => "Documents",
+                Locale::Cs => "Dokumenty",
+                Locale::De => "Dokumente",
+                Locale::Es => "Documentos",
+                Locale::Fr => "Documents",
+                Locale::It => "Documenti",
+                Locale::Pl => "Dokumenty",
+                Locale::Pt => "Documentos",
+                Locale::Zh => "文档",
+                Locale::Ja => "ドキュメント",
+            },
+            "(no extension)" => match self.locale {
+                Locale::En => "(no extension)",
+                Locale::Cs => "(bez přípony)",
+                Locale::De => "(keine Erweiterung)",
+                Locale::Es => "(sin extensión)",
+                Locale::Fr => "(sans extension)",
+                Locale::It => "(nessuna estensione)",
+                Locale::Pl => "(bez rozszerzenia)",
+                Locale::Pt => "(sem extensão)",
+                Locale::Zh => "(无扩展名)",
+                Locale::Ja => "(拡張子なし)",
+            },
+            _ => match self.locale {
+                Locale::En => "Other",
+                Locale::Cs => "Ostatní",
+                Locale::De => "Sonstiges",
+                Locale::Es => "Otros",
+                Locale::Fr => "Autre",
+                Locale::It => "Altro",
+                Locale::Pl => "Inne",
+                Locale::Pt => "Outros",
+                Locale::Zh => "其他",
+                Locale::Ja => "その他",
+            },
+        }
+    }
 }
 
 #[cfg(test)]

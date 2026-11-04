@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.4] - 2026-11-04
+
+### Changed
+- **Disk Usage Analyzer UI Polish**:
+  - Replaced text labels for "Home" and "Disks" navigation shortcuts with clean native SVG icons.
+  - Complete internationalization across all 10 supported languages with zero language mixing (fully localized category badges, extension classifications, live scanning status, progress indicators, table headers, and action buttons).
+  - Added dedicated Close button in bottom action bar.
+
 ## [0.4.3] - 2026-11-04
 
 ### Added
