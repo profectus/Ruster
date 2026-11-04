@@ -1,6 +1,7 @@
 pub mod chmod;
 pub mod dialogs;
 pub mod diff;
+pub mod disk_usage;
 pub mod find_files;
 pub mod multirename;
 pub mod settings;

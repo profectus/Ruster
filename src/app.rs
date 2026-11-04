@@ -30,7 +30,7 @@ use crate::network::{
 };
 use crate::ui::menus::install_app_menus;
 use crate::{
-    CheckForUpdates, CompressModal, CopySelected, DeleteModal, EditSelected, ExtractModal,
+    CheckForUpdates, CompressModal, CopySelected, DeleteModal, DiskUsageModal, EditSelected, ExtractModal,
     FileCompareModal, FindFilesModal, GoToFolderModal, MoveSelected, MultiRenameModal,
     NewFolderModal, OpenInTerminal, OpenSelected, OpenSiteManager, PermissionsModal, RefreshPanes, RenameModal,
     RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal, ToggleDualPane,
@@ -228,6 +228,28 @@ pub struct RusterView {
 
     // File Compare
     pub(crate) file_compare: Option<crate::diff::FileComparison>,
+
+    // Disk Usage Analyzer
+    pub(crate) disk_usage_root: PathBuf,
+    pub(crate) disk_usage_tab: crate::disk_usage::DiskUsageTab,
+    pub(crate) disk_usage_scanning: bool,
+    pub(crate) disk_usage_cancel_flag: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    pub(crate) disk_usage_tree: Option<crate::disk_usage::DiskUsageNode>,
+    pub(crate) disk_usage_rows: Vec<crate::disk_usage::FlatTreeRow>,
+    pub(crate) disk_usage_extensions: Vec<crate::disk_usage::ExtensionUsage>,
+    pub(crate) disk_usage_top_files: Vec<crate::disk_usage::TopFileUsage>,
+    pub(crate) disk_usage_categories: crate::disk_usage::CategoryBreakdown,
+    pub(crate) disk_usage_total_size: u64,
+    pub(crate) disk_usage_total_files: usize,
+    pub(crate) disk_usage_total_dirs: usize,
+    pub(crate) disk_usage_selected_path: Option<PathBuf>,
+    pub(crate) disk_usage_selected_size: u64,
+    pub(crate) disk_usage_selected_is_dir: bool,
+    pub(crate) disk_usage_selected_row_idx: usize,
+    pub(crate) disk_usage_scanned_files_live: usize,
+    pub(crate) disk_usage_scanned_dirs_live: usize,
+    pub(crate) disk_usage_scanned_bytes_live: u64,
+    pub(crate) disk_usage_scanned_current_dir: String,
 
     // Archive Password
     pub(crate) modal_sub_field: usize,
@@ -651,6 +673,27 @@ impl RusterView {
             find_cursor_pos: 0,
 
             file_compare: None,
+
+            disk_usage_root: PathBuf::from("."),
+            disk_usage_tab: crate::disk_usage::DiskUsageTab::Tree,
+            disk_usage_scanning: false,
+            disk_usage_cancel_flag: None,
+            disk_usage_tree: None,
+            disk_usage_rows: Vec::new(),
+            disk_usage_extensions: Vec::new(),
+            disk_usage_top_files: Vec::new(),
+            disk_usage_categories: crate::disk_usage::CategoryBreakdown::default(),
+            disk_usage_total_size: 0,
+            disk_usage_total_files: 0,
+            disk_usage_total_dirs: 0,
+            disk_usage_selected_path: None,
+            disk_usage_selected_size: 0,
+            disk_usage_selected_is_dir: false,
+            disk_usage_selected_row_idx: 0,
+            disk_usage_scanned_files_live: 0,
+            disk_usage_scanned_dirs_live: 0,
+            disk_usage_scanned_bytes_live: 0,
+            disk_usage_scanned_current_dir: String::new(),
 
             modal_sub_field: 0,
             archive_password_input: String::new(),
@@ -3575,6 +3618,211 @@ impl RusterView {
         }
     }
 
+    pub(crate) fn open_disk_usage_modal(&mut self, cx: &mut Context<Self>) {
+        let initial_dir = match self.active_pane {
+            ActivePane::Local => {
+                if let Some(entry) = self.local_entries.get(self.local_selected) {
+                    if entry.is_dir && entry.name != ".." {
+                        PathBuf::from(&entry.path)
+                    } else {
+                        self.local_dir.clone()
+                    }
+                } else {
+                    self.local_dir.clone()
+                }
+            }
+            ActivePane::Remote => {
+                if self.sessions.is_empty() {
+                    if let Some(entry) = self.right_entries.get(self.right_selected) {
+                        if entry.is_dir && entry.name != ".." {
+                            PathBuf::from(&entry.path)
+                        } else {
+                            self.right_dir.clone()
+                        }
+                    } else {
+                        self.right_dir.clone()
+                    }
+                } else {
+                    self.local_dir.clone()
+                }
+            }
+        };
+
+        self.disk_usage_root = initial_dir;
+        self.disk_usage_tab = crate::disk_usage::DiskUsageTab::Tree;
+        self.active_modal = ActiveModal::DiskUsage;
+        self.start_disk_usage_scan(cx);
+    }
+
+    pub(crate) fn start_disk_usage_scan(&mut self, cx: &mut Context<Self>) {
+        self.stop_disk_usage_scan();
+        self.disk_usage_scanning = true;
+        self.disk_usage_scanned_files_live = 0;
+        self.disk_usage_scanned_dirs_live = 0;
+        self.disk_usage_scanned_bytes_live = 0;
+        self.disk_usage_scanned_current_dir = self.disk_usage_root.to_string_lossy().to_string();
+        self.disk_usage_rows.clear();
+        self.disk_usage_extensions.clear();
+        self.disk_usage_top_files.clear();
+        self.disk_usage_categories = crate::disk_usage::CategoryBreakdown::default();
+        self.disk_usage_total_size = 0;
+        self.disk_usage_total_files = 0;
+        self.disk_usage_total_dirs = 0;
+        self.disk_usage_selected_path = None;
+        self.disk_usage_selected_size = 0;
+        self.disk_usage_selected_row_idx = 0;
+
+        let root = self.disk_usage_root.clone();
+        let cancel_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        self.disk_usage_cancel_flag = Some(cancel_flag.clone());
+        cx.notify();
+
+        enum ScanMsg {
+            Progress(crate::disk_usage::DiskUsageProgress),
+            Done(Option<crate::disk_usage::DiskUsageScanResult>),
+        }
+
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                let (tx, rx) = std::sync::mpsc::channel();
+                let thread_flag = cancel_flag.clone();
+                let tx_prog = tx.clone();
+
+                let scan_thread = std::thread::spawn(move || {
+                    let res = crate::disk_usage::scan_directory_usage(
+                        &root,
+                        thread_flag,
+                        move |prog| {
+                            let _ = tx_prog.send(ScanMsg::Progress(prog));
+                        },
+                    );
+                    let _ = tx.send(ScanMsg::Done(res));
+                });
+
+                loop {
+                    let mut got_msg = false;
+                    while let Ok(msg) = rx.try_recv() {
+                        got_msg = true;
+                        match msg {
+                            ScanMsg::Progress(prog) => {
+                                let _ = this.update(&mut cx, |view, cx| {
+                                    view.disk_usage_scanned_files_live = prog.files;
+                                    view.disk_usage_scanned_dirs_live = prog.dirs;
+                                    view.disk_usage_scanned_bytes_live = prog.bytes;
+                                    view.disk_usage_scanned_current_dir = prog.current_dir;
+                                    cx.notify();
+                                });
+                            }
+                            ScanMsg::Done(res) => {
+                                let _ = this.update(&mut cx, |view, cx| {
+                                    view.disk_usage_scanning = false;
+                                    view.disk_usage_cancel_flag = None;
+                                    if let Some(mut scan_result) = res {
+                                        scan_result.root_node.is_expanded = true;
+                                        for child in &mut scan_result.root_node.children {
+                                            child.is_expanded = false;
+                                        }
+                                        let mut rows = Vec::new();
+                                        crate::disk_usage::flatten_tree(&scan_result.root_node, &mut rows);
+
+                                        view.disk_usage_total_size = scan_result.total_size;
+                                        view.disk_usage_total_files = scan_result.total_files;
+                                        view.disk_usage_total_dirs = scan_result.total_dirs;
+                                        view.disk_usage_extensions = scan_result.extensions;
+                                        view.disk_usage_top_files = scan_result.top_files;
+                                        view.disk_usage_categories = scan_result.categories;
+                                        view.disk_usage_rows = rows;
+                                        view.disk_usage_tree = Some(scan_result.root_node);
+
+                                        if let Some(first_row) = view.disk_usage_rows.first() {
+                                            view.disk_usage_selected_path = Some(first_row.path.clone());
+                                            view.disk_usage_selected_size = first_row.size;
+                                            view.disk_usage_selected_is_dir = first_row.is_dir;
+                                            view.disk_usage_selected_row_idx = 0;
+                                        }
+                                    }
+                                    cx.notify();
+                                });
+                                let _ = scan_thread.join();
+                                return;
+                            }
+                        }
+                    }
+
+                    if !got_msg {
+                        cx.background_executor()
+                            .timer(std::time::Duration::from_millis(50))
+                            .await;
+                    }
+                }
+            }
+        }).detach();
+    }
+
+    pub(crate) fn stop_disk_usage_scan(&mut self) {
+        if let Some(flag) = &self.disk_usage_cancel_flag {
+            flag.store(true, std::sync::atomic::Ordering::Relaxed);
+        }
+        self.disk_usage_scanning = false;
+        self.disk_usage_cancel_flag = None;
+    }
+
+    pub(crate) fn toggle_disk_usage_row(&mut self, node_id: usize) {
+        if let Some(tree) = &mut self.disk_usage_tree {
+            if crate::disk_usage::toggle_node_expanded(tree, node_id) {
+                let mut rows = Vec::new();
+                crate::disk_usage::flatten_tree(tree, &mut rows);
+                self.disk_usage_rows = rows;
+            }
+        }
+    }
+
+    pub(crate) fn expand_all_disk_usage(&mut self) {
+        if let Some(tree) = &mut self.disk_usage_tree {
+            crate::disk_usage::set_all_expanded(tree, true);
+            let mut rows = Vec::new();
+            crate::disk_usage::flatten_tree(tree, &mut rows);
+            self.disk_usage_rows = rows;
+        }
+    }
+
+    pub(crate) fn collapse_all_disk_usage(&mut self) {
+        if let Some(tree) = &mut self.disk_usage_tree {
+            crate::disk_usage::set_all_expanded(tree, false);
+            tree.is_expanded = true;
+            let mut rows = Vec::new();
+            crate::disk_usage::flatten_tree(tree, &mut rows);
+            self.disk_usage_rows = rows;
+        }
+    }
+
+    pub(crate) fn navigate_to_disk_usage_selected(&mut self, cx: &mut Context<Self>) {
+        if let Some(path) = &self.disk_usage_selected_path {
+            let target_dir = if path.is_dir() {
+                path.clone()
+            } else {
+                path.parent().map(|p| p.to_path_buf()).unwrap_or_else(|| path.clone())
+            };
+            if self.active_pane == ActivePane::Remote && self.sessions.is_empty() {
+                self.navigate_right_local(target_dir);
+            } else {
+                self.navigate_local(target_dir);
+            }
+            self.stop_disk_usage_scan();
+            self.active_modal = ActiveModal::None;
+            cx.notify();
+        }
+    }
+
+    pub(crate) fn delete_disk_usage_selected(&mut self, cx: &mut Context<Self>) {
+        if let Some(path) = self.disk_usage_selected_path.clone() {
+            let is_dir = self.disk_usage_selected_is_dir;
+            let _ = crate::model::delete_local_item(&path, is_dir);
+            self.start_disk_usage_scan(cx);
+        }
+    }
+
     pub(crate) fn open_delete_modal(&mut self) {
         let valid = match self.active_pane {
             ActivePane::Local => self
@@ -5512,6 +5760,73 @@ impl RusterView {
             return;
         }
 
+        // DiskUsage modal key routing
+        if self.active_modal == ActiveModal::DiskUsage {
+            if key == "escape" {
+                if self.disk_usage_scanning {
+                    self.stop_disk_usage_scan();
+                } else {
+                    self.active_modal = ActiveModal::None;
+                }
+                cx.notify();
+                return;
+            }
+            if key == "up" || key == "arrowup" {
+                if !self.disk_usage_rows.is_empty() {
+                    self.disk_usage_selected_row_idx = self.disk_usage_selected_row_idx.saturating_sub(1);
+                    if let Some(row) = self.disk_usage_rows.get(self.disk_usage_selected_row_idx) {
+                        self.disk_usage_selected_path = Some(row.path.clone());
+                        self.disk_usage_selected_size = row.size;
+                        self.disk_usage_selected_is_dir = row.is_dir;
+                    }
+                    cx.notify();
+                }
+                return;
+            }
+            if key == "down" || key == "arrowdown" {
+                if !self.disk_usage_rows.is_empty() {
+                    self.disk_usage_selected_row_idx = (self.disk_usage_selected_row_idx + 1).min(self.disk_usage_rows.len().saturating_sub(1));
+                    if let Some(row) = self.disk_usage_rows.get(self.disk_usage_selected_row_idx) {
+                        self.disk_usage_selected_path = Some(row.path.clone());
+                        self.disk_usage_selected_size = row.size;
+                        self.disk_usage_selected_is_dir = row.is_dir;
+                    }
+                    cx.notify();
+                }
+                return;
+            }
+            if key == "right" || key == "arrowright" {
+                if let Some(row) = self.disk_usage_rows.get(self.disk_usage_selected_row_idx) {
+                    if row.is_dir && !row.is_expanded {
+                        self.toggle_disk_usage_row(row.node_id);
+                        cx.notify();
+                    }
+                }
+                return;
+            }
+            if key == "left" || key == "arrowleft" {
+                if let Some(row) = self.disk_usage_rows.get(self.disk_usage_selected_row_idx) {
+                    if row.is_dir && row.is_expanded {
+                        self.toggle_disk_usage_row(row.node_id);
+                        cx.notify();
+                    }
+                }
+                return;
+            }
+            if key == "enter" {
+                if let Some(row) = self.disk_usage_rows.get(self.disk_usage_selected_row_idx) {
+                    if row.is_dir {
+                        self.toggle_disk_usage_row(row.node_id);
+                    } else {
+                        self.navigate_to_disk_usage_selected(cx);
+                    }
+                    cx.notify();
+                }
+                return;
+            }
+            return;
+        }
+
         // If any other modal is open, Escape closes it
         if self.active_modal != ActiveModal::None {
             if key == "escape" {
@@ -6029,6 +6344,11 @@ impl Render for RusterView {
                 this.open_file_compare_modal();
                 cx.notify();
             }))
+            .on_action(cx.listener(|this, _: &DiskUsageModal, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.open_disk_usage_modal(cx);
+                cx.notify();
+            }))
             .on_action(cx.listener(|this, _: &CheckForUpdates, _, cx| {
                 this.check_for_updates(true, cx);
             }))
@@ -6184,6 +6504,9 @@ impl Render for RusterView {
             })
             .when(self.active_modal == ActiveModal::FileCompare, |el| {
                 el.child(self.render_file_compare_modal(cx))
+            })
+            .when(self.active_modal == ActiveModal::DiskUsage, |el| {
+                el.child(self.render_disk_usage_modal(cx))
             })
     }
 }

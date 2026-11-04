@@ -3187,6 +3187,170 @@ impl I18n {
             Locale::Ja => "表示",
         }
     }
+    pub fn menu_disk_usage(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Disk Usage Analyzer...",
+            Locale::Cs => "Využití disku...",
+            Locale::De => "Speicherplatzanalyse...",
+            Locale::Es => "Analizador de espacio...",
+            Locale::Fr => "Analyseur d'espace disque...",
+            Locale::It => "Analizzatore spazio...",
+            Locale::Pl => "Analizator miejsca na dysku...",
+            Locale::Pt => "Analisador de espaço...",
+            Locale::Zh => "磁盘空间分析器...",
+            Locale::Ja => "ディスク使用量アナライザー...",
+        }
+    }
+
+    pub fn modal_disk_usage_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Disk Usage Analyzer",
+            Locale::Cs => "Využití disku",
+            Locale::De => "Speicherplatzanalyse",
+            Locale::Es => "Uso de disco",
+            Locale::Fr => "Utilisation du disque",
+            Locale::It => "Uso del disco",
+            Locale::Pl => "Użycie dysku",
+            Locale::Pt => "Uso do disco",
+            Locale::Zh => "磁盘使用情况",
+            Locale::Ja => "ディスク使用状況",
+        }
+    }
+
+    pub fn tab_directory_tree(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Folder Tree",
+            Locale::Cs => "Strom složek",
+            Locale::De => "Verzeichnisstruktur",
+            Locale::Es => "Árbol de carpetas",
+            Locale::Fr => "Arborescence",
+            Locale::It => "Struttura cartelle",
+            Locale::Pl => "Drzewo folderów",
+            Locale::Pt => "Árvore de pastas",
+            Locale::Zh => "文件夹树",
+            Locale::Ja => "フォルダー ツリー",
+        }
+    }
+
+    pub fn tab_file_extensions(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "File Extensions",
+            Locale::Cs => "Typy souborů / Přípony",
+            Locale::De => "Dateierweiterungen",
+            Locale::Es => "Extensiones",
+            Locale::Fr => "Extensions de fichiers",
+            Locale::It => "Estensioni file",
+            Locale::Pl => "Rozszerzenia plików",
+            Locale::Pt => "Extensões",
+            Locale::Zh => "文件扩展名",
+            Locale::Ja => "ファイル拡張子",
+        }
+    }
+
+    pub fn tab_top_files(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Top 100 Largest Files",
+            Locale::Cs => "Top 100 největších souborů",
+            Locale::De => "Top 100 größte Dateien",
+            Locale::Es => "Top 100 archivos más grandes",
+            Locale::Fr => "Top 100 des plus gros fichiers",
+            Locale::It => "Top 100 file più grandi",
+            Locale::Pl => "Top 100 największych plików",
+            Locale::Pt => "Top 100 maiores ficheiros",
+            Locale::Zh => "最大的 100 个文件",
+            Locale::Ja => "最大ファイル Top 100",
+        }
+    }
+
+    pub fn btn_expand_all(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Expand All",
+            Locale::Cs => "Rozbalit vše",
+            Locale::De => "Alle ausklappen",
+            Locale::Es => "Expandir todo",
+            Locale::Fr => "Tout développer",
+            Locale::It => "Espandi tutto",
+            Locale::Pl => "Rozwiń wszystko",
+            Locale::Pt => "Expandir tudo",
+            Locale::Zh => "展开全部",
+            Locale::Ja => "すべて展開",
+        }
+    }
+
+    pub fn btn_collapse_all(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Collapse All",
+            Locale::Cs => "Sbalit vše",
+            Locale::De => "Alle einklappen",
+            Locale::Es => "Contraer todo",
+            Locale::Fr => "Tout réduire",
+            Locale::It => "Comprimi tutto",
+            Locale::Pl => "Zwiń wszystko",
+            Locale::Pt => "Recolher tudo",
+            Locale::Zh => "折叠全部",
+            Locale::Ja => "すべて折りたたむ",
+        }
+    }
+
+    pub fn btn_open_in_panel(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Open in Pane",
+            Locale::Cs => "Otevřít v panelu",
+            Locale::De => "Im Bereich öffnen",
+            Locale::Es => "Abrir en panel",
+            Locale::Fr => "Ouvrir dans le panneau",
+            Locale::It => "Apri nel pannello",
+            Locale::Pl => "Otwórz w panelu",
+            Locale::Pt => "Abrir no painel",
+            Locale::Zh => "在窗格中打开",
+            Locale::Ja => "ペインで開く",
+        }
+    }
+
+    pub fn btn_move_to_trash(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Move to Trash",
+            Locale::Cs => "Přesunout do koše",
+            Locale::De => "In den Papierkorb",
+            Locale::Es => "Mover a la papelera",
+            Locale::Fr => "Placer dans la corbeille",
+            Locale::It => "Sposta nel cestino",
+            Locale::Pl => "Przenieś do kosza",
+            Locale::Pt => "Mover para o lixo",
+            Locale::Zh => "移至废纸篓",
+            Locale::Ja => "ゴミ箱へ移動",
+        }
+    }
+
+    pub fn col_usage(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Usage",
+            Locale::Cs => "Využití",
+            Locale::De => "Belegung",
+            Locale::Es => "Uso",
+            Locale::Fr => "Utilisation",
+            Locale::It => "Utilizzo",
+            Locale::Pl => "Użycie",
+            Locale::Pt => "Uso",
+            Locale::Zh => "占用",
+            Locale::Ja => "使用量",
+        }
+    }
+
+    pub fn lbl_scanning_status(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Scanning:",
+            Locale::Cs => "Skenování:",
+            Locale::De => "Scannen:",
+            Locale::Es => "Escaneando:",
+            Locale::Fr => "Analyse en cours :",
+            Locale::It => "Scansione:",
+            Locale::Pl => "Skanowanie:",
+            Locale::Pt => "A analisar:",
+            Locale::Zh => "扫描中：",
+            Locale::Ja => "スキャン中：",
+        }
+    }
 }
 
 #[cfg(test)]

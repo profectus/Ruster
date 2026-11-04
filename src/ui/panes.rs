@@ -1793,7 +1793,19 @@ impl RusterView {
                 cx.listener(
                     move |this, event: &MouseDownEvent, _, cx| {
                         if this.active_modal != ActiveModal::None { return; }
+                        cx.stop_propagation();
                         this.active_pane = ActivePane::Local;
+                        let is_already_marked = this.local_entries.get(idx).map(|e| e.is_any_selected()).unwrap_or(false);
+                        if !is_already_marked {
+                            for (i, e) in this.local_entries.iter_mut().enumerate() {
+                                if i == idx && e.name != ".." {
+                                    e.selected = true;
+                                } else {
+                                    e.selected = false;
+                                    e.space_marked = false;
+                                }
+                            }
+                        }
                         this.local_selected = idx;
                         this.session_dropdown_open = false;
                         this.favorites_menu_pane = None;
@@ -2045,7 +2057,19 @@ impl RusterView {
                 cx.listener(
                     move |this, event: &MouseDownEvent, _, cx| {
                         if this.active_modal != ActiveModal::None { return; }
+                        cx.stop_propagation();
                         this.active_pane = ActivePane::Remote;
+                        let is_already_marked = this.right_entries.get(idx).map(|e| e.is_any_selected()).unwrap_or(false);
+                        if !is_already_marked {
+                            for (i, e) in this.right_entries.iter_mut().enumerate() {
+                                if i == idx && e.name != ".." {
+                                    e.selected = true;
+                                } else {
+                                    e.selected = false;
+                                    e.space_marked = false;
+                                }
+                            }
+                        }
                         this.right_selected = idx;
                         this.session_dropdown_open = false;
                         this.favorites_menu_pane = None;
@@ -2313,11 +2337,23 @@ impl RusterView {
                 cx.listener(
                     move |this, event: &MouseDownEvent, _, cx| {
                         if this.active_modal != ActiveModal::None { return; }
+                        cx.stop_propagation();
                         this.active_pane = ActivePane::Remote;
                         if let Some(s) = this
                             .sessions
                             .get_mut(this.active_session_idx)
                         {
+                            let is_already_marked = s.entries.get(idx).map(|e| e.is_any_selected()).unwrap_or(false);
+                            if !is_already_marked {
+                                for (i, e) in s.entries.iter_mut().enumerate() {
+                                    if i == idx && e.name != ".." {
+                                        e.selected = true;
+                                    } else {
+                                        e.selected = false;
+                                        e.space_marked = false;
+                                    }
+                                }
+                            }
                             s.selected_index = idx;
                         }
                         this.session_dropdown_open = false;

@@ -12,6 +12,7 @@ mod theme;
 mod ui;
 pub mod sync;
 pub mod update;
+pub mod disk_usage;
 
 use gpui::{
     actions, px, size, App, AppContext, Application, Bounds, KeyBinding, SharedString,
@@ -130,6 +131,7 @@ actions!(
         MultiRenameModal,
         FindFilesModal,
         FileCompareModal,
+        DiskUsageModal,
     ]
 );
 
@@ -179,6 +181,8 @@ fn main() {
             KeyBinding::new("alt-f7", FindFilesModal, None),
             KeyBinding::new("cmd-shift-f", FindFilesModal, None),
             KeyBinding::new("cmd-d", FileCompareModal, None),
+            KeyBinding::new("cmd-shift-u", DiskUsageModal, None),
+            KeyBinding::new("alt-f9", DiskUsageModal, None),
         ]);
         let state = crate::config::load_app_state();
         let is_dark = state.theme.is_dark();

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.3] - 2026-11-04
+
+### Added
+- **Local Disk Usage Analyzer (`Cmd+Shift+U` / `Alt+F9`)**:
+  - Comprehensive disk space analyzer for local drives and folders.
+  - Interactive multi-level hierarchical tree view with collapsible/expandable folders, proportional usage progress bars, and item counts.
+  - Category breakdown banner categorized into Code & Dev, Media, Documents, Archives, Applications, System, and Other.
+  - Tabular breakdown of disk space consumed by file extensions with percentages and counts.
+  - Top 100 Largest Files tab displaying largest individual files with quick Reveal in Finder and direct pane navigation.
+  - Non-blocking asynchronous background scanner with live real-time progress indicators (scanned directory, file/folder counters, bytes).
+  - Clickable breadcrumb path navigation and quick disk / Home switches.
+  - Double-click on any folder or file row opens the corresponding location in Ruster's active pane.
+  - Automatic filtering preventing scans from hanging on cloud storage directories (Google Drive, iCloud Drive, OneDrive, Dropbox, etc.).
+
 ## [0.4.2] - 2026-10-31
 
 ### Added

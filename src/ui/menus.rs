@@ -7,7 +7,7 @@ use crate::icons::render_icon;
 use crate::i18n::{I18n, Locale};
 use crate::model::ActivePane;
 use crate::{
-    CheckForUpdates, CompressModal, CopySelected, DeleteModal, EditSelected, ExtractModal,
+    CheckForUpdates, CompressModal, CopySelected, DeleteModal, DiskUsageModal, EditSelected, ExtractModal,
     FileCompareModal, FindFilesModal, GoToFolderModal, MoveSelected, MultiRenameModal,
     NewFolderModal, OpenInTerminal, OpenSelected, OpenSiteManager, PermissionsModal, Quit, RefreshPanes,
     RenameModal, RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal,
@@ -506,6 +506,18 @@ impl RusterView {
                             },
                         ),
                     )
+                    .child(
+                        self.render_ctx_item(
+                            "ctx-disk-usage",
+                            t.menu_disk_usage(),
+                            cx,
+                            |this, cx| {
+                                this.context_menu = None;
+                                this.open_disk_usage_modal(cx);
+                                cx.notify();
+                            },
+                        ),
+                    )
             })
     }
 
@@ -593,6 +605,7 @@ pub fn install_app_menus(cx: &mut App, locale: Locale) {
                 MenuItem::separator(),
                 MenuItem::action(t.menu_find_files(), FindFilesModal),
                 MenuItem::action(t.menu_compare_files(), FileCompareModal),
+                MenuItem::action(t.menu_disk_usage(), DiskUsageModal),
                 MenuItem::separator(),
                 MenuItem::action(t.act_compress(), CompressModal),
                 MenuItem::action(t.act_extract(), ExtractModal),

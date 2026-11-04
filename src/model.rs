@@ -765,6 +765,7 @@ pub enum ActiveModal {
     MultiRename,
     FindFiles,
     FileCompare,
+    DiskUsage,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

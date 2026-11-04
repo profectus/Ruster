@@ -47,6 +47,7 @@
 - **Visual chmod Calculator** — Inspect and set permissions via octal input and interactive bit checkboxes with recursion support.
 - **Archive Manager (Pack & Unpack)** — Compress selected files into `.zip`, `.tar.gz`, or `.7z` (`Alt+F5`), and extract `.zip`, `.tar.gz`, `.tar`, `.7z`, `.rar`, and `.gz` (`Alt+F6`) both locally and lightning-fast on remote servers via SSH.
 - **Directory Synchronization** — Compare local and remote folders and synchronize missing or newer files with dry-run previews.
+- **Interactive Disk Usage Analyzer** — Inspect disk usage with interactive folder tree drill-down, proportional usage bars, file extension breakdown, top 100 largest files, and instant cleanup actions (`Cmd+Shift+U` or `Alt+F9`).
 - **Instant Quick Filter** — Filter thousands of files in milliseconds using `Cmd+F`.
 
 ---
