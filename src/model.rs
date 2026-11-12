@@ -766,6 +766,8 @@ pub enum ActiveModal {
     FindFiles,
     FileCompare,
     DiskUsage,
+    ImportConfig,
+    ExportConfig,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

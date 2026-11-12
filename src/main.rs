@@ -13,6 +13,7 @@ mod ui;
 pub mod sync;
 pub mod update;
 pub mod disk_usage;
+pub mod importer;
 
 use gpui::{
     actions, px, size, App, AppContext, Application, Bounds, KeyBinding, SharedString,
@@ -132,6 +133,8 @@ actions!(
         FindFilesModal,
         FileCompareModal,
         DiskUsageModal,
+        ImportModal,
+        ExportModal,
     ]
 );
 

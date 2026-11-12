@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.5] - 2026-11-12
+
+### Added
+- **Full Configuration & Server Import / Export**:
+  - Unified **Import Configuration & Servers** dialog accessible from the top menu bar (`Connections → Import...`) or Connection Manager.
+  - **WinSCP Import**: Imports session profiles from exported `WinSCP.ini` or Windows Registry (`.reg`) files, supporting FTP, FTPS (Explicit / Implicit TLS), SFTP, SCP, custom ports, and folder hierarchies.
+  - **WinSCP Password Decryption**: Seamlessly decodes obfuscated WinSCP session passwords using the reversible algorithm and saves credentials directly into native macOS Keychain.
+  - **Ruster JSON Backup & Restore**: Full JSON backup and restore with selective options for remote servers, saved Keychain passwords, application settings (theme, locale, layout), and favorite paths.
+  - **OpenSSH Config Import**: Flexible import from `~/.ssh/config` or custom OpenSSH configuration files.
+  - **Comprehensive Export Dialog**: Selective JSON export with configurable toggles for servers, passwords (with security warning), settings, and bookmarks.
+  - Native macOS file picker integration (`NSOpenPanel` / `NSSavePanel`) for seamless file selection and saving.
+  - Complete internationalization across all 10 world languages.
+
 ## [0.4.4] - 2026-11-04
 
 ### Changed

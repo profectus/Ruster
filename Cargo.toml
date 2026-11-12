@@ -1,6 +1,6 @@
 [package]
 name = "ruster"
-version = "0.4.4"
+version = "0.4.5"
 edition = "2021"
 description = "Ruster"
 
@@ -14,9 +14,12 @@ sevenz-rust = { version = "0.6", features = ["aes256"] }
 tar = "0.4"
 unrar = "0.5"
 zip = "2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
 [profile.release]
-opt-level = 3
+opt-level = "s"
 lto = true
 codegen-units = 1
+panic = "abort"
 strip = true

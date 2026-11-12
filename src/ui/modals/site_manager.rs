@@ -1,8 +1,6 @@
 use gpui::{div, prelude::*, px, rgb, rgba, Context, IntoElement, MouseButton, MouseDownEvent};
 use crate::app::{RusterView, SiteNoticeKind};
-use crate::config::{
-    import_from_ssh_config, save_password_to_keychain, save_sites_to_disk, SshImportResult,
-};
+use crate::config::{save_password_to_keychain, save_sites_to_disk};
 use crate::icons::render_icon;
 use crate::model::{ActiveModal, Protocol, SavedSiteProfile, SiteEditField, ENV_COLORS};
 use crate::ui::helpers::{render_field_value_with_cursor, FileTooltip};
@@ -437,7 +435,7 @@ impl RusterView {
                                             )
                                             .child(
                                                 div()
-                                                    .id("btn-import-ssh")
+                                                    .id("btn-import-modal")
                                                     .cursor_pointer()
                                                     .w(px(28.0))
                                                     .h(px(28.0))
@@ -450,7 +448,7 @@ impl RusterView {
                                                     .justify_center()
                                                     .hover(|s| s.bg(theme.button_hover_bg()))
                                                     .tooltip({
-                                                        let tt = t.tooltip_import_ssh().to_string();
+                                                        let tt = t.menu_import_config().to_string();
                                                         let is_dark = theme.is_dark();
                                                         move |_, cx| {
                                                             cx.new(|_| FileTooltip::simple(tt.clone(), is_dark)).into()
@@ -459,46 +457,7 @@ impl RusterView {
                                                     .on_mouse_down(
                                                         MouseButton::Left,
                                                         cx.listener(|this, _, _, cx| {
-                                                            let t = this.i18n();
-                                                            match import_from_ssh_config() {
-                                                                SshImportResult::FileNotFound => {
-                                                                    this.site_notice = Some((
-                                                                        t.notice_ssh_config_not_found().to_string(),
-                                                                        SiteNoticeKind::Error,
-                                                                    ));
-                                                                }
-                                                                SshImportResult::NoHostsFound => {
-                                                                    this.site_notice = Some((
-                                                                        t.notice_ssh_config_no_hosts().to_string(),
-                                                                        SiteNoticeKind::Error,
-                                                                    ));
-                                                                }
-                                                                SshImportResult::Success(imported) => {
-                                                                    let total = imported.len();
-                                                                    let mut added = 0;
-                                                                    for s in imported {
-                                                                        if !this.saved_sites.iter().any(|existing| {
-                                                                            existing.host == s.host && existing.username == s.username
-                                                                        }) {
-                                                                            this.saved_sites.push(s);
-                                                                            added += 1;
-                                                                        }
-                                                                    }
-                                                                    if added > 0 {
-                                                                        this.sort_saved_sites();
-                                                                        let _ = save_sites_to_disk(&this.saved_sites);
-                                                                        this.site_notice = Some((
-                                                                            t.notice_ssh_config_imported(added),
-                                                                            SiteNoticeKind::Success,
-                                                                        ));
-                                                                    } else {
-                                                                        this.site_notice = Some((
-                                                                            t.notice_ssh_config_all_exist(total),
-                                                                            SiteNoticeKind::Info,
-                                                                        ));
-                                                                    }
-                                                                }
-                                                            }
+                                                            this.open_import_modal();
                                                             cx.notify();
                                                         }),
                                                     )

@@ -7,8 +7,8 @@ use crate::icons::render_icon;
 use crate::i18n::{I18n, Locale};
 use crate::model::ActivePane;
 use crate::{
-    CheckForUpdates, CompressModal, CopySelected, DeleteModal, DiskUsageModal, EditSelected, ExtractModal,
-    FileCompareModal, FindFilesModal, GoToFolderModal, MoveSelected, MultiRenameModal,
+    CheckForUpdates, CompressModal, CopySelected, DeleteModal, DiskUsageModal, EditSelected, ExportModal, ExtractModal,
+    FileCompareModal, FindFilesModal, GoToFolderModal, ImportModal, MoveSelected, MultiRenameModal,
     NewFolderModal, OpenInTerminal, OpenSelected, OpenSiteManager, PermissionsModal, Quit, RefreshPanes,
     RenameModal, RevealInFinder, SelectAllItems, SwapPanes, SwitchLanguage, SynchronizeModal,
     ToggleDualPane, ToggleFunctionBar, ToggleHiddenFiles, ToggleLocalTree, ToggleQuickFilter, ToggleRemoteTree,
@@ -566,6 +566,9 @@ pub fn install_app_menus(cx: &mut App, locale: Locale) {
             name: t.menu_connections().into(),
             items: vec![
                 MenuItem::action(t.menu_site_manager(), OpenSiteManager),
+                MenuItem::separator(),
+                MenuItem::action(t.menu_import_config(), ImportModal),
+                MenuItem::action(t.menu_export_config(), ExportModal),
                 MenuItem::separator(),
                 MenuItem::action(t.menu_refresh(), RefreshPanes),
             ],

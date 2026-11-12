@@ -342,6 +342,7 @@ pub fn save_sites_to_disk(sites: &[SavedSiteProfile]) -> std::io::Result<()> {
     fs::write(sites_file_path(), out)
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum SshImportResult {
     Success(Vec<SavedSiteProfile>),
@@ -448,6 +449,7 @@ pub fn parse_ssh_config_str(content: &str) -> Vec<SavedSiteProfile> {
 }
 
 /// Parses `~/.ssh/config` and returns discovered SSH/SFTP hosts or an import status.
+#[allow(dead_code)]
 pub fn import_from_ssh_config() -> SshImportResult {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/Users".to_string());
     let ssh_config_path = PathBuf::from(&home).join(".ssh").join("config");

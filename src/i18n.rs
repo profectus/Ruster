@@ -190,6 +190,36 @@ impl I18n {
         }
     }
 
+    pub fn menu_import_config(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Import Settings & Servers...",
+            Locale::Cs => "Importovat nastavení a servery...",
+            Locale::De => "Einstellungen & Server importieren...",
+            Locale::Es => "Importar configuración y servidores...",
+            Locale::Fr => "Importer la configuration et les serveurs...",
+            Locale::It => "Importa impostazioni e server...",
+            Locale::Pl => "Importuj ustawienia i serwery...",
+            Locale::Pt => "Importar configurações e servidores...",
+            Locale::Zh => "导入设置与服务器...",
+            Locale::Ja => "設定とサーバーをインポート...",
+        }
+    }
+
+    pub fn menu_export_config(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Export Backup...",
+            Locale::Cs => "Exportovat zálohu...",
+            Locale::De => "Backup exportieren...",
+            Locale::Es => "Exportar copia de seguridad...",
+            Locale::Fr => "Exporter la sauvegarde...",
+            Locale::It => "Esporta backup...",
+            Locale::Pl => "Eksportuj kopię zapasową...",
+            Locale::Pt => "Exportar backup...",
+            Locale::Zh => "导出备份...",
+            Locale::Ja => "バックアップをエクスポート...",
+        }
+    }
+
     pub fn menu_quick_filter(&self) -> &'static str {
         match self.locale {
             Locale::En => "Quick Filter...",
@@ -1837,6 +1867,291 @@ impl I18n {
                 "~/.ssh/config の全 {} 件のサーバーはすでにリストに存在します",
                 count
             ),
+        }
+    }
+
+    pub fn modal_import_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Import Configuration & Servers",
+            Locale::Cs => "Import konfigurace a serverů",
+            Locale::De => "Konfiguration & Server importieren",
+            Locale::Es => "Importar configuración y servidores",
+            Locale::Fr => "Importer configuration et serveurs",
+            Locale::It => "Importa configurazione e server",
+            Locale::Pl => "Import konfiguracji i serwerów",
+            Locale::Pt => "Importar configuração e servidores",
+            Locale::Zh => "导入配置与服务器",
+            Locale::Ja => "設定とサーバーのインポート",
+        }
+    }
+
+    pub fn modal_export_title(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Export Configuration & Backup",
+            Locale::Cs => "Export konfigurace a záloha",
+            Locale::De => "Konfiguration & Backup exportieren",
+            Locale::Es => "Exportar configuración y copia de seguridad",
+            Locale::Fr => "Exporter la configuration et la sauvegarde",
+            Locale::It => "Esporta configurazione e backup",
+            Locale::Pl => "Eksport konfiguracji i kopii zapasowej",
+            Locale::Pt => "Exportar configuração e backup",
+            Locale::Zh => "导出配置与备份",
+            Locale::Ja => "設定とバックアップのエクスポート",
+        }
+    }
+
+    pub fn import_source_label(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Import source:",
+            Locale::Cs => "Zdroj importu:",
+            Locale::De => "Importquelle:",
+            Locale::Es => "Origen de importación:",
+            Locale::Fr => "Source d'importation :",
+            Locale::It => "Sorgente di importazione:",
+            Locale::Pl => "Źródło importu:",
+            Locale::Pt => "Origem da importação:",
+            Locale::Zh => "导入来源：",
+            Locale::Ja => "インポート元：",
+        }
+    }
+
+    pub fn import_source_ruster(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Ruster Backup (JSON)",
+            Locale::Cs => "Záloha Rusteru (JSON)",
+            Locale::De => "Ruster-Backup (JSON)",
+            Locale::Es => "Copia de seguridad Ruster (JSON)",
+            Locale::Fr => "Sauvegarde Ruster (JSON)",
+            Locale::It => "Backup Ruster (JSON)",
+            Locale::Pl => "Kopia zapasowa Ruster (JSON)",
+            Locale::Pt => "Backup do Ruster (JSON)",
+            Locale::Zh => "Ruster 备份文件 (JSON)",
+            Locale::Ja => "Ruster バックアップ (JSON)",
+        }
+    }
+
+    pub fn import_source_winscp(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "WinSCP (WinSCP.ini / .reg with passwords)",
+            Locale::Cs => "WinSCP (WinSCP.ini / .reg včetně hesel)",
+            Locale::De => "WinSCP (WinSCP.ini / .reg inkl. Passwörter)",
+            Locale::Es => "WinSCP (WinSCP.ini / .reg con contraseñas)",
+            Locale::Fr => "WinSCP (WinSCP.ini / .reg avec mots de passe)",
+            Locale::It => "WinSCP (WinSCP.ini / .reg con password)",
+            Locale::Pl => "WinSCP (WinSCP.ini / .reg wraz z hasłami)",
+            Locale::Pt => "WinSCP (WinSCP.ini / .reg com senhas)",
+            Locale::Zh => "WinSCP (WinSCP.ini / .reg 包含密码)",
+            Locale::Ja => "WinSCP (WinSCP.ini / .reg パスワード含む)",
+        }
+    }
+
+    pub fn import_source_ssh(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "OpenSSH Config (~/.ssh/config)",
+            Locale::Cs => "OpenSSH konfigurace (~/.ssh/config)",
+            Locale::De => "OpenSSH-Konfiguration (~/.ssh/config)",
+            Locale::Es => "Configuración OpenSSH (~/.ssh/config)",
+            Locale::Fr => "Configuration OpenSSH (~/.ssh/config)",
+            Locale::It => "Configurazione OpenSSH (~/.ssh/config)",
+            Locale::Pl => "Konfiguracja OpenSSH (~/.ssh/config)",
+            Locale::Pt => "Configuração OpenSSH (~/.ssh/config)",
+            Locale::Zh => "OpenSSH 配置文件 (~/.ssh/config)",
+            Locale::Ja => "OpenSSH 設定 (~/.ssh/config)",
+        }
+    }
+
+    pub fn btn_browse(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Browse...",
+            Locale::Cs => "Procházet...",
+            Locale::De => "Durchsuchen...",
+            Locale::Es => "Examinar...",
+            Locale::Fr => "Parcourir...",
+            Locale::It => "Sfoglia...",
+            Locale::Pl => "Przeglądaj...",
+            Locale::Pt => "Procurar...",
+            Locale::Zh => "浏览...",
+            Locale::Ja => "参照...",
+        }
+    }
+
+    pub fn btn_import_action(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Import",
+            Locale::Cs => "Importovat",
+            Locale::De => "Importieren",
+            Locale::Es => "Importar",
+            Locale::Fr => "Importer",
+            Locale::It => "Importa",
+            Locale::Pl => "Importuj",
+            Locale::Pt => "Importar",
+            Locale::Zh => "导入",
+            Locale::Ja => "インポート",
+        }
+    }
+
+    pub fn import_opt_sites(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Import remote servers & bookmarks",
+            Locale::Cs => "Importovat vzdálené servery a záložky",
+            Locale::De => "Entfernte Server & Lesezeichen importieren",
+            Locale::Es => "Importar servidores remotos y marcadores",
+            Locale::Fr => "Importer les serveurs distants et favoris",
+            Locale::It => "Importa server remoti e segnalibri",
+            Locale::Pl => "Importuj serwery zdalne i zakładki",
+            Locale::Pt => "Importar servidores remotos e favoritos",
+            Locale::Zh => "导入远程服务器与书签",
+            Locale::Ja => "リモートサーバーとブックマークをインポート",
+        }
+    }
+
+    pub fn import_opt_passwords(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Save decrypted passwords into macOS Keychain",
+            Locale::Cs => "Uložit dešifrovaná hesla do macOS Klíčenky",
+            Locale::De => "Entschlüsselte Passwörter im macOS-Schlüsselbund speichern",
+            Locale::Es => "Guardar contraseñas descifradas en el Llavero de macOS",
+            Locale::Fr => "Enregistrer les mots de passe déchiffrés dans le trousseau macOS",
+            Locale::It => "Salva password decifrate nel Portachiavi di macOS",
+            Locale::Pl => "Zapisz odszyfrowane hasła w Pęku kluczy macOS",
+            Locale::Pt => "Salvar senhas descriptografadas nas Chaves do macOS",
+            Locale::Zh => "将解密后的密码保存至 macOS 钥匙串",
+            Locale::Ja => "復号したパスワードを macOS キーチェーンに保存",
+        }
+    }
+
+    pub fn import_opt_settings(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Restore application settings (appearance, layout)",
+            Locale::Cs => "Obnovit nastavení aplikace (vzhled, rozložení)",
+            Locale::De => "App-Einstellungen wiederherstellen (Design, Layout)",
+            Locale::Es => "Restaurar configuración de la app (apariencia, diseño)",
+            Locale::Fr => "Restaurer les paramètres de l'application (apparence)",
+            Locale::It => "Ripristina impostazioni dell'app (aspetto, layout)",
+            Locale::Pl => "Przywróć ustawienia aplikacji (wygląd, układ)",
+            Locale::Pt => "Restaurar configurações do aplicativo (aparência)",
+            Locale::Zh => "恢复应用程序设置（外观、布局）",
+            Locale::Ja => "アプリ設定を復元 (外観、レイアウト)",
+        }
+    }
+
+    pub fn import_opt_favorites(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Restore favorite directories",
+            Locale::Cs => "Obnovit oblíbené složky",
+            Locale::De => "Favoriten-Ordner wiederherstellen",
+            Locale::Es => "Restaurar carpetas favoritas",
+            Locale::Fr => "Restaurer les dossiers favoris",
+            Locale::It => "Ripristina cartelle preferite",
+            Locale::Pl => "Przywróć ulubione foldery",
+            Locale::Pt => "Restaurar pastas favoritas",
+            Locale::Zh => "恢复常用文件夹",
+            Locale::Ja => "お気に入りフォルダを復元",
+        }
+    }
+
+    pub fn export_opt_sites(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Export remote servers & bookmarks",
+            Locale::Cs => "Exportovat vzdálené servery a záložky",
+            Locale::De => "Entfernte Server & Lesezeichen exportieren",
+            Locale::Es => "Exportar servidores remotos y marcadores",
+            Locale::Fr => "Exporter les serveurs distants et favoris",
+            Locale::It => "Esporta server remoti e segnalibri",
+            Locale::Pl => "Eksportuj serwery zdalne i zakładki",
+            Locale::Pt => "Exportar servidores remotos e favoritos",
+            Locale::Zh => "导出远程服务器与书签",
+            Locale::Ja => "リモートサーバーとブックマークをエクスポート",
+        }
+    }
+
+    pub fn export_opt_passwords(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Include saved passwords (from Keychain)",
+            Locale::Cs => "Zahrnout uložená hesla (z Klíčenky)",
+            Locale::De => "Gespeicherte Passwörter einbeziehen (aus Schlüsselbund)",
+            Locale::Es => "Incluir contraseñas guardadas (del Llavero)",
+            Locale::Fr => "Inclure les mots de passe enregistrés (du trousseau)",
+            Locale::It => "Includi password salvate (dal Portachiavi)",
+            Locale::Pl => "Dołącz zapisane hasła (z Pęku kluczy)",
+            Locale::Pt => "Incluir senhas salvas (das Chaves)",
+            Locale::Zh => "包含保存的密码（来自钥匙串）",
+            Locale::Ja => "保存されたパスワードを含める (キーチェーンから)",
+        }
+    }
+
+    pub fn export_passwords_warning(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Warning: Passwords in the JSON file will be readable for easy migration.",
+            Locale::Cs => "Upozornění: Hesla v JSON záloze budou čitelná pro snadný přenos na jiný Mac.",
+            Locale::De => "Warnung: Passwörter in der JSON-Datei sind für einfache Migration lesbar.",
+            Locale::Es => "Advertencia: Las contraseñas en el archivo JSON serán legibles para facilitar la migración.",
+            Locale::Fr => "Attention : les mots de passe du fichier JSON seront lisibles pour faciliter la migration.",
+            Locale::It => "Attenzione: le password nel file JSON saranno leggibili per facilitare la migrazione.",
+            Locale::Pl => "Ostrzeżenie: Hasła w pliku JSON będą czytelne w celu łatwej migracji.",
+            Locale::Pt => "Aviso: As senhas no arquivo JSON poderão ser lidas para facilitar a migração.",
+            Locale::Zh => "警告：JSON 文件中的密码为明文形式，便于跨设备迁移。",
+            Locale::Ja => "警告: JSON ファイル内のパスワードは移行しやすいよう平文で保存されます。",
+        }
+    }
+
+    pub fn export_opt_settings(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Export application settings (appearance, layout)",
+            Locale::Cs => "Exportovat nastavení aplikace (vzhled, rozložení)",
+            Locale::De => "App-Einstellungen exportieren (Design, Layout)",
+            Locale::Es => "Exportar configuración de la app (apariencia, diseño)",
+            Locale::Fr => "Exporter les paramètres de l'application (apparence)",
+            Locale::It => "Esporta impostazioni dell'app (aspetto, layout)",
+            Locale::Pl => "Eksportuj ustawienia aplikacji (wygląd, układ)",
+            Locale::Pt => "Exportar configurações do aplicativo (aparência)",
+            Locale::Zh => "导出应用程序设置（外观、布局）",
+            Locale::Ja => "アプリ設定をエクスポート (外観、レイアウト)",
+        }
+    }
+
+    pub fn export_opt_favorites(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Export favorite directories",
+            Locale::Cs => "Exportovat oblíbené složky",
+            Locale::De => "Favoriten-Ordner exportieren",
+            Locale::Es => "Exportar carpetas favoritas",
+            Locale::Fr => "Exporter les dossiers favoris",
+            Locale::It => "Esporta cartelle preferite",
+            Locale::Pl => "Eksportuj ulubione foldery",
+            Locale::Pt => "Exportar pastas favoritas",
+            Locale::Zh => "导出常用文件夹",
+            Locale::Ja => "お気に入りフォルダをエクスポート",
+        }
+    }
+
+    pub fn btn_export_action(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Export to File...",
+            Locale::Cs => "Exportovat do souboru...",
+            Locale::De => "In Datei exportieren...",
+            Locale::Es => "Exportar a archivo...",
+            Locale::Fr => "Exporter vers un fichier...",
+            Locale::It => "Esporta su file...",
+            Locale::Pl => "Eksportuj do pliku...",
+            Locale::Pt => "Exportar para arquivo...",
+            Locale::Zh => "导出到文件...",
+            Locale::Ja => "ファイルにエクスポート...",
+        }
+    }
+
+    pub fn export_description(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Select which items you want to include in the backup file.",
+            Locale::Cs => "Vyberte, které položky chcete zahrnout do záložního souboru.",
+            Locale::De => "Wählen Sie aus, welche Elemente in die Sicherungsdatei aufgenommen werden sollen.",
+            Locale::Es => "Seleccione qué elementos desea incluir en el archivo de copia de seguridad.",
+            Locale::Fr => "Sélectionnez les éléments à inclure dans le fichier de sauvegarde.",
+            Locale::It => "Seleziona quali elementi includere nel file di backup.",
+            Locale::Pl => "Wybierz elementy, które chcesz dołączyć do pliku kopii zapasowej.",
+            Locale::Pt => "Selecione quais itens deseja incluir no arquivo de backup.",
+            Locale::Zh => "选择要包含在备份文件中的项目。",
+            Locale::Ja => "バックアップファイルに含める項目を選択してください。",
         }
     }
 
@@ -3948,6 +4263,29 @@ mod tests {
             assert!(!t.tooltip_owner().is_empty());
             assert!(!t.tooltip_created().is_empty());
             assert!(!t.act_open_in_terminal().is_empty());
+
+            // Test import & export i18n
+            assert!(!t.menu_import_config().is_empty());
+            assert!(!t.menu_export_config().is_empty());
+            assert!(!t.modal_import_title().is_empty());
+            assert!(!t.modal_export_title().is_empty());
+            assert!(!t.import_source_label().is_empty());
+            assert!(!t.import_source_ruster().is_empty());
+            assert!(!t.import_source_winscp().is_empty());
+            assert!(!t.import_source_ssh().is_empty());
+            assert!(!t.btn_browse().is_empty());
+            assert!(!t.btn_import_action().is_empty());
+            assert!(!t.btn_export_action().is_empty());
+            assert!(!t.import_opt_sites().is_empty());
+            assert!(!t.import_opt_passwords().is_empty());
+            assert!(!t.import_opt_settings().is_empty());
+            assert!(!t.import_opt_favorites().is_empty());
+            assert!(!t.export_opt_sites().is_empty());
+            assert!(!t.export_opt_passwords().is_empty());
+            assert!(!t.export_passwords_warning().is_empty());
+            assert!(!t.export_opt_settings().is_empty());
+            assert!(!t.export_opt_favorites().is_empty());
+            assert!(!t.export_description().is_empty());
         }
     }
 }

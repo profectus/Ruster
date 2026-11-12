@@ -257,6 +257,14 @@ pub struct RusterView {
     pub(crate) archive_password_cursor_pos: usize,
     pub(crate) archive_password_visible: bool,
 
+    // Import / Export
+    pub(crate) import_source: crate::importer::ImportSourceType,
+    pub(crate) import_file_path: String,
+    pub(crate) import_options: crate::importer::ImportOptions,
+    pub(crate) import_summary: Option<crate::importer::ImportSummary>,
+    pub(crate) export_options: crate::importer::ExportOptions,
+    pub(crate) export_status: Option<String>,
+
     pub(crate) window_width: f32,
     pub(crate) window_height: f32,
     pub(crate) last_window_size_saved: std::time::Instant,
@@ -293,6 +301,7 @@ enum TransferKind {
     },
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SiteNoticeKind {
     Success,
@@ -699,6 +708,13 @@ impl RusterView {
             archive_password_input: String::new(),
             archive_password_cursor_pos: 0,
             archive_password_visible: false,
+
+            import_source: crate::importer::ImportSourceType::WinScp,
+            import_file_path: String::new(),
+            import_options: crate::importer::ImportOptions::default(),
+            import_summary: None,
+            export_options: crate::importer::ExportOptions::default(),
+            export_status: None,
 
             window_width: saved_state.window_width,
             window_height: saved_state.window_height,
@@ -1184,7 +1200,6 @@ impl RusterView {
             self.navigate_right_local(PathBuf::from(path));
             return;
         }
-        self.show_queue = true;
         self.log_server(ServerLogKind::Command, format!("CWD {}", path));
         self.log_server(ServerLogKind::Command, "PASV".to_string());
         self.log_server(ServerLogKind::Command, "LIST".to_string());
@@ -2656,6 +2671,12 @@ impl RusterView {
         self.reload_local();
         self.reload_right();
         cx.notify();
+    }
+
+    pub(crate) fn is_transfer_in_progress(&self) -> bool {
+        self.active_transfer.is_some()
+            || self.transfer_cancel_signal.is_some()
+            || self.transfer_queue.iter().any(|i| i.status == TransferStatus::Transferring || i.status == TransferStatus::Queued)
     }
 
     pub(crate) fn handle_transfer_error_action(
@@ -6215,7 +6236,7 @@ impl Render for RusterView {
             }))
             .on_action(cx.listener(|this, _: &ToggleTransferQueue, _, cx| {
                 if this.active_modal != ActiveModal::None { return; }
-                if !this.sessions.is_empty() {
+                if this.is_transfer_in_progress() {
                     return;
                 }
                 this.show_queue = !this.show_queue;
@@ -6352,6 +6373,16 @@ impl Render for RusterView {
             .on_action(cx.listener(|this, _: &CheckForUpdates, _, cx| {
                 this.check_for_updates(true, cx);
             }))
+            .on_action(cx.listener(|this, _: &crate::ImportModal, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.open_import_modal();
+                cx.notify();
+            }))
+            .on_action(cx.listener(|this, _: &crate::ExportModal, _, cx| {
+                if this.active_modal != ActiveModal::None { return; }
+                this.open_export_modal();
+                cx.notify();
+            }))
             .relative()
             .flex()
             .flex_col()
@@ -6420,8 +6451,8 @@ impl Render for RusterView {
                         )
                     }),
             )
-            // 4. Transfer Queue & Server Console Dock (auto-shown on server activity/transfer, always on remote server)
-            .when(!self.sessions.is_empty() || self.show_queue, |el| {
+            // 4. Transfer Queue & Server Console Dock (auto-shown on server activity/transfer)
+            .when(self.show_queue || self.is_transfer_in_progress(), |el| {
                 el.child(self.render_queue_resize_handle(cx))
                     .child(self.render_transfer_queue_panel(cx))
             })
@@ -6507,6 +6538,12 @@ impl Render for RusterView {
             })
             .when(self.active_modal == ActiveModal::DiskUsage, |el| {
                 el.child(self.render_disk_usage_modal(cx))
+            })
+            .when(self.active_modal == ActiveModal::ImportConfig, |el| {
+                el.child(self.render_import_modal(cx))
+            })
+            .when(self.active_modal == ActiveModal::ExportConfig, |el| {
+                el.child(self.render_export_modal(cx))
             })
     }
 }

@@ -236,27 +236,6 @@ impl RusterView {
                                     )
                                     .child(render_icon("icons/file-text.svg", 10.0, if show_log { theme.c_icon_active() } else { theme.c_icon_secondary() }))
                                     .child(if show_log { t.btn_hide_log() } else { t.btn_show_log() }),
-                            )
-                            // Close queue panel
-                            .child(
-                                div()
-                                    .id("btn-close-queue-panel")
-                                    .cursor_pointer()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .w(px(18.0))
-                                    .h(px(18.0))
-                                    .rounded(px(3.0))
-                                    .hover(|s| s.bg(theme.button_hover_bg()))
-                                    .on_mouse_down(
-                                        MouseButton::Left,
-                                        cx.listener(|this, _, _, cx| {
-                                            this.show_queue = false;
-                                            cx.notify();
-                                        }),
-                                    )
-                                    .child(render_icon("icons/close.svg", 10.0, theme.c_icon_secondary())),
                             ),
                     ),
             )
