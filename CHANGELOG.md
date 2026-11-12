@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - 2026-11-12
+
+### Fixed
+- **Import / Export File Picker Crash**:
+  - Replaced synchronous `NSOpenPanel::runModal` / `NSSavePanel::runModal` calls inside UI click handlers with GPUI's native asynchronous `prompt_for_paths` and `prompt_for_new_path` to eliminate re-entrancy crashes when clicking "Browse..." or "Export to File...".
+
 ## [0.4.5] - 2026-11-12
 
 ### Added

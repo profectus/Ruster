@@ -8,8 +8,8 @@ use crate::app::RusterView;
 use crate::config::{save_favorite_paths, save_password_to_keychain, save_sites_to_disk};
 use crate::icons::render_icon;
 use crate::importer::{
-    create_ruster_backup, parse_ruster_backup, parse_winscp_content, pick_export_save_file_prompt,
-    pick_import_file_prompt, site_backup_to_profile, ImportSourceType, ImportSummary,
+    create_ruster_backup, parse_ruster_backup, parse_winscp_content, site_backup_to_profile,
+    ImportSourceType, ImportSummary,
 };
 use crate::model::ActiveModal;
 
@@ -185,13 +185,28 @@ impl RusterView {
                                             .hover(|s| s.bg(theme.button_hover_bg()))
                                             .on_mouse_down(
                                                 MouseButton::Left,
-                                                cx.listener(move |this, _, _, cx| {
-                                                    let exts = this.import_source.default_extension();
-                                                    if let Some(path) = pick_import_file_prompt(exts) {
-                                                        this.import_file_path = path.to_string_lossy().into_owned();
-                                                        this.import_summary = None;
-                                                        cx.notify();
-                                                    }
+                                                cx.listener(|_, _, _, cx| {
+                                                    let rx = cx.prompt_for_paths(gpui::PathPromptOptions {
+                                                        files: true,
+                                                        directories: false,
+                                                        multiple: false,
+                                                        prompt: None,
+                                                    });
+                                                    cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+                                                        let mut cx = cx.clone();
+                                                        async move {
+                                                            if let Ok(Ok(Some(paths))) = rx.await {
+                                                                if let Some(path) = paths.into_iter().next() {
+                                                                    let _ = this.update(&mut cx, |view, cx| {
+                                                                        view.import_file_path = path.to_string_lossy().into_owned();
+                                                                        view.import_summary = None;
+                                                                        cx.notify();
+                                                                    });
+                                                                }
+                                                            }
+                                                        }
+                                                    })
+                                                    .detach();
                                                 }),
                                             )
                                             .child(t.btn_browse()),
@@ -1090,47 +1105,57 @@ impl RusterView {
     pub fn execute_export(&mut self, cx: &mut Context<Self>) {
         let now = chrono_format_date();
         let default_name = format!("ruster-backup-{}.json", now);
+        let initial_dir = self.local_dir.clone();
+        let rx = cx.prompt_for_new_path(&initial_dir, Some(&default_name));
 
-        if let Some(path) = pick_export_save_file_prompt(&default_name, "json") {
-            let state = crate::config::AppState {
-                show_local_pane: self.show_local_pane,
-                show_hidden: self.show_hidden,
-                show_function_bar: self.show_function_bar,
-                show_permissions: self.show_permissions,
-                date_format: self.date_format,
-                local_dir: self.local_dir.clone(),
-                right_dir: self.right_dir.clone(),
-                max_concurrent_transfers: self.max_concurrent_transfers,
-                editable_extensions: self.editable_extensions.clone(),
-                window_width: 1280.0,
-                window_height: 800.0,
-                queue_panel_height: self.queue_panel_height,
-                theme: self.theme,
-                locale: self.locale,
-            };
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                if let Ok(Ok(Some(path))) = rx.await {
+                    let _ = this.update(&mut cx, |view, cx| {
+                        let state = crate::config::AppState {
+                            show_local_pane: view.show_local_pane,
+                            show_hidden: view.show_hidden,
+                            show_function_bar: view.show_function_bar,
+                            show_permissions: view.show_permissions,
+                            date_format: view.date_format,
+                            local_dir: view.local_dir.clone(),
+                            right_dir: view.right_dir.clone(),
+                            max_concurrent_transfers: view.max_concurrent_transfers,
+                            editable_extensions: view.editable_extensions.clone(),
+                            window_width: 1280.0,
+                            window_height: 800.0,
+                            queue_panel_height: view.queue_panel_height,
+                            theme: view.theme,
+                            locale: view.locale,
+                        };
 
-            match create_ruster_backup(
-                &state,
-                &self.saved_sites,
-                &self.favorite_paths,
-                &self.export_options,
-            ) {
-                Ok(json) => {
-                    if let Err(e) = fs::write(&path, json) {
-                        self.export_status = Some(format!("Chyba při zápisu: {}", e));
-                    } else {
-                        self.export_status = Some(format!(
-                            "Záloha byla úspěšně uložena do: {}",
-                            path.file_name().and_then(|n| n.to_str()).unwrap_or("souboru")
-                        ));
-                    }
-                }
-                Err(e) => {
-                    self.export_status = Some(format!("Chyba: {}", e));
+                        match create_ruster_backup(
+                            &state,
+                            &view.saved_sites,
+                            &view.favorite_paths,
+                            &view.export_options,
+                        ) {
+                            Ok(json) => {
+                                if let Err(e) = fs::write(&path, json) {
+                                    view.export_status = Some(format!("Chyba při zápisu: {}", e));
+                                } else {
+                                    view.export_status = Some(format!(
+                                        "Záloha byla úspěšně uložena do: {}",
+                                        path.file_name().and_then(|n| n.to_str()).unwrap_or("souboru")
+                                    ));
+                                }
+                            }
+                            Err(e) => {
+                                view.export_status = Some(format!("Chyba: {}", e));
+                            }
+                        }
+                        cx.notify();
+                    });
                 }
             }
-            cx.notify();
-        }
+        })
+        .detach();
     }
 }
 
