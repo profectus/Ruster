@@ -478,12 +478,20 @@ fn list_via_ftp_curl(
         Protocol::FtpsImplicit => "ftps",
         _ => "ftp",
     };
-    let clean_path = if target_path.is_empty() || target_path == "/" {
+    let normalized_path = target_path.trim();
+    let clean_path = if normalized_path.is_empty() || normalized_path == "/" {
         "/".to_string()
-    } else if target_path.ends_with('/') {
-        target_path.clone()
     } else {
-        format!("{}/", target_path)
+        let with_leading = if normalized_path.starts_with('/') {
+            normalized_path.to_string()
+        } else {
+            format!("/{}", normalized_path)
+        };
+        if with_leading.ends_with('/') {
+            with_leading
+        } else {
+            format!("{}/", with_leading)
+        }
     };
     let encoded_path = percent_encode_path(&clean_path);
     let url = format!("{}://{}:{}{}", scheme, final_host, final_port, encoded_path);

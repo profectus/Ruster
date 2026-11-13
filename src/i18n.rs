@@ -1733,6 +1733,36 @@ impl I18n {
         }
     }
 
+    pub fn tooltip_new_folder(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "New folder",
+            Locale::Cs => "Nová složka",
+            Locale::De => "Neuer Ordner",
+            Locale::Es => "Nueva carpeta",
+            Locale::Fr => "Nouveau dossier",
+            Locale::It => "Nuova cartella",
+            Locale::Pl => "Nowy folder",
+            Locale::Pt => "Nova pasta",
+            Locale::Zh => "新建文件夹",
+            Locale::Ja => "新しいフォルダ",
+        }
+    }
+
+    pub fn label_site_folder(&self) -> &'static str {
+        match self.locale {
+            Locale::En => "Folder",
+            Locale::Cs => "Složka",
+            Locale::De => "Ordner",
+            Locale::Es => "Carpeta",
+            Locale::Fr => "Dossier",
+            Locale::It => "Cartella",
+            Locale::Pl => "Folder",
+            Locale::Pt => "Pasta",
+            Locale::Zh => "文件夹",
+            Locale::Ja => "フォルダ",
+        }
+    }
+
     pub fn tooltip_delete_site(&self) -> &'static str {
         match self.locale {
             Locale::En => "Delete selected server",
@@ -4241,6 +4271,8 @@ mod tests {
             assert!(!t.placeholder_search_sites().is_empty());
             assert!(!t.btn_new_server().is_empty());
             assert!(!t.tooltip_new_server().is_empty());
+            assert!(!t.tooltip_new_folder().is_empty());
+            assert!(!t.label_site_folder().is_empty());
             assert!(!t.tooltip_import_ssh().is_empty());
             assert!(!t.tooltip_delete_site().is_empty());
             assert!(!t.label_initial_remote_path().is_empty());
