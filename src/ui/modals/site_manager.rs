@@ -10,6 +10,7 @@ impl RusterView {
         let t = self.i18n();
         let fallback_site = SavedSiteProfile {
             name: String::new(),
+            group: String::new(),
             folder: String::new(),
             protocol: Protocol::Sftp,
             host: String::new(),
@@ -38,6 +39,7 @@ impl RusterView {
                     true
                 } else {
                     s.name.to_lowercase().contains(&search_query)
+                        || s.group.to_lowercase().contains(&search_query)
                         || s.host.to_lowercase().contains(&search_query)
                         || s.username.to_lowercase().contains(&search_query)
                         || s.folder.to_lowercase().contains(&search_query)
@@ -234,8 +236,157 @@ impl RusterView {
                                                     }),
                                             ),
                                     )
-                                    // Scrollable list of sites
-                                    .child(
+                                    // Scrollable list of sites grouped by folder
+                                    .child({
+                                        let mut group_names: Vec<String> = Vec::new();
+                                        for &idx in &filtered_indices {
+                                            let g = self.saved_sites[idx].group.trim();
+                                            if !g.is_empty() && !group_names.iter().any(|existing| existing == g) {
+                                                group_names.push(g.to_string());
+                                            }
+                                        }
+                                        if search_query.is_empty() {
+                                            for cg in &self.custom_site_groups {
+                                                let g = cg.trim();
+                                                if !g.is_empty() && !group_names.iter().any(|existing| existing == g) {
+                                                    group_names.push(g.to_string());
+                                                }
+                                            }
+                                        }
+                                        group_names.sort_by_key(|g| g.to_lowercase());
+
+                                        let ungrouped_indices: Vec<usize> = filtered_indices
+                                            .iter()
+                                            .copied()
+                                            .filter(|&idx| self.saved_sites[idx].group.trim().is_empty())
+                                            .collect();
+
+                                        let render_site_item = |idx: usize, indented: bool, cx: &mut Context<Self>| {
+                                            let is_sel = idx == self.selected_site_idx;
+                                            let site = &self.saved_sites[idx];
+                                            let proto = site.protocol;
+                                            let env_col = site.env_color;
+                                            let site_group = site.group.trim().to_string();
+                                            let display_name = site.display_name().to_string();
+                                            let path_subtext = if !site.folder.trim().is_empty() {
+                                                let folder = site.folder.trim();
+                                                if !site.host.trim().is_empty() {
+                                                    if !site.username.trim().is_empty() {
+                                                        format!("{}@{}:{}", site.username, site.host, folder)
+                                                    } else {
+                                                        format!("{}:{}", site.host, folder)
+                                                    }
+                                                } else {
+                                                    folder.to_string()
+                                                }
+                                            } else if !site.host.trim().is_empty() {
+                                                if !site.username.trim().is_empty() {
+                                                    format!("{}@{}", site.username, site.host)
+                                                } else {
+                                                    site.host.clone()
+                                                }
+                                            } else {
+                                                "/".to_string()
+                                            };
+
+                                            div()
+                                                .id(("site-item", idx))
+                                                .cursor_pointer()
+                                                .flex()
+                                                .items_center()
+                                                .justify_start()
+                                                .when(indented, |el| el.ml_3())
+                                                .px_2p5()
+                                                .py_1p5()
+                                                .rounded(px(6.0))
+                                                .bg(if is_sel {
+                                                    theme.row_bg_selected()
+                                                } else {
+                                                    theme.modal_sidebar_bg()
+                                                })
+                                                .hover(|s| {
+                                                    if !is_sel {
+                                                        s.bg(theme.button_hover_bg())
+                                                    } else {
+                                                        s
+                                                    }
+                                                })
+                                                .on_mouse_down(
+                                                    MouseButton::Left,
+                                                    cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                                                        this.selected_site_idx = idx;
+                                                        this.selected_site_group = if site_group.is_empty() {
+                                                            None
+                                                        } else {
+                                                            Some(site_group.clone())
+                                                        };
+                                                        this.draft_protocol = proto;
+                                                        this.active_site_field = SiteEditField::Name;
+                                                        this.site_password_input = this
+                                                            .saved_sites
+                                                            .get(idx)
+                                                            .and_then(|s| s.password.clone())
+                                                            .unwrap_or_default();
+                                                        this.site_cursor_pos = this.current_site_field_val().chars().count();
+                                                        this.site_error_message = None;
+                                                        this.site_notice = None;
+                                                        this.site_proto_dropdown_open = false;
+                                                        if event.click_count >= 2 {
+                                                            this.connect_selected_site(cx);
+                                                        }
+                                                        cx.notify();
+                                                    }),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_2()
+                                                        .overflow_hidden()
+                                                        .child(
+                                                            div()
+                                                                .w(px(8.0))
+                                                                .h(px(8.0))
+                                                                .rounded(px(4.0))
+                                                                .flex_shrink_0()
+                                                                .bg(rgb(env_col)),
+                                                        )
+                                                        .child(
+                                                            div()
+                                                                .flex()
+                                                                .flex_col()
+                                                                .overflow_hidden()
+                                                                .child(
+                                                                    div()
+                                                                        .text_xs()
+                                                                        .overflow_hidden()
+                                                                        .text_ellipsis()
+                                                                        .whitespace_nowrap()
+                                                                        .font_weight(gpui::FontWeight::SEMIBOLD)
+                                                                        .text_color(if is_sel {
+                                                                            theme.row_text_selected()
+                                                                        } else {
+                                                                            theme.text_primary()
+                                                                        })
+                                                                        .child(display_name),
+                                                                )
+                                                                .child(
+                                                                    div()
+                                                                        .text_xs()
+                                                                        .overflow_hidden()
+                                                                        .text_ellipsis()
+                                                                        .whitespace_nowrap()
+                                                                        .text_color(if is_sel {
+                                                                            if is_dark { rgb(0x93c5fd) } else { rgb(0xdbeafe) }
+                                                                        } else {
+                                                                            theme.text_muted()
+                                                                        })
+                                                                        .child(path_subtext),
+                                                                ),
+                                                        ),
+                                                )
+                                        };
+
                                         div()
                                             .id("site-list-scroll")
                                             .flex_1()
@@ -244,7 +395,40 @@ impl RusterView {
                                             .gap_1()
                                             .p_2()
                                             .overflow_y_scroll()
-                                            .when(filtered_indices.is_empty(), |el| {
+                                            .when(self.creating_site_folder, |el| {
+                                                el.child(
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_1p5()
+                                                        .px_2()
+                                                        .py_1()
+                                                        .rounded(px(6.0))
+                                                        .bg(theme.modal_card_bg())
+                                                        .border_1()
+                                                        .border_color(theme.button_active_border())
+                                                        .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                            this.active_site_field = SiteEditField::NewFolder;
+                                                            this.site_cursor_pos = this.new_site_folder_name.chars().count();
+                                                            cx.notify();
+                                                        }))
+                                                        .child(render_icon("icons/folder.svg", 13.0, 0xf59e0b))
+                                                        .child(
+                                                            div()
+                                                                .flex_1()
+                                                                .overflow_hidden()
+                                                                .child(render_field_value_with_cursor(
+                                                                    &self.new_site_folder_name,
+                                                                    active_field == SiteEditField::NewFolder,
+                                                                    self.site_cursor_pos,
+                                                                    "Název složky (Enter)...",
+                                                                    false,
+                                                                    is_dark,
+                                                                )),
+                                                        ),
+                                                )
+                                            })
+                                            .when(filtered_indices.is_empty() && group_names.is_empty() && !self.creating_site_folder, |el| {
                                                 el.child(
                                                     div()
                                                         .py_8()
@@ -254,125 +438,82 @@ impl RusterView {
                                                         .child(t.no_matching_sites()),
                                                 )
                                             })
-                                            .children(filtered_indices.into_iter().map(|idx| {
-                                                let is_sel = idx == self.selected_site_idx;
-                                                let site = &self.saved_sites[idx];
-                                                let proto = site.protocol;
-                                                let env_col = site.env_color;
-                                                let display_name = site.display_name().to_string();
-                                                let path_subtext = if !site.folder.trim().is_empty() {
-                                                    let folder = site.folder.trim();
-                                                    if !site.host.trim().is_empty() {
-                                                        if !site.username.trim().is_empty() {
-                                                            format!("{}@{}:{}", site.username, site.host, folder)
-                                                        } else {
-                                                            format!("{}:{}", site.host, folder)
-                                                        }
-                                                    } else {
-                                                        folder.to_string()
-                                                    }
-                                                } else if !site.host.trim().is_empty() {
-                                                    if !site.username.trim().is_empty() {
-                                                        format!("{}@{}", site.username, site.host)
-                                                    } else {
-                                                        site.host.clone()
-                                                    }
-                                                } else {
-                                                    "/".to_string()
-                                                };
+                                            .children(group_names.into_iter().enumerate().map(|(gi, group_name)| {
+                                                let is_collapsed = search_query.is_empty() && self.collapsed_site_groups.contains(&group_name);
+                                                let is_group_selected = self.selected_site_group.as_deref() == Some(group_name.as_str());
+                                                let group_indices: Vec<usize> = filtered_indices
+                                                    .iter()
+                                                    .copied()
+                                                    .filter(|&idx| self.saved_sites[idx].group.trim() == group_name)
+                                                    .collect();
+                                                let count = group_indices.len();
+                                                let group_click = group_name.clone();
 
                                                 div()
-                                                    .id(("site-item", idx))
-                                                    .cursor_pointer()
                                                     .flex()
-                                                    .items_center()
-                                                    .justify_start()
-                                                    .px_2p5()
-                                                    .py_1p5()
-                                                    .rounded(px(6.0))
-                                                    .bg(if is_sel {
-                                                        theme.row_bg_selected()
-                                                    } else {
-                                                        theme.modal_sidebar_bg()
-                                                    })
-                                                    .hover(|s| {
-                                                        if !is_sel {
-                                                            s.bg(theme.button_hover_bg())
-                                                        } else {
-                                                            s
-                                                        }
-                                                    })
-                                                    .on_mouse_down(
-                                                        MouseButton::Left,
-                                                        cx.listener(move |this, event: &MouseDownEvent, _, cx| {
-                                                            this.selected_site_idx = idx;
-                                                            this.draft_protocol = proto;
-                                                            this.active_site_field = SiteEditField::Name;
-                                                            this.site_password_input = this
-                                                                .saved_sites
-                                                                .get(idx)
-                                                                .and_then(|s| s.password.clone())
-                                                                .unwrap_or_default();
-                                                            this.site_cursor_pos = this.current_site_field_val().chars().count();
-                                                            this.site_error_message = None;
-                                                            this.site_notice = None;
-                                                            this.site_proto_dropdown_open = false;
-                                                            if event.click_count >= 2 {
-                                                                this.connect_selected_site(cx);
-                                                            }
-                                                            cx.notify();
-                                                        }),
-                                                    )
+                                                    .flex_col()
+                                                    .gap_0p5()
                                                     .child(
                                                         div()
+                                                            .id(("site-group-hdr", gi))
+                                                            .cursor_pointer()
                                                             .flex()
                                                             .items_center()
-                                                            .gap_2()
-                                                            .overflow_hidden()
-                                                            .child(
-                                                                div()
-                                                                    .w(px(8.0))
-                                                                    .h(px(8.0))
-                                                                    .rounded(px(4.0))
-                                                                    .flex_shrink_0()
-                                                                    .bg(rgb(env_col)),
-                                                            )
+                                                            .justify_between()
+                                                            .px_2()
+                                                            .py_1()
+                                                            .rounded(px(6.0))
+                                                            .bg(if is_group_selected {
+                                                                theme.button_active_bg()
+                                                            } else {
+                                                                rgba(0x00000000)
+                                                            })
+                                                            .hover(|s| s.bg(theme.button_hover_bg()))
+                                                            .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                                if this.collapsed_site_groups.contains(&group_click) {
+                                                                    this.collapsed_site_groups.remove(&group_click);
+                                                                } else {
+                                                                    this.collapsed_site_groups.insert(group_click.clone());
+                                                                }
+                                                                this.selected_site_group = Some(group_click.clone());
+                                                                cx.notify();
+                                                            }))
                                                             .child(
                                                                 div()
                                                                     .flex()
-                                                                    .flex_col()
+                                                                    .items_center()
+                                                                    .gap_1p5()
                                                                     .overflow_hidden()
+                                                                    .child(render_icon(
+                                                                        if is_collapsed { "icons/chevron-right.svg" } else { "icons/chevron-down.svg" },
+                                                                        11.0,
+                                                                        theme.c_icon_default(),
+                                                                    ))
+                                                                    .child(render_icon("icons/folder.svg", 13.0, 0xf59e0b))
                                                                     .child(
                                                                         div()
                                                                             .text_xs()
-                                                                            .overflow_hidden()
-                                                                            .text_ellipsis()
-                                                                            .whitespace_nowrap()
                                                                             .font_weight(gpui::FontWeight::SEMIBOLD)
-                                                                            .text_color(if is_sel {
-                                                                                theme.row_text_selected()
-                                                                            } else {
-                                                                                theme.text_primary()
-                                                                            })
-                                                                            .child(display_name),
-                                                                    )
-                                                                    .child(
-                                                                        div()
-                                                                            .text_xs()
+                                                                            .text_color(theme.text_primary())
                                                                             .overflow_hidden()
                                                                             .text_ellipsis()
                                                                             .whitespace_nowrap()
-                                                                            .text_color(if is_sel {
-                                                                                if is_dark { rgb(0x93c5fd) } else { rgb(0xdbeafe) }
-                                                                            } else {
-                                                                                theme.text_muted()
-                                                                            })
-                                                                            .child(path_subtext),
+                                                                            .child(group_name),
                                                                     ),
+                                                            )
+                                                            .child(
+                                                                div()
+                                                                    .text_xs()
+                                                                    .text_color(theme.text_muted())
+                                                                    .child(count.to_string()),
                                                             ),
                                                     )
-                                            })),
-                                    )
+                                                    .when(!is_collapsed, |el| {
+                                                        el.children(group_indices.into_iter().map(|idx| render_site_item(idx, true, cx)))
+                                                    })
+                                            }))
+                                            .children(ungrouped_indices.into_iter().map(|idx| render_site_item(idx, false, cx)))
+                                    })
                                     // Bottom actions (+ Nový server, Import SSH, Del)
                                     .child(
                                         div()
@@ -408,6 +549,7 @@ impl RusterView {
                                                         cx.listener(|this, _, _, cx| {
                                                             this.saved_sites.push(SavedSiteProfile {
                                                                 name: String::new(),
+                                                                group: this.selected_site_group.clone().unwrap_or_default(),
                                                                 folder: String::new(),
                                                                 protocol: Protocol::Sftp,
                                                                 host: String::new(),
@@ -432,6 +574,40 @@ impl RusterView {
                                                         }),
                                                     )
                                                     .child(render_icon("icons/plus.svg", 14.0, 0xffffff)),
+                                            )
+                                            .child(
+                                                div()
+                                                    .id("btn-new-folder")
+                                                    .cursor_pointer()
+                                                    .w(px(28.0))
+                                                    .h(px(28.0))
+                                                    .rounded(px(6.0))
+                                                    .bg(theme.button_bg())
+                                                    .border_1()
+                                                    .border_color(theme.border())
+                                                    .flex()
+                                                    .items_center()
+                                                    .justify_center()
+                                                    .hover(|s| s.bg(theme.button_hover_bg()))
+                                                    .tooltip({
+                                                        let tt = t.tooltip_new_folder().to_string();
+                                                        let is_dark = theme.is_dark();
+                                                        move |_, cx| {
+                                                            cx.new(|_| FileTooltip::simple(tt.clone(), is_dark)).into()
+                                                        }
+                                                    })
+                                                    .on_mouse_down(
+                                                        MouseButton::Left,
+                                                        cx.listener(|this, _, _, cx| {
+                                                            this.creating_site_folder = true;
+                                                            this.new_site_folder_name.clear();
+                                                            this.active_site_field = SiteEditField::NewFolder;
+                                                            this.site_cursor_pos = 0;
+                                                            this.site_proto_dropdown_open = false;
+                                                            cx.notify();
+                                                        }),
+                                                    )
+                                                    .child(render_icon("icons/folder.svg", 14.0, 0xf59e0b)),
                                             )
                                             .child(
                                                 div()
@@ -535,13 +711,19 @@ impl RusterView {
                                                     .flex()
                                                     .items_center()
                                                     .justify_between()
+                                                    .gap_3()
+                                                    .min_w_0()
                                                     .child(
                                                         div()
+                                                            .flex_1()
+                                                            .min_w_0()
+                                                            .overflow_hidden()
                                                             .flex()
                                                             .items_center()
                                                             .gap_3()
                                                             .child(
                                                                 div()
+                                                                    .flex_shrink_0()
                                                                     .w(px(20.0))
                                                                     .h(px(20.0))
                                                                     .rounded(px(10.0))
@@ -550,11 +732,18 @@ impl RusterView {
                                                             )
                                                             .child(
                                                                 div()
+                                                                    .flex_1()
+                                                                    .min_w_0()
+                                                                    .overflow_hidden()
                                                                     .flex()
                                                                     .flex_col()
+                                                                    .gap_1()
                                                                     .child(
                                                                         div()
                                                                             .id("edit-site-name")
+                                                                            .w_full()
+                                                                            .min_w_0()
+                                                                            .overflow_hidden()
                                                                             .cursor_pointer()
                                                                             .px_1p5()
                                                                             .py_0p5()
@@ -578,6 +767,10 @@ impl RusterView {
                                                                             }))
                                                                             .child(
                                                                                 div()
+                                                                                    .min_w_0()
+                                                                                    .overflow_hidden()
+                                                                                    .text_ellipsis()
+                                                                                    .whitespace_nowrap()
                                                                                     .font_weight(gpui::FontWeight::BOLD)
                                                                                     .child(render_field_value_with_cursor(
                                                                                         &selected_site.name,
@@ -591,22 +784,76 @@ impl RusterView {
                                                                     )
                                                                     .child(
                                                                         div()
-                                                                            .px_1p5()
-                                                                            .text_xs()
-                                                                            .text_color(theme.text_muted())
-                                                                            .child(format!(
-                                                                                "{} • {}@{}:{}",
-                                                                                selected_site.protocol.label(),
-                                                                                if selected_site.username.is_empty() { "user" } else { &selected_site.username },
-                                                                                if selected_site.host.is_empty() { "host" } else { &selected_site.host },
-                                                                                selected_site.port
-                                                                            )),
+                                                                            .min_w_0()
+                                                                            .overflow_hidden()
+                                                                            .flex()
+                                                                            .items_center()
+                                                                            .gap_2()
+                                                                            .child(
+                                                                                div()
+                                                                                    .flex_1()
+                                                                                    .min_w_0()
+                                                                                    .overflow_hidden()
+                                                                                    .text_ellipsis()
+                                                                                    .whitespace_nowrap()
+                                                                                    .px_1p5()
+                                                                                    .text_xs()
+                                                                                    .text_color(theme.text_muted())
+                                                                                    .child(format!(
+                                                                                        "{} • {}@{}:{}",
+                                                                                        selected_site.protocol.label(),
+                                                                                        if selected_site.username.is_empty() { "user" } else { &selected_site.username },
+                                                                                        if selected_site.host.is_empty() { "host" } else { &selected_site.host },
+                                                                                        selected_site.port
+                                                                                    )),
+                                                                            )
+                                                                            .child(
+                                                                                div()
+                                                                                    .id("edit-site-group")
+                                                                                    .flex_shrink_0()
+                                                                                    .max_w(px(140.0))
+                                                                                    .overflow_hidden()
+                                                                                    .cursor_pointer()
+                                                                                    .flex()
+                                                                                    .items_center()
+                                                                                    .gap_1()
+                                                                                    .px_1p5()
+                                                                                    .py_0p5()
+                                                                                    .rounded(px(4.0))
+                                                                                    .bg(if active_field == SiteEditField::Group {
+                                                                                        theme.button_active_bg()
+                                                                                    } else {
+                                                                                        theme.modal_card_bg()
+                                                                                    })
+                                                                                    .border_1()
+                                                                                    .border_color(if active_field == SiteEditField::Group {
+                                                                                        theme.button_active_border()
+                                                                                    } else {
+                                                                                        theme.border()
+                                                                                    })
+                                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                                                                        this.active_site_field = SiteEditField::Group;
+                                                                                        this.site_cursor_pos = this.current_site_field_val().chars().count();
+                                                                                        this.site_proto_dropdown_open = false;
+                                                                                        cx.notify();
+                                                                                    }))
+                                                                                    .child(render_icon("icons/folder.svg", 11.0, 0xf59e0b))
+                                                                                    .child(render_field_value_with_cursor(
+                                                                                        &selected_site.group,
+                                                                                        active_field == SiteEditField::Group,
+                                                                                        self.site_cursor_pos,
+                                                                                        t.label_site_folder(),
+                                                                                        false,
+                                                                                        is_dark,
+                                                                                    )),
+                                                                            ),
                                                                     ),
                                                             ),
                                                     )
                                                     // Env color swatches on the right
                                                     .child(
                                                         div()
+                                                            .flex_shrink_0()
                                                             .flex()
                                                             .items_center()
                                                             .gap_1p5()

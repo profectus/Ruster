@@ -534,6 +534,7 @@ pub struct PaneFlash {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SavedSiteProfile {
     pub name: String,
+    pub group: String,
     pub folder: String,
     pub protocol: Protocol,
     pub host: String,
@@ -889,6 +890,8 @@ pub enum SiteEditField {
     None,
     Search,
     Name,
+    Group,
+    NewFolder,
     Host,
     Port,
     Username,
@@ -900,6 +903,7 @@ pub enum SiteEditField {
 pub fn default_saved_sites() -> Vec<SavedSiteProfile> {
     vec![SavedSiteProfile {
         name: String::new(),
+        group: String::new(),
         folder: String::new(),
         protocol: Protocol::Sftp,
         host: String::new(),

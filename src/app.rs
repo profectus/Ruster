@@ -183,6 +183,11 @@ pub struct RusterView {
     pub(crate) site_search_query: String,
     pub(crate) site_proto_dropdown_open: bool,
     pub(crate) site_cursor_pos: usize,
+    pub(crate) collapsed_site_groups: std::collections::HashSet<String>,
+    pub(crate) selected_site_group: Option<String>,
+    pub(crate) custom_site_groups: Vec<String>,
+    pub(crate) creating_site_folder: bool,
+    pub(crate) new_site_folder_name: String,
     pub(crate) modal_cursor_pos: usize,
     pub(crate) site_error_message: Option<String>,
     pub(crate) site_notice: Option<(String, SiteNoticeKind)>,
@@ -640,6 +645,11 @@ impl RusterView {
             site_search_query: String::new(),
             site_proto_dropdown_open: false,
             site_cursor_pos: 0,
+            collapsed_site_groups: std::collections::HashSet::new(),
+            selected_site_group: None,
+            custom_site_groups: Vec::new(),
+            creating_site_folder: false,
+            new_site_folder_name: String::new(),
             modal_cursor_pos: 0,
             site_error_message: None,
             site_notice: None,
@@ -4463,11 +4473,13 @@ impl RusterView {
     pub(crate) fn current_site_field_val(&self) -> String {
         match self.active_site_field {
             SiteEditField::Search => self.site_search_query.clone(),
+            SiteEditField::NewFolder => self.new_site_folder_name.clone(),
             _ => {
                 if let Some(site) = self.saved_sites.get(self.selected_site_idx) {
                     match self.active_site_field {
-                        SiteEditField::Search => unreachable!(),
+                        SiteEditField::Search | SiteEditField::NewFolder => unreachable!(),
                         SiteEditField::Name => site.name.clone(),
+                        SiteEditField::Group => site.group.clone(),
                         SiteEditField::Host => site.host.clone(),
                         SiteEditField::Port => {
                             if site.port == 0 {
@@ -4494,10 +4506,15 @@ impl RusterView {
             self.site_search_query = new_val;
             return;
         }
+        if self.active_site_field == SiteEditField::NewFolder {
+            self.new_site_folder_name = new_val;
+            return;
+        }
         if let Some(site) = self.saved_sites.get_mut(self.selected_site_idx) {
             match self.active_site_field {
-                SiteEditField::Search => {}
+                SiteEditField::Search | SiteEditField::NewFolder => {}
                 SiteEditField::Name => site.name = new_val,
+                SiteEditField::Group => site.group = new_val,
                 SiteEditField::Host => site.host = new_val,
                 SiteEditField::Port => {
                     let digits: String = new_val.chars().filter(|c| c.is_ascii_digit()).collect();
@@ -5160,6 +5177,13 @@ impl RusterView {
         // If SiteManager is open and a field is focused, route typing to that field
         if self.active_modal == ActiveModal::SiteManager {
             if key == "escape" {
+                if self.creating_site_folder {
+                    self.creating_site_folder = false;
+                    self.new_site_folder_name.clear();
+                    self.active_site_field = SiteEditField::None;
+                    cx.notify();
+                    return;
+                }
                 if self.site_proto_dropdown_open {
                     self.site_proto_dropdown_open = false;
                     cx.notify();
@@ -5172,6 +5196,21 @@ impl RusterView {
                 return;
             }
             if key == "enter" {
+                if self.active_site_field == SiteEditField::NewFolder {
+                    let folder_name = self.new_site_folder_name.trim().trim_matches('/').to_string();
+                    if !folder_name.is_empty() {
+                        if !self.custom_site_groups.iter().any(|g| g.eq_ignore_ascii_case(&folder_name)) {
+                            self.custom_site_groups.push(folder_name.clone());
+                        }
+                        self.collapsed_site_groups.remove(&folder_name);
+                        self.selected_site_group = Some(folder_name);
+                    }
+                    self.creating_site_folder = false;
+                    self.new_site_folder_name.clear();
+                    self.active_site_field = SiteEditField::None;
+                    cx.notify();
+                    return;
+                }
                 if self.site_proto_dropdown_open {
                     self.site_proto_dropdown_open = false;
                     cx.notify();
@@ -5184,9 +5223,10 @@ impl RusterView {
             if key == "tab" {
                 if modifiers.shift {
                     self.active_site_field = match self.active_site_field {
-                        SiteEditField::None | SiteEditField::Search => SiteEditField::MaxConnections,
+                        SiteEditField::None | SiteEditField::Search | SiteEditField::NewFolder => SiteEditField::MaxConnections,
                         SiteEditField::Name => SiteEditField::Search,
-                        SiteEditField::Host => SiteEditField::Name,
+                        SiteEditField::Group => SiteEditField::Name,
+                        SiteEditField::Host => SiteEditField::Group,
                         SiteEditField::Port => SiteEditField::Host,
                         SiteEditField::Username => SiteEditField::Port,
                         SiteEditField::Password => SiteEditField::Username,
@@ -5195,9 +5235,10 @@ impl RusterView {
                     };
                 } else {
                     self.active_site_field = match self.active_site_field {
-                        SiteEditField::None | SiteEditField::MaxConnections => SiteEditField::Search,
+                        SiteEditField::None | SiteEditField::MaxConnections | SiteEditField::NewFolder => SiteEditField::Search,
                         SiteEditField::Search => SiteEditField::Name,
-                        SiteEditField::Name => SiteEditField::Host,
+                        SiteEditField::Name => SiteEditField::Group,
+                        SiteEditField::Group => SiteEditField::Host,
                         SiteEditField::Host => SiteEditField::Port,
                         SiteEditField::Port => SiteEditField::Username,
                         SiteEditField::Username => SiteEditField::Password,

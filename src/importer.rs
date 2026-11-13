@@ -89,6 +89,8 @@ pub struct RusterBackup {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RusterSiteBackup {
     pub name: String,
+    #[serde(default)]
+    pub group: String,
     pub folder: String,
     pub protocol: String,
     pub host: String,
@@ -217,8 +219,15 @@ pub fn decrypt_winscp_password(hex_str: &str, username: &str, hostname: &str) ->
 
     // WinSCP prefixes the payload with (UserName + HostName)
     let prefix = format!("{}{}", username, hostname);
-    let result = if !prefix.is_empty() && plain_str.to_lowercase().starts_with(&prefix.to_lowercase()) {
-        plain_str[prefix.len()..].to_string()
+    let prefix_char_len = prefix.chars().count();
+    let result = if !prefix.is_empty()
+        && plain_str
+            .chars()
+            .take(prefix_char_len)
+            .collect::<String>()
+            .eq_ignore_ascii_case(&prefix)
+    {
+        plain_str.chars().skip(prefix_char_len).collect()
     } else {
         plain_str
     };
@@ -240,6 +249,7 @@ pub fn parse_winscp_content(content: &str) -> Vec<SavedSiteProfile> {
         username: String,
         raw_password: Option<String>,
         public_key: Option<String>,
+        remote_directory: Option<String>,
     }
 
     let flush_session = |sess: Option<RawSession>, out: &mut Vec<SavedSiteProfile>| {
@@ -283,15 +293,30 @@ pub fn parse_winscp_content(content: &str) -> Vec<SavedSiteProfile> {
             "Password".to_string()
         };
 
-        // Decode session name and separate folder hierarchy
-        let decoded = percent_decode(&s.raw_name);
-        let (folder, name) = if let Some((f, n)) = decoded.rsplit_once('/') {
-            (f.to_string(), n.to_string())
-        } else if let Some((f, n)) = decoded.rsplit_once('\\') {
-            (f.to_string(), n.to_string())
+        // Decode session name and extract WinSCP folder hierarchy into `group`,
+        // while `folder` holds the initial remote directory path.
+        let decoded = percent_decode(&s.raw_name).replace('\\', "/");
+        let (group, name) = if let Some((g, n)) = decoded.rsplit_once('/') {
+            (
+                g.trim().trim_matches('/').to_string(),
+                n.trim().to_string(),
+            )
         } else {
-            ("WinSCP".to_string(), decoded)
+            (String::new(), decoded.trim().to_string())
         };
+        let folder = s
+            .remote_directory
+            .as_deref()
+            .map(str::trim)
+            .filter(|d| !d.is_empty())
+            .map(|d| {
+                if d.starts_with('/') {
+                    d.to_string()
+                } else {
+                    format!("/{}", d)
+                }
+            })
+            .unwrap_or_default();
 
         let env_color = match protocol {
             Protocol::Ftp => 0xd97706,          // Amber
@@ -302,6 +327,7 @@ pub fn parse_winscp_content(content: &str) -> Vec<SavedSiteProfile> {
 
         out.push(SavedSiteProfile {
             name,
+            group,
             folder,
             protocol,
             host: s.host,
@@ -376,6 +402,16 @@ pub fn parse_winscp_content(content: &str) -> Vec<SavedSiteProfile> {
             }
         };
 
+        let is_quoted = raw_val.trim().starts_with('"');
+        let decode_val = |v: &str| -> String {
+            let decoded = percent_decode(v);
+            if is_quoted {
+                decoded.replace("\\\\", "\\")
+            } else {
+                decoded
+            }
+        };
+
         match key.as_str() {
             "fsprotocol" => {
                 sess.protocol_num = parse_u32(val_clean);
@@ -384,7 +420,7 @@ pub fn parse_winscp_content(content: &str) -> Vec<SavedSiteProfile> {
                 sess.ftps_num = parse_u32(val_clean);
             }
             "hostname" => {
-                sess.host = val_clean.to_string();
+                sess.host = decode_val(val_clean);
             }
             "portnumber" => {
                 if let Some(p) = parse_u32(val_clean) {
@@ -392,13 +428,16 @@ pub fn parse_winscp_content(content: &str) -> Vec<SavedSiteProfile> {
                 }
             }
             "username" => {
-                sess.username = val_clean.to_string();
+                sess.username = decode_val(val_clean);
             }
             "password" => {
                 sess.raw_password = Some(val_clean.to_string());
             }
             "publickeyfile" => {
-                sess.public_key = Some(val_clean.to_string());
+                sess.public_key = Some(decode_val(val_clean));
+            }
+            "remotedirectory" => {
+                sess.remote_directory = Some(decode_val(val_clean));
             }
             _ => {}
         }
@@ -457,6 +496,7 @@ pub fn create_ruster_backup(
             };
             site_backups.push(RusterSiteBackup {
                 name: s.name.clone(),
+                group: s.group.clone(),
                 folder: s.folder.clone(),
                 protocol: s.protocol.label().to_string(),
                 host: s.host.clone(),
@@ -491,6 +531,7 @@ pub fn site_backup_to_profile(s: &RusterSiteBackup) -> SavedSiteProfile {
 
     SavedSiteProfile {
         name: s.name.clone(),
+        group: s.group.clone(),
         folder: s.folder.clone(),
         protocol,
         host: s.host.clone(),
@@ -552,7 +593,8 @@ UserName=client_deploy
 
         let ftp = &sites[0];
         assert_eq!(ftp.name, "Production FTP");
-        assert_eq!(ftp.folder, "WinSCP");
+        assert_eq!(ftp.group, "");
+        assert_eq!(ftp.folder, "");
         assert_eq!(ftp.protocol, Protocol::Ftp);
         assert_eq!(ftp.host, "ftp.production.cz");
         assert_eq!(ftp.port, 21);
@@ -560,7 +602,8 @@ UserName=client_deploy
 
         let sftp = &sites[1];
         assert_eq!(sftp.name, "Staging SFTP");
-        assert_eq!(sftp.folder, "Clients");
+        assert_eq!(sftp.group, "Clients");
+        assert_eq!(sftp.folder, "");
         assert_eq!(sftp.protocol, Protocol::Sftp);
         assert_eq!(sftp.host, "sftp.client.com");
         assert_eq!(sftp.port, 2222);
@@ -594,7 +637,8 @@ Windows Registry Editor Version 5.00
         let state = crate::config::load_app_state();
         let sites = vec![SavedSiteProfile {
             name: "Test Site".to_string(),
-            folder: "Work".to_string(),
+            group: "Work".to_string(),
+            folder: "/var/www".to_string(),
             protocol: Protocol::Sftp,
             host: "test.example.com".to_string(),
             port: 22,
@@ -617,5 +661,26 @@ Windows Registry Editor Version 5.00
         assert_eq!(loaded_sites.len(), 1);
         assert_eq!(loaded_sites[0].name, "Test Site");
         assert_eq!(loaded_sites[0].host, "test.example.com");
+    }
+
+    #[test]
+    fn test_winscp_percent_encoded_username_and_password() {
+        // Construct WinSCP v2 obfuscated password for payload: "vslg\\ftpstu" + "ftp.vslg.cz" + "secret123"
+        let payload = b"vslg\\ftpstuftp.vslg.czsecret123";
+        let mut raw = vec![0xFFu8, 0x00u8, payload.len() as u8, 0x00u8];
+        raw.extend_from_slice(payload);
+        let hex: String = raw
+            .into_iter()
+            .map(|b| format!("{:02X}", (!b) ^ 0xA3))
+            .collect();
+
+        let ini = format!(
+            "[Sessions\\Test%20FTP]\nFSProtocol=5\nHostName=ftp.vslg.cz\nPortNumber=21\nUserName=vslg%5Cftpstu\nPassword={}\n",
+            hex
+        );
+        let sites = parse_winscp_content(&ini);
+        assert_eq!(sites.len(), 1);
+        assert_eq!(sites[0].username, "vslg\\ftpstu");
+        assert_eq!(sites[0].password.as_deref(), Some("secret123"));
     }
 }

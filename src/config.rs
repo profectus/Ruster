@@ -290,10 +290,12 @@ pub fn load_saved_sites() -> Option<Vec<SavedSiteProfile>> {
             let env_color = u32::from_str_radix(parts[7].trim_start_matches("0x"), 16)
                 .unwrap_or(0x2563eb);
             let max_connections = parts.get(8).and_then(|p| p.parse::<usize>().ok()).unwrap_or(2).clamp(1, 10);
+            let group = parts.get(9).map(|p| p.trim().to_string()).unwrap_or_default();
 
             let password = read_password_from_keychain(&host, &username);
             sites.push(SavedSiteProfile {
                 name,
+                group,
                 folder,
                 protocol,
                 host,
@@ -327,7 +329,7 @@ pub fn save_sites_to_disk(sites: &[SavedSiteProfile]) -> std::io::Result<()> {
     let mut out = String::from("# Ruster Saved Connections\n");
     for s in sites {
         out.push_str(&format!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t0x{:06x}\t{}\n",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t0x{:06x}\t{}\t{}\n",
             s.name.replace('\t', " "),
             s.folder.replace('\t', " "),
             s.protocol.label(),
@@ -337,6 +339,7 @@ pub fn save_sites_to_disk(sites: &[SavedSiteProfile]) -> std::io::Result<()> {
             s.auth_type.replace('\t', " "),
             s.env_color,
             s.max_connections.clamp(1, 10),
+            s.group.replace('\t', " "),
         ));
     }
     fs::write(sites_file_path(), out)
@@ -381,6 +384,7 @@ pub fn parse_ssh_config_str(content: &str) -> Vec<SavedSiteProfile> {
             };
             out.push(SavedSiteProfile {
                 name: alias,
+                group: String::new(),
                 folder: "~/.ssh/config".to_string(),
                 protocol: Protocol::Sftp,
                 host,

@@ -144,9 +144,14 @@ impl RusterView {
                                     .flex()
                                     .gap_2()
                                     .items_center()
+                                    .min_w_0()
                                     .child(
                                         div()
                                             .flex_1()
+                                            .min_w_0()
+                                            .overflow_hidden()
+                                            .text_ellipsis()
+                                            .whitespace_nowrap()
                                             .px_2p5()
                                             .py_1p5()
                                             .rounded(px(5.0))
@@ -173,6 +178,7 @@ impl RusterView {
                                     .child(
                                         div()
                                             .id("btn-browse-import-file")
+                                            .flex_shrink_0()
                                             .cursor_pointer()
                                             .px_3()
                                             .py_1p5()

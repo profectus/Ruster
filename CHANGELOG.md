@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.7] - 2026-11-13
+
+### Added
+- **Connection Folders in Connection Manager**:
+  - Added collapsible folders (`group` field) for organizing saved remote connections, with a **New Folder** button in the sidebar and an inline **Folder** field in the connection form.
+  - WinSCP import now preserves session folder hierarchies in `group` while keeping `RemoteDirectory` in the remote path field.
+
+### Fixed
+- **WinSCP Import & FTP Connection**:
+  - Fixed percent-decoding of `UserName`, `HostName`, `PublicKeyFile`, and `RemoteDirectory` when importing WinSCP `.ini`/`.reg` files, ensuring usernames with backslashes (e.g., `domain%5Cuser`) and encrypted passwords decrypt cleanly without leaking the `username + host` prefix.
+  - Fixed FTP directory listing URL construction in `list_via_ftp_curl` to always include a leading `/` on the target path, preventing curl `"Port number was not a decimal number"` errors.
+- **UI Overflow Fixes**:
+  - Constrained long file paths in the Import dialog and long connection names/subtitles in the Connection Manager header with `.min_w_0()`, `.overflow_hidden()`, and `.text_ellipsis()` so they never overflow modal bounds or push environment color swatches off-screen.
+
 ## [0.4.6] - 2026-11-12
 
 ### Fixed
