@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - 2026-11-13
+
+### Fixed
+- **Auto-Update Loop & Homebrew Cask Release**:
+  - `perform_in_app_update` now verifies `Contents/Info.plist` after `brew upgrade` and automatically falls back to direct GitHub Release download (`Ruster.zip`) if Homebrew did not actually update the running bundle (or if the app is outside `/Applications`).
+  - Fixed `.github/workflows/release.yml` to checkout `origin/main` before updating `Casks/ruster.rb` so Homebrew Cask bumps are never rejected when pushing.
+
 ## [0.4.7] - 2026-11-13
 
 ### Added

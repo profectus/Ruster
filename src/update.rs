@@ -216,39 +216,68 @@ pub fn restart_app() {
     std::process::exit(0);
 }
 
+/// Reads `CFBundleShortVersionString` from a macOS `.app` bundle's `Info.plist`.
+fn read_app_bundle_version(app_path: &std::path::Path) -> Option<String> {
+    let plist_path = app_path.join("Contents/Info.plist");
+    let content = std::fs::read_to_string(plist_path).ok()?;
+    parse_plist_short_version(&content)
+}
+
+fn parse_plist_short_version(plist_xml: &str) -> Option<String> {
+    let key_idx = plist_xml.find("<key>CFBundleShortVersionString</key>")?;
+    let after_key = &plist_xml[key_idx..];
+    let start = after_key.find("<string>")? + "<string>".len();
+    let rest = &after_key[start..];
+    let end = rest.find("</string>")?;
+    let ver = rest[..end].trim();
+    if ver.is_empty() {
+        None
+    } else {
+        Some(ver.to_string())
+    }
+}
+
 pub fn perform_in_app_update(version: &str, mut on_progress: impl FnMut(String)) -> Result<(), String> {
     on_progress("Ověřuji instalaci...".to_string());
+    let target_app = locate_target_app();
+    let in_applications = target_app.starts_with("/Applications");
 
-    // 1. If Homebrew is managing ruster (or legacy macscp), try upgrading through brew first
-    if let Some(brew) = find_brew_binary() {
-        let is_ruster = Command::new(&brew)
-            .args(["list", "--cask", "ruster"])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false);
-        let is_macscp = !is_ruster && Command::new(&brew)
-            .args(["list", "--cask", "macscp"])
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false);
+    // 1. If Homebrew is managing ruster (or legacy macscp) in /Applications, try upgrading through brew first
+    if in_applications {
+        if let Some(brew) = find_brew_binary() {
+            let is_ruster = Command::new(&brew)
+                .args(["list", "--cask", "ruster"])
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
+            let is_macscp = !is_ruster && Command::new(&brew)
+                .args(["list", "--cask", "macscp"])
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false);
 
-        if is_ruster || is_macscp {
-            let cask_name = if is_ruster { "ruster" } else { "macscp" };
-            on_progress("Aktualizuji repozitář Homebrew...".to_string());
-            let _ = Command::new(&brew).arg("update").output();
+            if is_ruster || is_macscp {
+                let cask_name = if is_ruster { "ruster" } else { "macscp" };
+                on_progress("Aktualizuji repozitář Homebrew...".to_string());
+                let _ = Command::new(&brew).arg("update").output();
 
-            on_progress("Instaluji novou verzi přes Homebrew...".to_string());
-            let res = Command::new(&brew)
-                .args(["upgrade", "--cask", "--no-ask", cask_name])
-                .output();
+                on_progress("Instaluji novou verzi přes Homebrew...".to_string());
+                let res = Command::new(&brew)
+                    .args(["upgrade", "--cask", "--no-ask", cask_name])
+                    .output();
 
-            if let Ok(out) = res {
-                if out.status.success() {
-                    let target_app = locate_target_app();
-                    let _ = Command::new("/usr/bin/xattr")
-                        .args(["-dr", "com.apple.quarantine", target_app.to_str().unwrap()])
-                        .output();
-                    return Ok(());
+                if let Ok(out) = res {
+                    if out.status.success() {
+                        let updated = read_app_bundle_version(&target_app)
+                            .map(|v| !is_newer_version(version, &v))
+                            .unwrap_or(false);
+                        if updated {
+                            let _ = Command::new("/usr/bin/xattr")
+                                .args(["-dr", "com.apple.quarantine", target_app.to_str().unwrap()])
+                                .output();
+                            return Ok(());
+                        }
+                    }
                 }
             }
         }

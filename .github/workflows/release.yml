@@ -68,6 +68,8 @@ jobs:
       - name: Update Homebrew Cask Formula
         run: |
           CLEAN_VERSION="${VERSION#v}"
+          git fetch origin main
+          git checkout -B main origin/main
           sed -i '' "s/version \".*\"/version \"$CLEAN_VERSION\"/" Casks/ruster.rb
           sed -i '' "s/sha256 \".*\"/sha256 \"$SHA256\"/" Casks/ruster.rb
           sed -i '' "s/sha256 :no_check/sha256 \"$SHA256\"/" Casks/ruster.rb
@@ -77,5 +79,5 @@ jobs:
           git add Casks/ruster.rb
           if ! git diff --cached --quiet; then
             git commit -m "chore(cask): bump version to $CLEAN_VERSION [skip ci]"
-            git push origin HEAD:main || true
+            git push origin main || true
           fi
