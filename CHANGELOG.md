@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.10] - 2026-11-14
+
+### Fixed
+- **Asynchronous Remote Delete**:
+  - `confirm_delete` now executes `remote_delete` and refreshes the remote directory listing (`list_remote_directory`) on a background thread via `std::thread::spawn` + `cx.spawn`, preventing UI freezes when deleting files or folders over FTP/FTPS/SFTP/SCP.
+  - Streams deletion commands, responses, and errors to the server log and updates `remote_error_banner` on failure.
+- **Transfer Queue Panel**:
+  - Automatically hides the transfer queue panel once all transfers complete.
+
 ## [0.4.9] - 2026-11-14
 
 ### Fixed
