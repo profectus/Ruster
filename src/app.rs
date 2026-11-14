@@ -2670,6 +2670,7 @@ impl RusterView {
                             if cancel_signal_ui.load(std::sync::atomic::Ordering::SeqCst) {
                                 view.transfer_queue.clear();
                                 view.active_transfer = None;
+                                view.show_queue = false;
                             } else {
                                 check_and_mark_completed_parents(&mut view.transfer_queue);
                                 if let Some(t) = &mut view.active_transfer {
@@ -2677,6 +2678,10 @@ impl RusterView {
                                     t.file_bytes_transferred = t.file_bytes_total;
                                 }
                                 view.transfer_queue.retain(|q| q.status != TransferStatus::Completed);
+                                if view.transfer_queue.is_empty() {
+                                    view.active_transfer = None;
+                                    view.show_queue = false;
+                                }
                             }
                             view.reload_local();
                             view.reload_right();
@@ -2700,6 +2705,7 @@ impl RusterView {
         }
         self.transfer_queue.clear();
         self.active_transfer = None;
+        self.show_queue = false;
         if self.active_modal == ActiveModal::TransferProgress || self.active_modal == ActiveModal::TransferError {
             self.active_modal = ActiveModal::None;
         }
@@ -2709,7 +2715,7 @@ impl RusterView {
     }
 
     pub(crate) fn is_transfer_in_progress(&self) -> bool {
-        self.active_transfer.is_some()
+        self.active_transfer.as_ref().is_some_and(|t| !t.is_completed)
             || self.transfer_cancel_signal.is_some()
             || self.transfer_queue.iter().any(|i| i.status == TransferStatus::Transferring || i.status == TransferStatus::Queued)
     }
