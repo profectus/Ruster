@@ -3912,7 +3912,7 @@ impl RusterView {
         }
     }
 
-    pub(crate) fn confirm_delete(&mut self) {
+    pub(crate) fn confirm_delete(&mut self, cx: &mut Context<Self>) {
         match self.active_pane {
             ActivePane::Local => {
                 let items_to_delete: Vec<FileEntry> = {
@@ -3947,53 +3947,174 @@ impl RusterView {
                             .filter(|e| e.is_any_selected() && e.name != "..")
                             .cloned()
                             .collect();
-                    if marked.is_empty() {
-                        self.right_entries
-                            .get(self.right_selected)
+                        if marked.is_empty() {
+                            self.right_entries
+                                .get(self.right_selected)
+                                .filter(|e| e.name != "..")
+                                .cloned()
+                                .into_iter()
+                                .collect()
+                        } else {
+                            marked
+                        }
+                    };
+                    for entry in items_to_delete {
+                        let _ = delete_local_item(std::path::Path::new(&entry.path), entry.is_dir);
+                    }
+                    self.reload_right();
+                } else if let Some(session) = self.sessions.get(self.active_session_idx) {
+                    let marked: Vec<FileEntry> = session
+                        .entries
+                        .iter()
+                        .filter(|e| e.is_any_selected() && e.name != "..")
+                        .cloned()
+                        .collect();
+                    let items_to_delete: Vec<FileEntry> = if marked.is_empty() {
+                        session
+                            .entries
+                            .get(session.selected_index)
                             .filter(|e| e.name != "..")
                             .cloned()
                             .into_iter()
                             .collect()
                     } else {
                         marked
+                    };
+
+                    if !items_to_delete.is_empty() {
+                        let session_id = session.id;
+                        let protocol = session.protocol;
+                        let host = session.host.clone();
+                        let port = session.port;
+                        let username = session.username.clone();
+                        let password = session.password.clone();
+                        let current_path = session.current_path.clone();
+                        let show_hidden = self.show_hidden;
+
+                        enum DeleteMsg {
+                            Log(ServerLogKind, String),
+                            Done(Result<Vec<FileEntry>, String>, Option<String>),
+                        }
+
+                        let (tx, rx) = std::sync::mpsc::channel::<DeleteMsg>();
+                        let thread_current_path = current_path.clone();
+
+                        std::thread::spawn(move || {
+                            let mut last_err: Option<String> = None;
+                            for entry in items_to_delete {
+                                let _ = tx.send(DeleteMsg::Log(
+                                    ServerLogKind::Command,
+                                    format!("DELETE {}", entry.path),
+                                ));
+                                match remote_delete(
+                                    protocol,
+                                    &host,
+                                    port,
+                                    &username,
+                                    password.as_deref(),
+                                    &entry.path,
+                                ) {
+                                    Ok(()) => {
+                                        let _ = tx.send(DeleteMsg::Log(
+                                            ServerLogKind::Response,
+                                            format!("250 Smazáno {}", entry.name),
+                                        ));
+                                    }
+                                    Err(e) => {
+                                        let _ = tx.send(DeleteMsg::Log(
+                                            ServerLogKind::Error,
+                                            format!("Chyba mazání {}: {}", entry.path, e),
+                                        ));
+                                        last_err = Some(e);
+                                    }
+                                }
+                            }
+                            let list_res = list_remote_directory(
+                                protocol,
+                                &host,
+                                port,
+                                &username,
+                                password.as_deref(),
+                                &thread_current_path,
+                                show_hidden,
+                            );
+                            let _ = tx.send(DeleteMsg::Done(list_res, last_err));
+                        });
+
+                        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+                            let mut cx = cx.clone();
+                            async move {
+                                loop {
+                                    let mut got_msg = false;
+                                    let mut disconnected = false;
+                                    loop {
+                                        match rx.try_recv() {
+                                            Ok(DeleteMsg::Log(kind, msg)) => {
+                                                got_msg = true;
+                                                let _ = this.update(&mut cx, |view, cx| {
+                                                    view.log_server(kind, msg);
+                                                    cx.notify();
+                                                });
+                                            }
+                                            Ok(DeleteMsg::Done(list_res, last_err)) => {
+                                                let _ = this.update(&mut cx, |view, cx| {
+                                                    if let Some(err) = last_err {
+                                                        view.remote_error_banner = Some(err);
+                                                    } else {
+                                                        view.remote_error_banner = None;
+                                                    }
+                                                    if let Ok(real_entries) = list_res {
+                                                        let sort_col = view.remote_sort_col;
+                                                        let sort_asc = view.remote_sort_asc;
+                                                        if let Some(session) = view
+                                                            .sessions
+                                                            .iter_mut()
+                                                            .find(|s| s.id == session_id && s.current_path == current_path)
+                                                        {
+                                                            session.entries = real_entries;
+                                                            sort_entries(&mut session.entries, sort_col, sort_asc);
+                                                            if session.selected_index >= session.entries.len() {
+                                                                session.selected_index =
+                                                                    session.entries.len().saturating_sub(1);
+                                                            }
+                                                            if !session.entries.iter().any(|e| e.selected) {
+                                                                if let Some(e) =
+                                                                    session.entries.get_mut(session.selected_index)
+                                                                {
+                                                                    if e.name != ".." {
+                                                                        e.selected = true;
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    cx.notify();
+                                                });
+                                                return;
+                                            }
+                                            Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                                            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                                                disconnected = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if disconnected {
+                                        return;
+                                    }
+                                    if !got_msg {
+                                        cx.background_executor()
+                                            .timer(std::time::Duration::from_millis(50))
+                                            .await;
+                                    }
+                                }
+                            }
+                        })
+                        .detach();
                     }
-                };
-                for entry in items_to_delete {
-                    let _ = delete_local_item(std::path::Path::new(&entry.path), entry.is_dir);
                 }
-                self.reload_right();
-            } else if let Some(session) = self.sessions.get(self.active_session_idx) {
-                let marked: Vec<FileEntry> = session
-                    .entries
-                    .iter()
-                    .filter(|e| e.is_any_selected() && e.name != "..")
-                    .cloned()
-                    .collect();
-                let items_to_delete = if marked.is_empty() {
-                    session
-                        .entries
-                        .get(session.selected_index)
-                        .filter(|e| e.name != "..")
-                        .cloned()
-                        .into_iter()
-                        .collect()
-                } else {
-                    marked
-                };
-                for entry in items_to_delete {
-                    let _ = remote_delete(
-                        session.protocol,
-                        &session.host,
-                        session.port,
-                        &session.username,
-                        session.password.as_deref(),
-                        &entry.path,
-                    );
-                }
-                self.reload_right();
             }
         }
-    }
         self.active_modal = ActiveModal::None;
     }
 
@@ -5926,7 +6047,7 @@ impl RusterView {
                 self.active_modal = ActiveModal::None;
                 cx.notify();
             } else if key == "enter" && self.active_modal == ActiveModal::DeleteConfirm {
-                self.confirm_delete();
+                self.confirm_delete(cx);
                 cx.notify();
             }
             return;

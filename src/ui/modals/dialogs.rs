@@ -257,7 +257,7 @@ impl RusterView {
                                     .on_mouse_down(
                                         MouseButton::Left,
                                         cx.listener(|this, _, _, cx| {
-                                            this.confirm_delete();
+                                            this.confirm_delete(cx);
                                             cx.notify();
                                         }),
                                     )
