@@ -1694,41 +1694,66 @@ impl RusterView {
     }
 
     pub(crate) fn open_selected_item_with_app(&mut self, cx: &mut Context<Self>) {
-        let app_path = match Self::pick_application_prompt() {
-            Some(p) => p,
-            None => return,
-        };
+        enum OpenTarget {
+            Local(PathBuf),
+            Remote(FileEntry),
+        }
 
-        match self.active_pane {
-            ActivePane::Local => {
-                if let Some(entry) = self.local_entries.get(self.local_selected).cloned() {
-                    let p = PathBuf::from(&entry.path);
-                    let _ = std::process::Command::new("open")
-                        .arg("-a")
-                        .arg(&app_path)
-                        .arg(&p)
-                        .spawn();
-                }
-            }
+        let target = match self.active_pane {
+            ActivePane::Local => self
+                .local_entries
+                .get(self.local_selected)
+                .map(|entry| OpenTarget::Local(PathBuf::from(&entry.path))),
             ActivePane::Remote => {
                 if self.sessions.is_empty() {
-                    if let Some(entry) = self.right_entries.get(self.right_selected).cloned() {
-                        let p = PathBuf::from(&entry.path);
+                    self.right_entries
+                        .get(self.right_selected)
+                        .map(|entry| OpenTarget::Local(PathBuf::from(&entry.path)))
+                } else {
+                    self.sessions
+                        .get(self.active_session_idx)
+                        .and_then(|s| s.entries.get(s.selected_index))
+                        .filter(|entry| !entry.is_dir)
+                        .cloned()
+                        .map(OpenTarget::Remote)
+                }
+            }
+        };
+
+        let Some(target) = target else {
+            return;
+        };
+
+        // Run NSOpenPanel outside cx.listener() so App/RusterView borrows are released
+        // before AppKit pumps a nested modal event loop.
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                cx.background_executor()
+                    .timer(std::time::Duration::from_millis(1))
+                    .await;
+
+                let Some(app_path) = Self::pick_application_prompt() else {
+                    return;
+                };
+
+                match target {
+                    OpenTarget::Local(p) => {
                         let _ = std::process::Command::new("open")
                             .arg("-a")
                             .arg(&app_path)
                             .arg(&p)
                             .spawn();
                     }
-                } else if let Some(s) = self.sessions.get(self.active_session_idx) {
-                    if let Some(entry) = s.entries.get(s.selected_index).cloned() {
-                        if !entry.is_dir {
-                            self.open_remote_file_for_editing(entry, Some(app_path), cx);
-                        }
+                    OpenTarget::Remote(entry) => {
+                        let _ = this.update(&mut cx, |view, cx| {
+                            view.open_remote_file_for_editing(entry, Some(app_path), cx);
+                        });
                     }
                 }
             }
-        }
+        })
+        .detach();
     }
 
     pub(crate) fn navigate_up(&mut self) {
@@ -6598,23 +6623,25 @@ impl Drop for RusterView {
 #[cfg(target_os = "macos")]
 #[allow(unexpected_cfgs)]
 fn pick_application_prompt_macos() -> Option<PathBuf> {
+    use objc::rc::autoreleasepool;
+    use objc::runtime::{NO, YES};
     use objc::{class, msg_send, sel, sel_impl};
     use std::ffi::CStr;
 
-    unsafe {
+    autoreleasepool(|| unsafe {
         let panel: *mut objc::runtime::Object = msg_send![class!(NSOpenPanel), openPanel];
         if panel.is_null() {
             return None;
         }
-        let _: () = msg_send![panel, setCanChooseFiles: 1usize];
-        let _: () = msg_send![panel, setCanChooseDirectories: 0usize];
-        let _: () = msg_send![panel, setAllowsMultipleSelection: 0usize];
-        let _: () = msg_send![panel, setResolvesAliases: 1usize];
-        let _: () = msg_send![panel, setTreatsFilePackagesAsDirectories: 0usize];
+        let _: () = msg_send![panel, setCanChooseFiles: YES];
+        let _: () = msg_send![panel, setCanChooseDirectories: NO];
+        let _: () = msg_send![panel, setAllowsMultipleSelection: NO];
+        let _: () = msg_send![panel, setResolvesAliases: YES];
+        let _: () = msg_send![panel, setTreatsFilePackagesAsDirectories: NO];
 
         let apps_path: *mut objc::runtime::Object = msg_send![
             class!(NSString),
-            stringWithUTF8String: b"/Applications\0".as_ptr()
+            stringWithUTF8String: b"/Applications\0".as_ptr() as *const libc::c_char
         ];
         if !apps_path.is_null() {
             let apps_url: *mut objc::runtime::Object = msg_send![
@@ -6628,7 +6655,7 @@ fn pick_application_prompt_macos() -> Option<PathBuf> {
 
         let app_ext: *mut objc::runtime::Object = msg_send![
             class!(NSString),
-            stringWithUTF8String: b"app\0".as_ptr()
+            stringWithUTF8String: b"app\0".as_ptr() as *const libc::c_char
         ];
         if !app_ext.is_null() {
             let types_array: *mut objc::runtime::Object = msg_send![
@@ -6658,6 +6685,6 @@ fn pick_application_prompt_macos() -> Option<PathBuf> {
             }
         }
         None
-    }
+    })
 }
 

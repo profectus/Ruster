@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.9] - 2026-11-14
+
+### Fixed
+- **Open With Application Crash**:
+  - Deferred `NSOpenPanel` invocation in `open_selected_item_with_app` out of `cx.listener` via `cx.spawn` so `RusterView` and `App` borrows are released before AppKit runs its modal event loop, preventing `BorrowMutError` panics on macOS.
+  - Wrapped `pick_application_prompt_macos` in `objc::rc::autoreleasepool` and passed proper `YES`/`NO` `BOOL` values to `NSOpenPanel`.
+
 ## [0.4.8] - 2026-11-13
 
 ### Fixed
