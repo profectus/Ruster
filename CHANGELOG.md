@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.11] - 2026-11-17
+
+### Fixed
+- **Site Manager Text Inputs & Selection**:
+  - Replaced static text rendering in Connection Manager (`SiteManager`) fields with selectable `ShapedLine` canvas rendering, supporting click-to-position cursor, mouse drag selection, double-click word selection, triple-click select-all, and horizontal scrolling/clipping for long values.
+  - Fixed `Cmd+A` / `Ctrl+A` deleting field contents instead of selecting all text, and added `Cmd+C` (Copy), `Cmd+X` (Cut), `Shift`+arrow/Home/End selection, and `Option`+arrow/Backspace word navigation.
+  - Switched character input to use `event.keystroke.key_char` (with `space` fallback) so uppercase letters, symbols, Czech diacritics, and `Option`-modified characters type accurately.
+  - Prevented out-of-range `Port` input from resetting the port to `0`.
+
 ## [0.4.10] - 2026-11-14
 
 ### Fixed
