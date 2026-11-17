@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.12] - 2026-11-17
+
+### Fixed
+- **Disk Usage Physical Space & Filtering**:
+  - Switched file size calculation in Disk Usage (`src/disk_usage.rs`) from logical `metadata.len()` to physical allocated disk space (`st_blocks * 512`), preventing sparse files and cloud placeholders from inflating reported usage.
+  - Added macOS `SF_DATALESS` detection and `.icloud` stub filtering to skip offloaded cloud-only files and folders without triggering downloads.
+  - Enforced filesystem boundary checks (`st_dev`) and `statfs` (`MNT_LOCAL` + local filesystem type verification) so scans never traverse network shares, FUSE/FileProvider mounts, or double-count `/System/Volumes/Data`.
+  - Expanded directory exclusions for cloud storage providers (`OneDrive`, `Google Drive`, `Dropbox`, `iCloud Drive`, `Library/CloudStorage`, `Library/FileProvider`, etc.) and macOS managed media libraries (`*.photoslibrary`, `*.musiclibrary`, `*.tvlibrary`).
+  - Added hardlink deduplication by `(st_dev, st_ino)` so shared inodes are counted only once.
+
 ## [0.4.11] - 2026-11-17
 
 ### Fixed

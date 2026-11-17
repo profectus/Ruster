@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -94,6 +94,17 @@ pub fn scan_directory_usage(
     cancel_flag: Arc<AtomicBool>,
     mut progress_cb: impl FnMut(DiskUsageProgress),
 ) -> Option<DiskUsageScanResult> {
+    let root_meta = fs::symlink_metadata(root).ok()?;
+    #[cfg(unix)]
+    let root_dev = {
+        use std::os::unix::fs::MetadataExt;
+        root_meta.dev()
+    };
+    #[cfg(not(unix))]
+    let root_dev = 0u64;
+
+    let is_root_scan = root == Path::new("/");
+
     let mut id_gen = 0usize;
     let mut total_files = 0usize;
     let mut total_dirs = 0usize;
@@ -102,11 +113,15 @@ pub fn scan_directory_usage(
     let mut ext_map: HashMap<String, (u64, usize, String)> = HashMap::new();
     let mut all_files: Vec<TopFileUsage> = Vec::new();
     let mut categories = CategoryBreakdown::default();
+    let mut seen_inodes: HashSet<(u64, u64)> = HashSet::new();
 
     let mut last_progress = std::time::Instant::now();
 
     let root_node = scan_node(
         root,
+        true,
+        root_dev,
+        is_root_scan,
         &mut id_gen,
         &cancel_flag,
         &mut total_files,
@@ -115,6 +130,7 @@ pub fn scan_directory_usage(
         &mut ext_map,
         &mut all_files,
         &mut categories,
+        &mut seen_inodes,
         &mut progress_cb,
         &mut last_progress,
     )?;
@@ -156,8 +172,12 @@ pub fn scan_directory_usage(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn scan_node(
     path: &Path,
+    is_scan_root: bool,
+    root_dev: u64,
+    is_root_scan: bool,
     id_gen: &mut usize,
     cancel_flag: &Arc<AtomicBool>,
     total_files: &mut usize,
@@ -166,11 +186,32 @@ fn scan_node(
     ext_map: &mut HashMap<String, (u64, usize, String)>,
     all_files: &mut Vec<TopFileUsage>,
     categories: &mut CategoryBreakdown,
+    seen_inodes: &mut HashSet<(u64, u64)>,
     progress_cb: &mut impl FnMut(DiskUsageProgress),
     last_progress: &mut std::time::Instant,
 ) -> Option<DiskUsageNode> {
     if cancel_flag.load(Ordering::Relaxed) {
         return None;
+    }
+
+    let metadata = fs::symlink_metadata(path).ok()?;
+    if metadata.file_type().is_symlink() || is_dataless(&metadata) {
+        return None;
+    }
+
+    let is_dir = metadata.is_dir();
+
+    // Never cross filesystem boundaries (network shares, FUSE/cloud mounts, external drives, DMGs).
+    // When scanning "/" on macOS, allow APFS firmlinks to local physical volumes while still
+    // excluding /System/Volumes, /Volumes, /dev, /net, etc.
+    #[cfg(unix)]
+    if !is_scan_root {
+        use std::os::unix::fs::MetadataExt;
+        if metadata.dev() != root_dev {
+            if !(is_root_scan && is_dir && is_local_physical_fs(path)) {
+                return None;
+            }
+        }
     }
 
     let node_id = *id_gen;
@@ -181,8 +222,6 @@ fn scan_node(
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| path.to_string_lossy().to_string());
 
-    let metadata = fs::symlink_metadata(path).ok()?;
-    let is_dir = metadata.is_dir();
     let mod_ts = metadata
         .modified()
         .ok()
@@ -192,7 +231,21 @@ fn scan_node(
     let modified_str = format_unix_timestamp(mod_ts);
 
     if !is_dir {
-        let size = metadata.len();
+        // Skip iCloud Drive offloaded stub files (e.g. ".photo.jpg.icloud")
+        if file_name.starts_with('.') && file_name.to_lowercase().ends_with(".icloud") {
+            return None;
+        }
+
+        // Deduplicate hardlinks so shared inodes are counted only once
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            if metadata.nlink() > 1 && !seen_inodes.insert((metadata.dev(), metadata.ino())) {
+                return None;
+            }
+        }
+
+        let size = physical_file_size(&metadata);
         *total_files += 1;
         *total_bytes += size;
 
@@ -263,15 +316,18 @@ fn scan_node(
                 if ft.is_symlink() {
                     continue;
                 }
-            }
-
-            // Skip cloud storage providers (Google Drive, iCloud, OneDrive, Dropbox, etc.)
-            if is_cloud_storage_dir(&child_name, &child_path) {
+                if ft.is_dir() && should_skip_dir(&child_name, &child_path, is_root_scan) {
+                    continue;
+                }
+            } else if should_skip_dir(&child_name, &child_path, is_root_scan) {
                 continue;
             }
 
             if let Some(child_node) = scan_node(
                 &child_path,
+                false,
+                root_dev,
+                is_root_scan,
                 id_gen,
                 cancel_flag,
                 total_files,
@@ -280,6 +336,7 @@ fn scan_node(
                 ext_map,
                 all_files,
                 categories,
+                seen_inodes,
                 progress_cb,
                 last_progress,
             ) {
@@ -373,37 +430,189 @@ fn categorize_file(
     }
 }
 
+#[cfg(target_os = "macos")]
+const SF_DATALESS: u32 = 0x4000_0000;
+
+fn is_dataless(metadata: &fs::Metadata) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        use std::os::macos::fs::MetadataExt;
+        (metadata.st_flags() & SF_DATALESS) != 0
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = metadata;
+        false
+    }
+}
+
+fn physical_file_size(metadata: &fs::Metadata) -> u64 {
+    if is_dataless(metadata) {
+        return 0;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        metadata.blocks().saturating_mul(512)
+    }
+    #[cfg(not(unix))]
+    {
+        metadata.len()
+    }
+}
+
+#[cfg(unix)]
+fn is_local_physical_fs(path: &Path) -> bool {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+
+    let Ok(c_path) = CString::new(path.as_os_str().as_bytes()) else {
+        return false;
+    };
+    unsafe {
+        let mut buf: libc::statfs = std::mem::zeroed();
+        if libc::statfs(c_path.as_ptr(), &mut buf) != 0 {
+            return false;
+        }
+        #[cfg(target_os = "macos")]
+        {
+            if (buf.f_flags & libc::MNT_LOCAL as u32) == 0 {
+                return false;
+            }
+            let fs_type = std::ffi::CStr::from_ptr(buf.f_fstypename.as_ptr())
+                .to_string_lossy()
+                .to_lowercase();
+            if matches!(
+                fs_type.as_str(),
+                "devfs"
+                    | "autofs"
+                    | "fdesc"
+                    | "volfs"
+                    | "procfs"
+                    | "smbfs"
+                    | "nfs"
+                    | "afpfs"
+                    | "webdav"
+                    | "cifs"
+                    | "ftp"
+                    | "macfuse"
+                    | "osxfuse"
+                    | "fuse"
+                    | "fusefs"
+                    | "lifs"
+            ) || fs_type.contains("fuse")
+            {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+fn should_skip_dir(name: &str, path: &Path, is_root_scan: bool) -> bool {
+    if is_cloud_storage_dir(name, path) {
+        return true;
+    }
+
+    let lower_name = name.to_lowercase();
+
+    // Skip macOS managed media & photo library bundles (often iCloud-backed / TCC-protected)
+    if lower_name.ends_with(".photoslibrary")
+        || lower_name.ends_with(".photolibrary")
+        || lower_name.ends_with(".aplibrary")
+        || lower_name.ends_with(".musiclibrary")
+        || lower_name.ends_with(".tvlibrary")
+    {
+        return true;
+    }
+
+    // When scanning "/", skip virtual, network, and APFS volume mount roots to avoid
+    // network traversal and double-counting /System/Volumes/Data.
+    if is_root_scan {
+        let path_str = path.to_string_lossy();
+        if matches!(
+            path_str.as_ref(),
+            "/Volumes"
+                | "/System/Volumes"
+                | "/dev"
+                | "/net"
+                | "/home"
+                | "/Network"
+                | "/.vol"
+        ) {
+            return true;
+        }
+    }
+
+    false
+}
+
 pub fn is_cloud_storage_dir(name: &str, path: &Path) -> bool {
     let lower_name = name.to_lowercase();
-    if lower_name == "google drive"
-        || lower_name == "googledrive"
-        || lower_name == "onedrive"
-        || lower_name == "dropbox"
-        || lower_name == "icloud drive"
-        || lower_name == "cloudstorage"
-        || lower_name == "mobile documents"
-        || lower_name == "com~apple~clouddocs"
-        || lower_name == "box sync"
-        || lower_name == "box"
-        || lower_name == ".trash"
-        || lower_name == ".trashes"
-        || lower_name == ".fseventsd"
-        || lower_name == ".spotlight-v100"
-        || lower_name == ".documentrevisions-v100"
-        || lower_name.starts_with("onedrive -")
+    if matches!(
+        lower_name.as_str(),
+        "google drive"
+            | "googledrive"
+            | "onedrive"
+            | "dropbox"
+            | "icloud drive"
+            | "cloudstorage"
+            | "mobile documents"
+            | "com~apple~clouddocs"
+            | "fileprovider"
+            | "clouddocs"
+            | "box sync"
+            | "box drive"
+            | "box"
+            | "pcloud drive"
+            | "pcloud"
+            | "mega"
+            | "megasync"
+            | "nextcloud"
+            | "owncloud"
+            | "synologydrive"
+            | "synology drive"
+            | "tresorit"
+            | "proton drive"
+            | "protondrive"
+            | "yandex.disk"
+            | "creative cloud files"
+            | "adobe creative cloud files"
+            | ".trash"
+            | ".trashes"
+            | ".fseventsd"
+            | ".spotlight-v100"
+            | ".documentrevisions-v100"
+            | ".temporaryitems"
+            | ".apdisk"
+            | ".timemachine"
+            | ".mobilebackups"
+    ) || lower_name.starts_with("onedrive -")
+        || lower_name.starts_with("onedrive_")
         || lower_name.starts_with("google drive -")
+        || lower_name.starts_with("google drive (")
+        || lower_name.starts_with("dropbox (")
     {
         return true;
     }
 
     let path_str = path.to_string_lossy();
-    if path_str.contains("/Library/CloudStorage")
-        || path_str.contains("/Library/Mobile Documents")
-        || path_str.contains("/Google Drive")
-        || path_str.contains("/OneDrive")
-        || path_str.contains("/Dropbox")
-        || path_str.contains("/.Trash")
-        || path_str.contains("/.Trashes")
+    let lower_path = path_str.to_lowercase();
+    if lower_path.contains("/library/cloudstorage")
+        || lower_path.contains("/library/mobile documents")
+        || lower_path.contains("/library/fileprovider")
+        || lower_path.contains("/library/application support/fileprovider")
+        || lower_path.contains("/library/application support/clouddocs")
+        || lower_path.contains("/library/containers/com.apple.photos")
+        || lower_path.contains("/library/containers/com.apple.photolibraryd")
+        || lower_path.contains("/library/containers/com.apple.music")
+        || lower_path.contains("/library/group containers/ubf8t346g9.onedrive")
+        || lower_path.contains("/library/group containers/group.com.apple.photolibraryd")
+        || lower_path.contains("/google drive")
+        || lower_path.contains("/onedrive")
+        || lower_path.contains("/dropbox")
+        || lower_path.contains("/.trash")
+        || lower_path.contains("/.trashes")
     {
         return true;
     }
@@ -538,6 +747,87 @@ mod tests {
 
         set_all_expanded(&mut root, true);
         assert!(root.children[0].is_expanded);
+
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_skips_cloud_media_libraries_icloud_stubs_and_dedups_hardlinks() {
+        let temp_dir = std::env::temp_dir().join("ruster_disk_usage_filter_test");
+        let _ = fs::remove_dir_all(&temp_dir);
+        fs::create_dir_all(temp_dir.join("local")).unwrap();
+        fs::create_dir_all(temp_dir.join("OneDrive - Company")).unwrap();
+        fs::create_dir_all(temp_dir.join("Google Drive")).unwrap();
+        fs::create_dir_all(temp_dir.join("Library").join("CloudStorage")).unwrap();
+        fs::create_dir_all(temp_dir.join("Photos Library.photoslibrary")).unwrap();
+        fs::create_dir_all(temp_dir.join("Music Library.musiclibrary")).unwrap();
+
+        // Excluded files that must NOT be counted
+        File::create(temp_dir.join("OneDrive - Company").join("big.bin"))
+            .unwrap()
+            .write_all(&[1u8; 8192])
+            .unwrap();
+        File::create(temp_dir.join("Google Drive").join("doc.pdf"))
+            .unwrap()
+            .write_all(&[2u8; 8192])
+            .unwrap();
+        File::create(
+            temp_dir
+                .join("Library")
+                .join("CloudStorage")
+                .join("cached.dat"),
+        )
+        .unwrap()
+        .write_all(&[3u8; 8192])
+        .unwrap();
+        File::create(
+            temp_dir
+                .join("Photos Library.photoslibrary")
+                .join("photo.jpg"),
+        )
+        .unwrap()
+        .write_all(&[4u8; 8192])
+        .unwrap();
+        File::create(
+            temp_dir
+                .join("Music Library.musiclibrary")
+                .join("song.m4a"),
+        )
+        .unwrap()
+        .write_all(&[5u8; 8192])
+        .unwrap();
+        File::create(temp_dir.join("local").join(".offloaded.mp4.icloud"))
+            .unwrap()
+            .write_all(b"placeholder")
+            .unwrap();
+
+        // Real local sparse file: 10 MB logical size, 1 block physical size
+        let sparse_path = temp_dir.join("local").join("sparse.img");
+        {
+            let mut f = File::create(&sparse_path).unwrap();
+            f.write_all(&[42u8; 64]).unwrap();
+            f.set_len(10 * 1024 * 1024).unwrap();
+            f.sync_all().unwrap();
+        }
+
+        // Hardlink to sparse_path — should be deduplicated
+        let hardlink_path = temp_dir.join("local").join("sparse_hardlink.img");
+        fs::hard_link(&sparse_path, &hardlink_path).unwrap();
+
+        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let res =
+            scan_directory_usage(&temp_dir, cancel_flag, |_| {}).expect("Scan should succeed");
+
+        assert_eq!(res.total_files, 1);
+        assert!(
+            res.total_size > 0 && res.total_size < 1024 * 1024,
+            "unexpected physical size: {}",
+            res.total_size
+        );
+        assert_eq!(res.top_files.len(), 1);
+        assert!(
+            res.top_files[0].name == "sparse.img" || res.top_files[0].name == "sparse_hardlink.img"
+        );
 
         let _ = fs::remove_dir_all(&temp_dir);
     }
