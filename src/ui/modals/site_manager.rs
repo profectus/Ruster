@@ -3,7 +3,7 @@ use crate::app::{RusterView, SiteNoticeKind};
 use crate::config::{save_password_to_keychain, save_sites_to_disk};
 use crate::icons::render_icon;
 use crate::model::{ActiveModal, Protocol, SavedSiteProfile, SiteEditField, ENV_COLORS};
-use crate::ui::helpers::{render_field_value_with_cursor, FileTooltip};
+use crate::ui::helpers::{render_selectable_field_value, FileTooltip};
 
 impl RusterView {
     pub fn render_site_manager_modal(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -26,6 +26,8 @@ impl RusterView {
             .get(self.selected_site_idx)
             .unwrap_or(&fallback_site);
         let active_field = self.active_site_field;
+        let selection_range = self.site_selection_range();
+        let field_layouts = self.site_field_layouts.clone();
         let theme = self.theme();
         let is_dark = theme.is_dark();
 
@@ -145,6 +147,8 @@ impl RusterView {
                                             let _ = save_sites_to_disk(&this.saved_sites);
                                             this.active_modal = ActiveModal::None;
                                             this.active_site_field = SiteEditField::None;
+                                            this.site_selection_anchor = None;
+                                            this.site_mouse_selecting = false;
                                             this.site_search_query.clear();
                                             this.site_proto_dropdown_open = false;
                                             this.site_notice = None;
@@ -180,7 +184,7 @@ impl RusterView {
                                             .child(
                                                 div()
                                                     .id("site-search-box")
-                                                    .cursor_pointer()
+                                                    .cursor_text()
                                                     .flex()
                                                     .items_center()
                                                     .gap_2()
@@ -194,24 +198,26 @@ impl RusterView {
                                                     } else {
                                                         theme.border()
                                                     })
-                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                        this.active_site_field = SiteEditField::Search;
-                                                        this.site_cursor_pos = this.site_search_query.chars().count();
-                                                        this.site_proto_dropdown_open = false;
+                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                        this.site_mouse_down(SiteEditField::Search, event);
                                                         cx.notify();
                                                     }))
                                                     .child(render_icon("icons/search.svg", 13.0, theme.c_icon_default()))
                                                     .child(
                                                         div()
                                                             .flex_1()
+                                                            .min_w_0()
                                                             .overflow_hidden()
-                                                            .child(render_field_value_with_cursor(
+                                                            .child(render_selectable_field_value(
+                                                                SiteEditField::Search,
                                                                 &self.site_search_query,
                                                                 active_field == SiteEditField::Search,
                                                                 self.site_cursor_pos,
+                                                                selection_range,
                                                                 t.placeholder_search_sites(),
                                                                 false,
                                                                 is_dark,
+                                                                field_layouts.clone(),
                                                             )),
                                                     )
                                                     .when(!self.site_search_query.is_empty(), |el| {
@@ -398,6 +404,7 @@ impl RusterView {
                                             .when(self.creating_site_folder, |el| {
                                                 el.child(
                                                     div()
+                                                        .cursor_text()
                                                         .flex()
                                                         .items_center()
                                                         .gap_1p5()
@@ -407,23 +414,26 @@ impl RusterView {
                                                         .bg(theme.modal_card_bg())
                                                         .border_1()
                                                         .border_color(theme.button_active_border())
-                                                        .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                            this.active_site_field = SiteEditField::NewFolder;
-                                                            this.site_cursor_pos = this.new_site_folder_name.chars().count();
+                                                        .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                            this.site_mouse_down(SiteEditField::NewFolder, event);
                                                             cx.notify();
                                                         }))
                                                         .child(render_icon("icons/folder.svg", 13.0, 0xf59e0b))
                                                         .child(
                                                             div()
                                                                 .flex_1()
+                                                                .min_w_0()
                                                                 .overflow_hidden()
-                                                                .child(render_field_value_with_cursor(
+                                                                .child(render_selectable_field_value(
+                                                                    SiteEditField::NewFolder,
                                                                     &self.new_site_folder_name,
                                                                     active_field == SiteEditField::NewFolder,
                                                                     self.site_cursor_pos,
+                                                                    selection_range,
                                                                     "Název složky (Enter)...",
                                                                     false,
                                                                     is_dark,
+                                                                    field_layouts.clone(),
                                                                 )),
                                                         ),
                                                 )
@@ -744,7 +754,7 @@ impl RusterView {
                                                                             .w_full()
                                                                             .min_w_0()
                                                                             .overflow_hidden()
-                                                                            .cursor_pointer()
+                                                                            .cursor_text()
                                                                             .px_1p5()
                                                                             .py_0p5()
                                                                             .rounded(px(4.0))
@@ -759,26 +769,25 @@ impl RusterView {
                                                                             } else {
                                                                                 rgba(0x00000000)
                                                                             })
-                                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                                this.active_site_field = SiteEditField::Name;
-                                                                                this.site_cursor_pos = this.current_site_field_val().chars().count();
-                                                                                this.site_proto_dropdown_open = false;
+                                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                                                this.site_mouse_down(SiteEditField::Name, event);
                                                                                 cx.notify();
                                                                             }))
                                                                             .child(
                                                                                 div()
                                                                                     .min_w_0()
                                                                                     .overflow_hidden()
-                                                                                    .text_ellipsis()
-                                                                                    .whitespace_nowrap()
                                                                                     .font_weight(gpui::FontWeight::BOLD)
-                                                                                    .child(render_field_value_with_cursor(
+                                                                                    .child(render_selectable_field_value(
+                                                                                        SiteEditField::Name,
                                                                                         &selected_site.name,
                                                                                         active_field == SiteEditField::Name,
                                                                                         self.site_cursor_pos,
+                                                                                        selection_range,
                                                                                         "Název připojení...",
                                                                                         false,
                                                                                         is_dark,
+                                                                                        field_layouts.clone(),
                                                                                     )),
                                                                             ),
                                                                     )
@@ -811,9 +820,10 @@ impl RusterView {
                                                                                 div()
                                                                                     .id("edit-site-group")
                                                                                     .flex_shrink_0()
+                                                                                    .min_w(px(80.0))
                                                                                     .max_w(px(140.0))
                                                                                     .overflow_hidden()
-                                                                                    .cursor_pointer()
+                                                                                    .cursor_text()
                                                                                     .flex()
                                                                                     .items_center()
                                                                                     .gap_1()
@@ -831,21 +841,28 @@ impl RusterView {
                                                                                     } else {
                                                                                         theme.border()
                                                                                     })
-                                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                                        this.active_site_field = SiteEditField::Group;
-                                                                                        this.site_cursor_pos = this.current_site_field_val().chars().count();
-                                                                                        this.site_proto_dropdown_open = false;
+                                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                                                        this.site_mouse_down(SiteEditField::Group, event);
                                                                                         cx.notify();
                                                                                     }))
                                                                                     .child(render_icon("icons/folder.svg", 11.0, 0xf59e0b))
-                                                                                    .child(render_field_value_with_cursor(
-                                                                                        &selected_site.group,
-                                                                                        active_field == SiteEditField::Group,
-                                                                                        self.site_cursor_pos,
-                                                                                        t.label_site_folder(),
-                                                                                        false,
-                                                                                        is_dark,
-                                                                                    )),
+                                                                                    .child(
+                                                                                        div()
+                                                                                            .flex_1()
+                                                                                            .min_w_0()
+                                                                                            .overflow_hidden()
+                                                                                            .child(render_selectable_field_value(
+                                                                                                SiteEditField::Group,
+                                                                                                &selected_site.group,
+                                                                                                active_field == SiteEditField::Group,
+                                                                                                self.site_cursor_pos,
+                                                                                                selection_range,
+                                                                                                t.label_site_folder(),
+                                                                                                false,
+                                                                                                is_dark,
+                                                                                                field_layouts.clone(),
+                                                                                            )),
+                                                                                    ),
                                                                             ),
                                                                     ),
                                                             ),
@@ -1038,7 +1055,9 @@ impl RusterView {
                                                             .child(
                                                                 div()
                                                                     .id("edit-site-host")
-                                                                    .cursor_pointer()
+                                                                    .min_w_0()
+                                                                    .overflow_hidden()
+                                                                    .cursor_text()
                                                                     .px_2p5()
                                                                     .py_1p5()
                                                                     .rounded(px(6.0))
@@ -1049,19 +1068,20 @@ impl RusterView {
                                                                     } else {
                                                                         theme.border()
                                                                     })
-                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                        this.active_site_field = SiteEditField::Host;
-                                                                        this.site_cursor_pos = this.current_site_field_val().chars().count();
-                                                                        this.site_proto_dropdown_open = false;
+                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                                        this.site_mouse_down(SiteEditField::Host, event);
                                                                         cx.notify();
                                                                     }))
-                                                                    .child(render_field_value_with_cursor(
+                                                                    .child(render_selectable_field_value(
+                                                                        SiteEditField::Host,
                                                                         &selected_site.host,
                                                                         active_field == SiteEditField::Host,
                                                                         self.site_cursor_pos,
+                                                                        selection_range,
                                                                         "prod.cloud.cz",
                                                                         false,
                                                                         is_dark,
+                                                                        field_layouts.clone(),
                                                                     )),
                                                             ),
                                                     )
@@ -1082,7 +1102,9 @@ impl RusterView {
                                                             .child(
                                                                 div()
                                                                     .id("edit-site-port")
-                                                                    .cursor_pointer()
+                                                                    .min_w_0()
+                                                                    .overflow_hidden()
+                                                                    .cursor_text()
                                                                     .px_2p5()
                                                                     .py_1p5()
                                                                     .rounded(px(6.0))
@@ -1093,13 +1115,12 @@ impl RusterView {
                                                                     } else {
                                                                         theme.border()
                                                                     })
-                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                        this.active_site_field = SiteEditField::Port;
-                                                                        this.site_cursor_pos = this.current_site_field_val().chars().count();
-                                                                        this.site_proto_dropdown_open = false;
+                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                                        this.site_mouse_down(SiteEditField::Port, event);
                                                                         cx.notify();
                                                                     }))
-                                                                    .child(render_field_value_with_cursor(
+                                                                    .child(render_selectable_field_value(
+                                                                        SiteEditField::Port,
                                                                         &if selected_site.port == 0 {
                                                                             String::new()
                                                                         } else {
@@ -1107,9 +1128,11 @@ impl RusterView {
                                                                         },
                                                                         active_field == SiteEditField::Port,
                                                                         self.site_cursor_pos,
+                                                                        selection_range,
                                                                         "22",
                                                                         false,
                                                                         is_dark,
+                                                                        field_layouts.clone(),
                                                                     )),
                                                             ),
                                                     ),
@@ -1136,7 +1159,9 @@ impl RusterView {
                                                             .child(
                                                                 div()
                                                                     .id("edit-site-user")
-                                                                    .cursor_pointer()
+                                                                    .min_w_0()
+                                                                    .overflow_hidden()
+                                                                    .cursor_text()
                                                                     .px_2p5()
                                                                     .py_1p5()
                                                                     .rounded(px(6.0))
@@ -1147,19 +1172,20 @@ impl RusterView {
                                                                     } else {
                                                                         theme.border()
                                                                     })
-                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                        this.active_site_field = SiteEditField::Username;
-                                                                        this.site_cursor_pos = this.current_site_field_val().chars().count();
-                                                                        this.site_proto_dropdown_open = false;
+                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                                        this.site_mouse_down(SiteEditField::Username, event);
                                                                         cx.notify();
                                                                     }))
-                                                                    .child(render_field_value_with_cursor(
+                                                                    .child(render_selectable_field_value(
+                                                                        SiteEditField::Username,
                                                                         &selected_site.username,
                                                                         active_field == SiteEditField::Username,
                                                                         self.site_cursor_pos,
+                                                                        selection_range,
                                                                         "root",
                                                                         false,
                                                                         is_dark,
+                                                                        field_layouts.clone(),
                                                                     )),
                                                             ),
                                                     )
@@ -1203,7 +1229,9 @@ impl RusterView {
                                                             .child(
                                                                 div()
                                                                     .id("edit-site-pass")
-                                                                    .cursor_pointer()
+                                                                    .min_w_0()
+                                                                    .overflow_hidden()
+                                                                    .cursor_text()
                                                                     .px_2p5()
                                                                     .py_1p5()
                                                                     .rounded(px(6.0))
@@ -1214,13 +1242,12 @@ impl RusterView {
                                                                     } else {
                                                                         theme.border()
                                                                     })
-                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                        this.active_site_field = SiteEditField::Password;
-                                                                        this.site_cursor_pos = this.current_site_field_val().chars().count();
-                                                                        this.site_proto_dropdown_open = false;
+                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                                        this.site_mouse_down(SiteEditField::Password, event);
                                                                         cx.notify();
                                                                     }))
-                                                                    .child(render_field_value_with_cursor(
+                                                                    .child(render_selectable_field_value(
+                                                                        SiteEditField::Password,
                                                                         if !self.site_password_input.is_empty() {
                                                                             &self.site_password_input
                                                                         } else if let Some(ref p) = selected_site.password {
@@ -1230,9 +1257,11 @@ impl RusterView {
                                                                         },
                                                                         active_field == SiteEditField::Password,
                                                                         self.site_cursor_pos,
+                                                                        selection_range,
                                                                         "••••••••",
                                                                         !self.site_password_revealed,
                                                                         is_dark,
+                                                                        field_layouts.clone(),
                                                                     )),
                                                             ),
                                                     ),
@@ -1259,7 +1288,9 @@ impl RusterView {
                                                             .child(
                                                                 div()
                                                                     .id("edit-site-folder")
-                                                                    .cursor_pointer()
+                                                                    .min_w_0()
+                                                                    .overflow_hidden()
+                                                                    .cursor_text()
                                                                     .px_2p5()
                                                                     .py_1p5()
                                                                     .rounded(px(6.0))
@@ -1270,19 +1301,20 @@ impl RusterView {
                                                                     } else {
                                                                         theme.border()
                                                                     })
-                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                        this.active_site_field = SiteEditField::RemotePath;
-                                                                        this.site_cursor_pos = this.current_site_field_val().chars().count();
-                                                                        this.site_proto_dropdown_open = false;
+                                                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                                        this.site_mouse_down(SiteEditField::RemotePath, event);
                                                                         cx.notify();
                                                                     }))
-                                                                    .child(render_field_value_with_cursor(
+                                                                    .child(render_selectable_field_value(
+                                                                        SiteEditField::RemotePath,
                                                                         &selected_site.folder,
                                                                         active_field == SiteEditField::RemotePath,
                                                                         self.site_cursor_pos,
+                                                                        selection_range,
                                                                         "/var/www/html nebo ~",
                                                                         false,
                                                                         is_dark,
+                                                                        field_layouts.clone(),
                                                                     )),
                                                             ),
                                                     )
@@ -1346,20 +1378,25 @@ impl RusterView {
                                                                     )
                                                                     .child(
                                                                         div()
-                                                                            .cursor_pointer()
+                                                                            .flex_1()
+                                                                            .min_w_0()
+                                                                            .overflow_hidden()
+                                                                            .cursor_text()
                                                                             .px_1()
-                                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
-                                                                                this.active_site_field = SiteEditField::MaxConnections;
-                                                                                this.site_cursor_pos = this.current_site_field_val().chars().count();
+                                                                            .on_mouse_down(MouseButton::Left, cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                                                                                this.site_mouse_down(SiteEditField::MaxConnections, event);
                                                                                 cx.notify();
                                                                             }))
-                                                                            .child(render_field_value_with_cursor(
+                                                                            .child(render_selectable_field_value(
+                                                                                SiteEditField::MaxConnections,
                                                                                 &selected_site.max_connections.to_string(),
                                                                                 active_field == SiteEditField::MaxConnections,
                                                                                 self.site_cursor_pos,
+                                                                                selection_range,
                                                                                 "2",
                                                                                 false,
                                                                                 is_dark,
+                                                                                field_layouts.clone(),
                                                                             )),
                                                                     )
                                                                     .child(
@@ -1508,6 +1545,8 @@ impl RusterView {
                                                                 }
                                                             }
                                                             this.active_site_field = SiteEditField::None;
+                                            this.site_selection_anchor = None;
+                                            this.site_mouse_selecting = false;
                                                             this.site_proto_dropdown_open = false;
                                                             cx.notify();
                                                         }),

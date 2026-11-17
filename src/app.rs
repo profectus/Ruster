@@ -183,6 +183,9 @@ pub struct RusterView {
     pub(crate) site_search_query: String,
     pub(crate) site_proto_dropdown_open: bool,
     pub(crate) site_cursor_pos: usize,
+    pub(crate) site_selection_anchor: Option<usize>,
+    pub(crate) site_mouse_selecting: bool,
+    pub(crate) site_field_layouts: std::rc::Rc<std::cell::RefCell<std::collections::HashMap<SiteEditField, crate::ui::helpers::TextFieldLayout>>>,
     pub(crate) collapsed_site_groups: std::collections::HashSet<String>,
     pub(crate) selected_site_group: Option<String>,
     pub(crate) custom_site_groups: Vec<String>,
@@ -645,6 +648,9 @@ impl RusterView {
             site_search_query: String::new(),
             site_proto_dropdown_open: false,
             site_cursor_pos: 0,
+            site_selection_anchor: None,
+            site_mouse_selecting: false,
+            site_field_layouts: std::rc::Rc::new(std::cell::RefCell::new(std::collections::HashMap::new())),
             collapsed_site_groups: std::collections::HashSet::new(),
             selected_site_group: None,
             custom_site_groups: Vec::new(),
@@ -4670,7 +4676,11 @@ impl RusterView {
                 SiteEditField::Host => site.host = new_val,
                 SiteEditField::Port => {
                     let digits: String = new_val.chars().filter(|c| c.is_ascii_digit()).collect();
-                    site.port = digits.parse::<u16>().unwrap_or(0);
+                    if digits.is_empty() {
+                        site.port = 0;
+                    } else if let Ok(p) = digits.parse::<u16>() {
+                        site.port = p;
+                    }
                 }
                 SiteEditField::Username => site.username = new_val,
                 SiteEditField::Password => self.site_password_input = new_val,
@@ -4682,6 +4692,205 @@ impl RusterView {
                 SiteEditField::None => {}
             }
         }
+    }
+
+    pub(crate) fn site_ensure_password_loaded(&mut self) {
+        if self.active_site_field == SiteEditField::Password && self.site_password_input.is_empty() {
+            if let Some(site) = self.saved_sites.get(self.selected_site_idx) {
+                if let Some(ref p) = site.password {
+                    self.site_password_input = p.clone();
+                }
+            }
+        }
+    }
+
+    pub(crate) fn site_selection_range(&self) -> Option<(usize, usize)> {
+        let anchor = self.site_selection_anchor?;
+        let len = self.current_site_field_val().chars().count();
+        let a = anchor.min(len);
+        let b = self.site_cursor_pos.min(len);
+        if a == b {
+            None
+        } else {
+            Some((a.min(b), a.max(b)))
+        }
+    }
+
+    pub(crate) fn site_select_all(&mut self) {
+        self.site_ensure_password_loaded();
+        let len = self.current_site_field_val().chars().count();
+        self.site_selection_anchor = Some(0);
+        self.site_cursor_pos = len;
+    }
+
+    pub(crate) fn site_selected_text(&self) -> Option<String> {
+        let (lo, hi) = self.site_selection_range()?;
+        let val = self.current_site_field_val();
+        Some(val.chars().skip(lo).take(hi - lo).collect())
+    }
+
+    pub(crate) fn site_replace_selection_or_insert(&mut self, insert: &str) {
+        self.site_ensure_password_loaded();
+        let val = self.current_site_field_val();
+        let mut chars: Vec<char> = val.chars().collect();
+        let (start, end) = self
+            .site_selection_range()
+            .unwrap_or_else(|| {
+                let pos = self.site_cursor_pos.min(chars.len());
+                (pos, pos)
+            });
+        let insert_chars: Vec<char> = insert.chars().collect();
+        let insert_len = insert_chars.len();
+        chars.splice(start..end, insert_chars);
+        let new_val: String = chars.into_iter().collect();
+        self.set_current_site_field_val(new_val);
+        let final_len = self.current_site_field_val().chars().count();
+        self.site_cursor_pos = (start + insert_len).min(final_len);
+        self.site_selection_anchor = None;
+    }
+
+    pub(crate) fn site_delete_selection(&mut self) -> bool {
+        if let Some((lo, hi)) = self.site_selection_range() {
+            let val = self.current_site_field_val();
+            let mut chars: Vec<char> = val.chars().collect();
+            chars.drain(lo..hi);
+            self.set_current_site_field_val(chars.into_iter().collect());
+            let final_len = self.current_site_field_val().chars().count();
+            self.site_cursor_pos = lo.min(final_len);
+            self.site_selection_anchor = None;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn site_copy_selection(&self, cx: &mut Context<Self>) {
+        if self.active_site_field == SiteEditField::Password && !self.site_password_revealed {
+            return;
+        }
+        if let Some(text) = self.site_selected_text() {
+            cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+        }
+    }
+
+    pub(crate) fn site_cut_selection(&mut self, cx: &mut Context<Self>) {
+        self.site_copy_selection(cx);
+        self.site_delete_selection();
+    }
+
+    pub(crate) fn site_move_cursor(&mut self, new_pos: usize, extend_selection: bool) {
+        let len = self.current_site_field_val().chars().count();
+        let clamped = new_pos.min(len);
+        if extend_selection {
+            if self.site_selection_anchor.is_none() {
+                self.site_selection_anchor = Some(self.site_cursor_pos.min(len));
+            }
+        } else {
+            self.site_selection_anchor = None;
+        }
+        self.site_cursor_pos = clamped;
+    }
+
+    pub(crate) fn site_prev_word_boundary(&self, pos: usize) -> usize {
+        let chars: Vec<char> = self.current_site_field_val().chars().collect();
+        let mut i = pos.min(chars.len());
+        while i > 0 && !chars[i - 1].is_alphanumeric() && chars[i - 1] != '_' {
+            i -= 1;
+        }
+        while i > 0 && (chars[i - 1].is_alphanumeric() || chars[i - 1] == '_') {
+            i -= 1;
+        }
+        i
+    }
+
+    pub(crate) fn site_next_word_boundary(&self, pos: usize) -> usize {
+        let chars: Vec<char> = self.current_site_field_val().chars().collect();
+        let mut i = pos.min(chars.len());
+        while i < chars.len() && !chars[i].is_alphanumeric() && chars[i] != '_' {
+            i += 1;
+        }
+        while i < chars.len() && (chars[i].is_alphanumeric() || chars[i] == '_') {
+            i += 1;
+        }
+        i
+    }
+
+    pub(crate) fn site_mouse_down(&mut self, field: SiteEditField, event: &gpui::MouseDownEvent) {
+        self.site_proto_dropdown_open = false;
+        let same_field = self.active_site_field == field;
+        self.active_site_field = field;
+        self.site_ensure_password_loaded();
+        let val = self.current_site_field_val();
+        let len = val.chars().count();
+        let clicked_idx = self
+            .site_field_layouts
+            .borrow()
+            .get(&field)
+            .map(|layout| layout.char_index_for_x(f32::from(event.position.x)))
+            .unwrap_or(len)
+            .min(len);
+
+        if event.click_count >= 3 {
+            self.site_selection_anchor = Some(0);
+            self.site_cursor_pos = len;
+            self.site_mouse_selecting = false;
+        } else if event.click_count == 2 {
+            let chars: Vec<char> = val.chars().collect();
+            let is_word = |c: char| c.is_alphanumeric() || c == '_';
+            if chars.is_empty() {
+                self.site_selection_anchor = None;
+                self.site_cursor_pos = 0;
+            } else {
+                let idx = clicked_idx.min(chars.len().saturating_sub(1));
+                let target_is_word = is_word(chars[idx]);
+                let mut start = idx;
+                while start > 0 && is_word(chars[start - 1]) == target_is_word {
+                    start -= 1;
+                }
+                let mut end = idx + 1;
+                while end < chars.len() && is_word(chars[end]) == target_is_word {
+                    end += 1;
+                }
+                self.site_selection_anchor = Some(start);
+                self.site_cursor_pos = end;
+            }
+            self.site_mouse_selecting = false;
+        } else if event.modifiers.shift && same_field {
+            if self.site_selection_anchor.is_none() {
+                self.site_selection_anchor = Some(self.site_cursor_pos.min(len));
+            }
+            self.site_cursor_pos = clicked_idx;
+            self.site_mouse_selecting = true;
+        } else {
+            self.site_selection_anchor = Some(clicked_idx);
+            self.site_cursor_pos = clicked_idx;
+            self.site_mouse_selecting = true;
+        }
+    }
+
+    pub(crate) fn site_mouse_move(&mut self, event: &MouseMoveEvent) -> bool {
+        if !self.site_mouse_selecting
+            || self.active_modal != ActiveModal::SiteManager
+            || self.active_site_field == SiteEditField::None
+        {
+            return false;
+        }
+        let len = self.current_site_field_val().chars().count();
+        let idx = self
+            .site_field_layouts
+            .borrow()
+            .get(&self.active_site_field)
+            .map(|layout| layout.char_index_for_x(f32::from(event.position.x)))
+            .unwrap_or(self.site_cursor_pos)
+            .min(len);
+        if self.site_selection_anchor.is_none() {
+            self.site_selection_anchor = Some(self.site_cursor_pos.min(len));
+        }
+        if self.site_cursor_pos != idx {
+            self.site_cursor_pos = idx;
+            return true;
+        }
+        false
     }
 
     pub(crate) fn sort_saved_sites(&mut self) {
@@ -4726,6 +4935,8 @@ impl RusterView {
         self.site_proto_dropdown_open = false;
         self.site_password_revealed = false;
         self.site_cursor_pos = self.current_site_field_val().chars().count();
+        self.site_selection_anchor = None;
+        self.site_mouse_selecting = false;
         self.site_password_input.clear();
         self.site_error_message = None;
         self.site_notice = None;
@@ -5398,17 +5609,32 @@ impl RusterView {
                         SiteEditField::RemotePath => SiteEditField::MaxConnections,
                     };
                 }
+                self.site_ensure_password_loaded();
                 self.site_cursor_pos = self.current_site_field_val().chars().count();
+                self.site_selection_anchor = None;
+                self.site_mouse_selecting = false;
                 cx.notify();
                 return;
             }
             if self.active_site_field != SiteEditField::None {
+                let len = self.current_site_field_val().chars().count();
+
                 // Left Arrow
                 if key == "arrowleft" || key == "left" {
-                    if modifiers.platform {
-                        self.site_cursor_pos = 0;
+                    if !modifiers.shift && self.site_selection_range().is_some() {
+                        if let Some((lo, _)) = self.site_selection_range() {
+                            self.site_cursor_pos = lo;
+                            self.site_selection_anchor = None;
+                        }
                     } else {
-                        self.site_cursor_pos = self.site_cursor_pos.saturating_sub(1);
+                        let target = if modifiers.platform {
+                            0
+                        } else if modifiers.alt {
+                            self.site_prev_word_boundary(self.site_cursor_pos)
+                        } else {
+                            self.site_cursor_pos.saturating_sub(1)
+                        };
+                        self.site_move_cursor(target, modifiers.shift);
                     }
                     cx.notify();
                     return;
@@ -5416,11 +5642,20 @@ impl RusterView {
 
                 // Right Arrow
                 if key == "arrowright" || key == "right" {
-                    let len = self.current_site_field_val().chars().count();
-                    if modifiers.platform {
-                        self.site_cursor_pos = len;
+                    if !modifiers.shift && self.site_selection_range().is_some() {
+                        if let Some((_, hi)) = self.site_selection_range() {
+                            self.site_cursor_pos = hi;
+                            self.site_selection_anchor = None;
+                        }
                     } else {
-                        self.site_cursor_pos = (self.site_cursor_pos + 1).min(len);
+                        let target = if modifiers.platform {
+                            len
+                        } else if modifiers.alt {
+                            self.site_next_word_boundary(self.site_cursor_pos)
+                        } else {
+                            (self.site_cursor_pos + 1).min(len)
+                        };
+                        self.site_move_cursor(target, modifiers.shift);
                     }
                     cx.notify();
                     return;
@@ -5428,83 +5663,122 @@ impl RusterView {
 
                 // Home / End
                 if key == "home" {
-                    self.site_cursor_pos = 0;
+                    self.site_move_cursor(0, modifiers.shift);
                     cx.notify();
                     return;
                 }
                 if key == "end" {
-                    self.site_cursor_pos = self.current_site_field_val().chars().count();
+                    self.site_move_cursor(len, modifiers.shift);
+                    cx.notify();
+                    return;
+                }
+
+                // Select All (Cmd+A or Ctrl+A)
+                if (modifiers.platform || modifiers.control) && (key == "a" || key == "A") {
+                    self.site_select_all();
+                    cx.notify();
+                    return;
+                }
+
+                // Copy (Cmd+C or Ctrl+C)
+                if (modifiers.platform || modifiers.control) && (key == "c" || key == "C") {
+                    self.site_copy_selection(cx);
+                    cx.notify();
+                    return;
+                }
+
+                // Cut (Cmd+X or Ctrl+X)
+                if (modifiers.platform || modifiers.control) && (key == "x" || key == "X") {
+                    self.site_cut_selection(cx);
                     cx.notify();
                     return;
                 }
 
                 // Clipboard paste (Cmd+V or Ctrl+V)
-                let is_paste = (modifiers.platform || modifiers.control) && (key == "v" || key == "V");
-                if is_paste {
+                if (modifiers.platform || modifiers.control) && (key == "v" || key == "V") {
                     if let Some(pasted) = self.get_clipboard_text(cx) {
-                        let clean = pasted.trim_matches(['\r', '\n']).to_string();
+                        let clean = pasted.trim_matches(['\r', '\n']);
+                        self.site_replace_selection_or_insert(clean);
+                        cx.notify();
+                    }
+                    return;
+                }
+
+                // Backspace (with selection, Cmd+Backspace, Option+Backspace, or single char)
+                if key == "backspace" {
+                    if !self.site_delete_selection() {
+                        self.site_ensure_password_loaded();
                         let val = self.current_site_field_val();
                         let mut chars: Vec<char> = val.chars().collect();
                         let pos = self.site_cursor_pos.min(chars.len());
-                        let count = clean.chars().count();
-                        for (i, ch) in clean.chars().enumerate() {
-                            chars.insert(pos + i, ch);
+                        if pos > 0 {
+                            let del_start = if modifiers.platform {
+                                0
+                            } else if modifiers.alt || modifiers.control {
+                                self.site_prev_word_boundary(pos)
+                            } else {
+                                pos - 1
+                            };
+                            chars.drain(del_start..pos);
+                            self.site_cursor_pos = del_start;
+                            self.set_current_site_field_val(chars.into_iter().collect());
+                            let final_len = self.current_site_field_val().chars().count();
+                            self.site_cursor_pos = self.site_cursor_pos.min(final_len);
                         }
-                        self.site_cursor_pos = pos + count;
-                        self.set_current_site_field_val(chars.into_iter().collect());
+                    }
+                    cx.notify();
+                    return;
+                }
+
+                // Delete (delete selection or char at cursor)
+                if key == "delete" {
+                    if !self.site_delete_selection() {
+                        self.site_ensure_password_loaded();
+                        let val = self.current_site_field_val();
+                        let mut chars: Vec<char> = val.chars().collect();
+                        let pos = self.site_cursor_pos.min(chars.len());
+                        if pos < chars.len() {
+                            let del_end = if modifiers.alt || modifiers.control {
+                                self.site_next_word_boundary(pos)
+                            } else {
+                                pos + 1
+                            };
+                            chars.drain(pos..del_end);
+                            self.set_current_site_field_val(chars.into_iter().collect());
+                            let final_len = self.current_site_field_val().chars().count();
+                            self.site_cursor_pos = pos.min(final_len);
+                        }
+                    }
+                    cx.notify();
+                    return;
+                }
+
+                // Normal character insertion (supports Shift, symbols, Czech/diacritics, Option+chars via key_char)
+                if !modifiers.platform && !modifiers.control {
+                    let typed: Option<String> = if let Some(ref kc) = event.keystroke.key_char {
+                        if !kc.is_empty() && !kc.chars().any(|c| c.is_control()) {
+                            Some(kc.clone())
+                        } else {
+                            None
+                        }
+                    } else if key == "space" {
+                        Some(" ".to_string())
+                    } else if key.chars().count() == 1 {
+                        let ch = key.chars().next().unwrap();
+                        if !ch.is_control() {
+                            Some(key.to_string())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                    if let Some(text) = typed {
+                        self.site_replace_selection_or_insert(&text);
                         cx.notify();
                         return;
                     }
-                }
-
-                // Select all / Clear (Cmd+A or Ctrl+A or Cmd+Backspace)
-                let is_clear_or_select_all = (modifiers.platform || modifiers.control)
-                    && (key == "a" || key == "A" || key == "backspace");
-                if is_clear_or_select_all {
-                    self.set_current_site_field_val(String::new());
-                    self.site_cursor_pos = 0;
-                    cx.notify();
-                    return;
-                }
-
-                // Backspace (delete before cursor)
-                if key == "backspace" {
-                    let val = self.current_site_field_val();
-                    let mut chars: Vec<char> = val.chars().collect();
-                    if self.site_cursor_pos > 0 && self.site_cursor_pos <= chars.len() {
-                        chars.remove(self.site_cursor_pos - 1);
-                        self.site_cursor_pos -= 1;
-                        self.set_current_site_field_val(chars.into_iter().collect());
-                    }
-                    cx.notify();
-                    return;
-                }
-
-                // Delete (delete at cursor)
-                if key == "delete" {
-                    let val = self.current_site_field_val();
-                    let mut chars: Vec<char> = val.chars().collect();
-                    if self.site_cursor_pos < chars.len() {
-                        chars.remove(self.site_cursor_pos);
-                        self.set_current_site_field_val(chars.into_iter().collect());
-                    }
-                    cx.notify();
-                    return;
-                }
-
-                // Normal character insertion
-                if !modifiers.platform && !modifiers.control && key.chars().count() == 1 {
-                    let val = self.current_site_field_val();
-                    let mut chars: Vec<char> = val.chars().collect();
-                    let pos = self.site_cursor_pos.min(chars.len());
-                    let count = key.chars().count();
-                    for (i, ch) in key.chars().enumerate() {
-                        chars.insert(pos + i, ch);
-                    }
-                    self.site_cursor_pos = pos + count;
-                    self.set_current_site_field_val(chars.into_iter().collect());
-                    cx.notify();
-                    return;
                 }
             }
             return;
@@ -6374,9 +6648,16 @@ impl Render for RusterView {
                     this.queue_panel_height = (state.initial_height - delta).clamp(60.0, max_h);
                     cx.notify();
                 }
+                if this.site_mouse_move(event) {
+                    cx.notify();
+                }
             }))
             .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
                 let mut changed = false;
+                if this.site_mouse_selecting {
+                    this.site_mouse_selecting = false;
+                    changed = true;
+                }
                 if this.resizing_column.is_some() {
                     this.resizing_column = None;
                     changed = true;
@@ -6480,6 +6761,11 @@ impl Render for RusterView {
                 cx.notify();
             }))
             .on_action(cx.listener(|this, _: &CopySelected, _, cx| {
+                if this.active_modal == ActiveModal::SiteManager && this.active_site_field != SiteEditField::None {
+                    this.site_copy_selection(cx);
+                    cx.notify();
+                    return;
+                }
                 if this.active_modal != ActiveModal::None { return; }
                 this.copy_selected_item(false, cx);
                 cx.notify();
@@ -6524,6 +6810,11 @@ impl Render for RusterView {
                 cx.notify();
             }))
             .on_action(cx.listener(|this, _: &SelectAllItems, _, cx| {
+                if this.active_modal == ActiveModal::SiteManager && this.active_site_field != SiteEditField::None {
+                    this.site_select_all();
+                    cx.notify();
+                    return;
+                }
                 if this.active_modal != ActiveModal::None { return; }
                 this.select_all_in_active_pane();
                 cx.notify();

@@ -1,7 +1,216 @@
-use gpui::{div, prelude::*, px, rgb, Context, IntoElement, Render, Window};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
+use gpui::{
+    canvas, div, fill, point, prelude::*, px, rgb, rgba, size, Bounds, ContentMask, Context,
+    IntoElement, Pixels, Render, SharedString, ShapedLine, TextRun, Window,
+};
 use crate::i18n::I18n;
 use crate::icons::render_icon;
-use crate::model::{format_bytes, FileEntry};
+use crate::model::{format_bytes, FileEntry, SiteEditField};
+
+#[derive(Clone, Debug, Default)]
+pub struct TextFieldLayout {
+    pub origin_x: f32,
+    pub scroll_x: f32,
+    pub char_x_offsets: Vec<f32>,
+}
+
+impl TextFieldLayout {
+    pub fn char_index_for_x(&self, window_x: f32) -> usize {
+        if self.char_x_offsets.is_empty() {
+            return 0;
+        }
+        let local_x = window_x - self.origin_x + self.scroll_x;
+        if local_x <= 0.0 {
+            return 0;
+        }
+        let mut best_idx = 0;
+        let mut best_dist = f32::MAX;
+        for (i, &x) in self.char_x_offsets.iter().enumerate() {
+            let dist = (local_x - x).abs();
+            if dist < best_dist {
+                best_dist = dist;
+                best_idx = i;
+            }
+        }
+        best_idx
+    }
+}
+
+pub fn render_selectable_field_value(
+    field: SiteEditField,
+    text: &str,
+    is_active: bool,
+    cursor_char_pos: usize,
+    selection_range: Option<(usize, usize)>,
+    placeholder: &str,
+    is_password: bool,
+    is_dark: bool,
+    layouts: Rc<RefCell<HashMap<SiteEditField, TextFieldLayout>>>,
+) -> impl IntoElement {
+    let text_color = if is_dark { rgb(0xf4f4f5) } else { rgb(0x18181b) };
+    let placeholder_color = if is_dark { rgb(0x71717a) } else { rgb(0xa1a1aa) };
+    let cursor_color = if is_dark { rgb(0x3b82f6) } else { rgb(0x2563eb) };
+    let selection_bg = if is_dark { rgba(0x3b82f655) } else { rgba(0x2563eb33) };
+
+    let display_text: String = if is_password {
+        "•".repeat(text.chars().count())
+    } else {
+        text.to_string()
+    };
+    let char_count = display_text.chars().count();
+    let clamped_cursor = cursor_char_pos.min(char_count);
+    let clamped_sel = selection_range.map(|(a, b)| {
+        let lo = a.min(b).min(char_count);
+        let hi = a.max(b).min(char_count);
+        (lo, hi)
+    });
+    let placeholder_str = placeholder.to_string();
+
+    div()
+        .w_full()
+        .h(px(16.0))
+        .text_xs()
+        .font_weight(if display_text.is_empty() && !is_active {
+            gpui::FontWeight::NORMAL
+        } else {
+            gpui::FontWeight::MEDIUM
+        })
+        .child(
+            canvas(
+                move |bounds, window, _cx| {
+                    let text_style = window.text_style();
+                    let font_size = text_style.font_size.to_pixels(window.rem_size());
+                    let line_height = window.line_height();
+                    let font = text_style.font();
+
+                    let shaped_text = if display_text.is_empty() {
+                        None
+                    } else {
+                        let run = TextRun {
+                            len: display_text.len(),
+                            font: font.clone(),
+                            color: text_color.into(),
+                            background_color: None,
+                            underline: None,
+                            strikethrough: None,
+                        };
+                        Some(window.text_system().shape_line(
+                            SharedString::from(display_text.clone()),
+                            font_size,
+                            &[run],
+                            None,
+                        ))
+                    };
+
+                    let shaped_placeholder = if display_text.is_empty() && !placeholder_str.is_empty() {
+                        let run = TextRun {
+                            len: placeholder_str.len(),
+                            font,
+                            color: placeholder_color.into(),
+                            background_color: None,
+                            underline: None,
+                            strikethrough: None,
+                        };
+                        Some(window.text_system().shape_line(
+                            SharedString::from(placeholder_str.clone()),
+                            font_size,
+                            &[run],
+                            None,
+                        ))
+                    } else {
+                        None
+                    };
+
+                    let mut char_x_offsets = Vec::with_capacity(char_count + 1);
+                    char_x_offsets.push(0.0);
+                    if let Some(ref line) = shaped_text {
+                        for (byte_idx, ch) in display_text.char_indices() {
+                            let end_byte = byte_idx + ch.len_utf8();
+                            char_x_offsets.push(f32::from(line.x_for_index(end_byte)));
+                        }
+                    }
+
+                    let avail_w = f32::from(bounds.size.width).max(1.0);
+                    let total_w = char_x_offsets.last().copied().unwrap_or(0.0);
+                    let cursor_x = char_x_offsets.get(clamped_cursor).copied().unwrap_or(0.0);
+                    let scroll_x = if !is_active || total_w <= avail_w - 2.0 {
+                        0.0
+                    } else if cursor_x > avail_w - 4.0 {
+                        (cursor_x - (avail_w - 4.0)).min((total_w - avail_w + 4.0).max(0.0))
+                    } else {
+                        0.0
+                    };
+
+                    layouts.borrow_mut().insert(
+                        field,
+                        TextFieldLayout {
+                            origin_x: f32::from(bounds.origin.x),
+                            scroll_x,
+                            char_x_offsets: char_x_offsets.clone(),
+                        },
+                    );
+
+                    (shaped_text, shaped_placeholder, char_x_offsets, line_height, scroll_x)
+                },
+                move |bounds: Bounds<Pixels>,
+                      (shaped_text, shaped_placeholder, char_x_offsets, line_height, scroll_x): (
+                    Option<ShapedLine>,
+                    Option<ShapedLine>,
+                    Vec<f32>,
+                    Pixels,
+                    f32,
+                ),
+                      window,
+                      cx| {
+                    let text_y = bounds.origin.y + ((bounds.size.height - line_height) * 0.5).max(px(0.0));
+                    let mask = ContentMask { bounds };
+                    window.with_content_mask(Some(mask), |window| {
+                        if is_active {
+                            if let Some((lo, hi)) = clamped_sel {
+                                if lo < hi && hi < char_x_offsets.len() {
+                                    let x0 = char_x_offsets[lo] - scroll_x;
+                                    let x1 = char_x_offsets[hi] - scroll_x;
+                                    window.paint_quad(fill(
+                                        Bounds::new(
+                                            point(bounds.origin.x + px(x0), bounds.origin.y),
+                                            size(px((x1 - x0).max(2.0)), bounds.size.height),
+                                        ),
+                                        selection_bg,
+                                    ));
+                                }
+                            }
+                        }
+
+                        if let Some(line) = shaped_text {
+                            let _ = line.paint(
+                                point(bounds.origin.x - px(scroll_x), text_y),
+                                line_height,
+                                window,
+                                cx,
+                            );
+                        } else if let Some(ph_line) = shaped_placeholder {
+                            let _ = ph_line.paint(point(bounds.origin.x, text_y), line_height, window, cx);
+                        }
+
+                        if is_active {
+                            let cursor_x = char_x_offsets.get(clamped_cursor).copied().unwrap_or(0.0) - scroll_x;
+                            window.paint_quad(fill(
+                                Bounds::new(
+                                    point(bounds.origin.x + px(cursor_x), bounds.origin.y + px(1.0)),
+                                    size(px(1.5), (bounds.size.height - px(2.0)).max(px(12.0))),
+                                ),
+                                cursor_color,
+                            ));
+                        }
+                    });
+                },
+            )
+            .size_full(),
+        )
+}
 
 pub fn render_field_value_with_cursor(
     text: &str,
