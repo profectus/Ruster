@@ -4930,7 +4930,7 @@ impl RusterView {
         self.session_dropdown_open = false;
         self.context_menu = None;
         self.active_modal = ActiveModal::SiteManager;
-        self.active_site_field = SiteEditField::Name;
+        self.active_site_field = SiteEditField::Search;
         self.site_search_query.clear();
         self.site_proto_dropdown_open = false;
         self.site_password_revealed = false;
