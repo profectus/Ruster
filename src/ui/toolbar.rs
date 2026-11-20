@@ -408,7 +408,7 @@ impl RusterView {
                                     div()
                                         .w(px(1.5))
                                         .h(px(12.0))
-                                        .bg(theme.text_accent())
+                                        .when(self.cursor_blink_visible, |el| el.bg(theme.text_accent()))
                                         .ml_0p5(),
                                 )
                             }),

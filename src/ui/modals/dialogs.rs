@@ -61,6 +61,7 @@ impl RusterView {
                             .child(render_field_value_with_cursor(
                                 &self.modal_input_text,
                                 true,
+                                self.cursor_blink_visible,
                                 self.modal_cursor_pos,
                                 "",
                                 false,
@@ -365,6 +366,7 @@ impl RusterView {
                             .child(render_field_value_with_cursor(
                                 &self.modal_input_text,
                                 self.modal_sub_field == 0,
+                                self.cursor_blink_visible,
                                 self.modal_cursor_pos,
                                 "",
                                 false,
@@ -424,6 +426,7 @@ impl RusterView {
                                     .child(render_field_value_with_cursor(
                                         &self.archive_password_input,
                                         self.modal_sub_field == 1,
+                                        self.cursor_blink_visible,
                                         self.archive_password_cursor_pos,
                                         "",
                                         !self.archive_password_visible,
@@ -541,6 +544,7 @@ impl RusterView {
                             .child(render_field_value_with_cursor(
                                 &self.modal_input_text,
                                 self.modal_sub_field == 0,
+                                self.cursor_blink_visible,
                                 self.modal_cursor_pos,
                                 "",
                                 false,
@@ -600,6 +604,7 @@ impl RusterView {
                                     .child(render_field_value_with_cursor(
                                         &self.archive_password_input,
                                         self.modal_sub_field == 1,
+                                        self.cursor_blink_visible,
                                         self.archive_password_cursor_pos,
                                         "",
                                         !self.archive_password_visible,

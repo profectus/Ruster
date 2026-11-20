@@ -1011,6 +1011,7 @@ impl RusterView {
                                                     .child(render_textarea_value_with_cursor(
                                                         &self.editable_extensions,
                                                         self.settings_editing_exts,
+                                                        self.cursor_blink_visible,
                                                         self.settings_cursor_pos,
                                                         "txt, md, json, php, js, html...",
                                                         is_dark,

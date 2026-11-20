@@ -136,6 +136,7 @@ impl RusterView {
                                                     .child(render_field_value_with_cursor(
                                                         &self.multirename_config.find_pattern,
                                                         self.multirename_active_field == 0,
+                                                        self.cursor_blink_visible,
                                                         self.multirename_cursor_pos,
                                                         "[N]",
                                                         false,
@@ -178,6 +179,7 @@ impl RusterView {
                                                     .child(render_field_value_with_cursor(
                                                         &self.multirename_config.replace_pattern,
                                                         self.multirename_active_field == 1,
+                                                        self.cursor_blink_visible,
                                                         self.multirename_cursor_pos,
                                                         "",
                                                         false,
@@ -303,7 +305,8 @@ impl RusterView {
                                                             .child(render_field_value_with_cursor(
                                                                 &self.multirename_config.counter_start.to_string(),
                                                                 self.multirename_active_field == 2,
-                                                                self.multirename_cursor_pos,
+                                                                self.cursor_blink_visible,
+                                                        self.multirename_cursor_pos,
                                                                 "1",
                                                                 false,
                                                                 is_dark,
@@ -334,7 +337,8 @@ impl RusterView {
                                                             .child(render_field_value_with_cursor(
                                                                 &self.multirename_config.counter_step.to_string(),
                                                                 self.multirename_active_field == 3,
-                                                                self.multirename_cursor_pos,
+                                                                self.cursor_blink_visible,
+                                                        self.multirename_cursor_pos,
                                                                 "1",
                                                                 false,
                                                                 is_dark,
@@ -365,7 +369,8 @@ impl RusterView {
                                                             .child(render_field_value_with_cursor(
                                                                 &self.multirename_config.counter_digits.to_string(),
                                                                 self.multirename_active_field == 4,
-                                                                self.multirename_cursor_pos,
+                                                                self.cursor_blink_visible,
+                                                        self.multirename_cursor_pos,
                                                                 "2",
                                                                 false,
                                                                 is_dark,

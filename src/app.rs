@@ -192,6 +192,8 @@ pub struct RusterView {
     pub(crate) creating_site_folder: bool,
     pub(crate) new_site_folder_name: String,
     pub(crate) modal_cursor_pos: usize,
+    pub(crate) cursor_blink_visible: bool,
+    pub(crate) last_cursor_activity: std::time::Instant,
     pub(crate) site_error_message: Option<String>,
     pub(crate) site_notice: Option<(String, SiteNoticeKind)>,
     pub(crate) site_is_connecting: bool,
@@ -735,14 +737,76 @@ impl RusterView {
             window_width: saved_state.window_width,
             window_height: saved_state.window_height,
             last_window_size_saved: std::time::Instant::now(),
+            cursor_blink_visible: true,
+            last_cursor_activity: std::time::Instant::now(),
         };
 
         cleanup_remote_edit_temp();
         Self::start_remote_edit_watcher(cx);
+        Self::start_cursor_blink_timer(cx);
         view.apply_theme_to_window();
         view.trigger_background_update_check(cx);
 
         view
+    }
+
+    pub(crate) fn has_active_text_input(&self) -> bool {
+        match self.active_modal {
+            ActiveModal::SiteManager => self.active_site_field != SiteEditField::None,
+            ActiveModal::NewFolder
+            | ActiveModal::Rename
+            | ActiveModal::GoToFolder
+            | ActiveModal::Compress
+            | ActiveModal::Extract
+            | ActiveModal::MultiRename
+            | ActiveModal::FindFiles => true,
+            ActiveModal::Settings => self.settings_editing_exts,
+            ActiveModal::None => {
+                (self.active_pane == ActivePane::Local && self.show_local_filter)
+                    || (self.active_pane == ActivePane::Remote && self.show_remote_filter)
+            }
+            _ => false,
+        }
+    }
+
+    pub(crate) fn reset_cursor_blink(&mut self) {
+        self.cursor_blink_visible = true;
+        self.last_cursor_activity = std::time::Instant::now();
+    }
+
+    fn start_cursor_blink_timer(cx: &mut Context<Self>) {
+        cx.spawn(move |this: gpui::WeakEntity<RusterView>, cx: &mut gpui::AsyncApp| {
+            let mut cx = cx.clone();
+            async move {
+                loop {
+                    cx.background_executor()
+                        .timer(std::time::Duration::from_millis(530))
+                        .await;
+                    let Ok(keep_running) = this.update(&mut cx, |view, cx| {
+                        if view.has_active_text_input() {
+                            if view.last_cursor_activity.elapsed()
+                                >= std::time::Duration::from_millis(500)
+                            {
+                                view.cursor_blink_visible = !view.cursor_blink_visible;
+                                cx.notify();
+                            } else if !view.cursor_blink_visible {
+                                view.cursor_blink_visible = true;
+                                cx.notify();
+                            }
+                        } else if !view.cursor_blink_visible {
+                            view.cursor_blink_visible = true;
+                        }
+                        true
+                    }) else {
+                        break;
+                    };
+                    if !keep_running {
+                        break;
+                    }
+                }
+            }
+        })
+        .detach();
     }
 
     pub(crate) fn log_server(&mut self, kind: ServerLogKind, msg: impl Into<String>) {
@@ -4816,6 +4880,7 @@ impl RusterView {
     }
 
     pub(crate) fn site_mouse_down(&mut self, field: SiteEditField, event: &gpui::MouseDownEvent) {
+        self.reset_cursor_blink();
         self.site_proto_dropdown_open = false;
         let same_field = self.active_site_field == field;
         self.active_site_field = field;
@@ -4941,6 +5006,7 @@ impl RusterView {
         self.site_error_message = None;
         self.site_notice = None;
         self.site_is_connecting = false;
+        self.reset_cursor_blink();
     }
 
     pub(crate) fn connect_selected_site(&mut self, cx: &mut Context<Self>) {
@@ -5457,6 +5523,9 @@ impl RusterView {
     }
 
     pub(crate) fn handle_key_down(&mut self, event: &KeyDownEvent, cx: &mut Context<Self>) {
+        if self.has_active_text_input() {
+            self.reset_cursor_blink();
+        }
         let key = event.keystroke.key.as_str();
         let modifiers = &event.keystroke.modifiers;
 

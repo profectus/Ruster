@@ -43,6 +43,7 @@ pub fn render_selectable_field_value(
     field: SiteEditField,
     text: &str,
     is_active: bool,
+    cursor_visible: bool,
     cursor_char_pos: usize,
     selection_range: Option<(usize, usize)>,
     placeholder: &str,
@@ -195,7 +196,7 @@ pub fn render_selectable_field_value(
                             let _ = ph_line.paint(point(bounds.origin.x, text_y), line_height, window, cx);
                         }
 
-                        if is_active {
+                        if is_active && cursor_visible {
                             let cursor_x = char_x_offsets.get(clamped_cursor).copied().unwrap_or(0.0) - scroll_x;
                             window.paint_quad(fill(
                                 Bounds::new(
@@ -215,6 +216,7 @@ pub fn render_selectable_field_value(
 pub fn render_field_value_with_cursor(
     text: &str,
     is_active: bool,
+    cursor_visible: bool,
     cursor_char_pos: usize,
     placeholder: &str,
     is_password: bool,
@@ -263,7 +265,7 @@ pub fn render_field_value_with_cursor(
             div()
                 .w(px(1.5))
                 .h(px(13.0))
-                .bg(cursor_color)
+                .when(cursor_visible, |el| el.bg(cursor_color))
                 .rounded(px(0.5))
                 .mx(px(0.5)),
         )
@@ -281,6 +283,7 @@ pub fn render_field_value_with_cursor(
 pub fn render_textarea_value_with_cursor(
     text: &str,
     is_active: bool,
+    cursor_visible: bool,
     cursor_char_pos: usize,
     placeholder: &str,
     is_dark: bool,
@@ -312,17 +315,22 @@ pub fn render_textarea_value_with_cursor(
             .text_xs()
             .child(
                 div()
-                    .text_color(cursor_color)
+                    .text_color(if cursor_visible { cursor_color.into() } else { rgba(0x00000000) })
                     .font_weight(gpui::FontWeight::BOLD)
                     .child("|"),
             );
     }
 
-    let before: String = text.chars().take(clamped_pos).collect();
-    let after: String = text.chars().skip(clamped_pos).collect();
-    let mut combined = before;
-    combined.push('|');
-    combined.push_str(&after);
+    let combined = if cursor_visible {
+        let before: String = text.chars().take(clamped_pos).collect();
+        let after: String = text.chars().skip(clamped_pos).collect();
+        let mut s = before;
+        s.push('|');
+        s.push_str(&after);
+        s
+    } else {
+        text.to_string()
+    };
 
     div()
         .text_xs()

@@ -133,7 +133,8 @@ impl RusterView {
                                                     .child(render_field_value_with_cursor(
                                                         &self.find_query.root_dir.to_string_lossy(),
                                                         self.find_active_field == 0,
-                                                        self.find_cursor_pos,
+                                                        self.cursor_blink_visible,
+                                                self.find_cursor_pos,
                                                         ".",
                                                         false,
                                                         is_dark,
@@ -175,7 +176,8 @@ impl RusterView {
                                                     .child(render_field_value_with_cursor(
                                                         &self.find_query.name_pattern,
                                                         self.find_active_field == 1,
-                                                        self.find_cursor_pos,
+                                                        self.cursor_blink_visible,
+                                                self.find_cursor_pos,
                                                         "*",
                                                         false,
                                                         is_dark,
@@ -218,6 +220,7 @@ impl RusterView {
                                             .child(render_field_value_with_cursor(
                                                 &self.find_query.containing_text,
                                                 self.find_active_field == 2,
+                                                self.cursor_blink_visible,
                                                 self.find_cursor_pos,
                                                 "",
                                                 false,
